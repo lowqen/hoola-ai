@@ -406,8 +406,7 @@ impl Game {
                 if p.registered || !self.rules.attach_requires_registration {
                     for card in p.hand {
                         for (i, m) in self.melds.iter().enumerate() {
-                            if self.can_attach_to(seat, m) && m.can_attach(card, &self.rules.meld)
-                            {
+                            if self.can_attach_to(seat, m) && m.can_attach(card, &self.rules.meld) {
                                 out.push(Action::Attach { card, meld: i });
                             }
                         }
