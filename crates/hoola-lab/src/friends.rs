@@ -252,7 +252,7 @@ pub fn search_probe(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     let probes: Vec<(usize, &str, u64)> = vec![
         (2, "search:k=32", deals),
         (2, "search:k=128", deals),
-        (2, "search:k=128:stop=1", deals),
+        (2, "search:k=512", deals),
         (3, "search:k=128", (deals / 2).max(1)),
     ];
     for (n, search, d) in probes {
