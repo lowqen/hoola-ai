@@ -12,6 +12,19 @@ const GRADES = [
   { id: "good", min: 0, label: "좋음", icon: "✓", color: "#0ca30c" },
 ];
 const BEST = { id: "best", label: "최선", icon: "★", color: "#0ca30c" };
+/** 스톱 기준표대로 둔 스톱 판단: 시뮬레이션과 달라도 실수로 세지 않는다. */
+const TABLE = { id: "table", label: "기준표대로", icon: "≡", color: "#7a7a72" };
+
+/** 이 결정이 "스톱할까 말까"의 문제이고, 내가 기준표와 같은 판단을 했는가. */
+export function stopTableCheck(obs, myAction, bestAction, legal, seat) {
+  if (obs.phase !== "turn_start" || !legal.includes("stop")) return null;
+  const fewest = Math.min(7, ...obs.hand_counts.filter((_, s) => s !== seat));
+  const limit = STOP_TABLE[fewest];
+  const tableStop = limit !== null && obs.hand_points <= limit;
+  const mineStop = myAction === "stop";
+  const bestStop = bestAction === "stop";
+  return { fewest, limit, tableStop, followed: mineStop === tableStop, aboutStop: mineStop !== bestStop };
+}
 const CATEGORY = {
   stop: "스톱 판단",
   thankyou: "땡큐",
@@ -96,11 +109,10 @@ function explain(item, ctx) {
   let category = "other";
 
   if (b.verb === "stop" && m.verb !== "stop") {
+    // 기준표와 다르게(스톱 안 함) 둔 경우에만 여기로 온다
     category = "stop";
-    lines.push(`지금 스톱했어야 했다. 손패 ${pts}점이고 가장 적게 든 상대가 ${fewest}장이다.`);
-    lines.push(limit !== null && pts <= limit
-      ? `스톱 기준표(${tableText})에 해당하는 장면이다.`
-      : `기준표(${tableText})보다 공격적이지만, 이 장면에서는 기다리는 동안 상대가 털거나 스톱할 위험이 더 컸다.`);
+    lines.push(`스톱할 장면이었다. 손패 ${pts}점이고 가장 적게 든 상대가 ${fewest}장이다.`);
+    lines.push(`스톱 기준표(${tableText})에 해당한다. 기다리면 상대가 털거나 점수를 더 낮출 시간을 준다.`);
   } else if (m.verb === "stop" && b.verb !== "stop") {
     category = "stop";
     lines.push(`스톱이 일렀다. 손패 ${pts}점인데 가장 적게 든 상대가 ${fewest}장이라, 그 상대가 나보다 낮거나 같을 가능성이 크다 (같아도 선언자 패배).`);
@@ -264,7 +276,12 @@ function renderDetail(state, idx) {
     detail.appendChild(why);
   } else {
     const ok = el("div", "why ok");
-    ok.appendChild(el("p", "", item.grade.id === "best" ? "최선의 수였다." : "추천 수와 확실한 차이가 없다. 사실상 같은 수다."));
+    if (item.grade === TABLE) {
+      ok.classList.add("table");
+      item.lines.forEach((t) => ok.appendChild(el("p", "", t)));
+    } else {
+      ok.appendChild(el("p", "", item.grade.id === "best" ? "최선의 수였다." : "추천 수와 확실한 차이가 없다. 사실상 같은 수다."));
+    }
     detail.appendChild(ok);
   }
 
@@ -363,6 +380,7 @@ function renderChart(state) {
   const legend = el("div", "chart-legend xsmall");
   const entries = [
     { color: BEST.color, text: "★✓ 최선·좋음" },
+    { color: TABLE.color, text: "≡ 기준표대로" },
     ...GRADES.slice(0, 3).reverse().map((g) => ({ color: g.color, text: `${g.icon} ${g.label}` })),
   ];
   legend.innerHTML = entries.map((g) => `<span><i style="background:${g.color}"></i>${g.text}</span>`).join("")
@@ -373,7 +391,7 @@ function renderChart(state) {
 function renderSummary(state) {
   const box = $("rv-summary");
   const items = state.items;
-  const counts = Object.fromEntries([BEST, ...GRADES].map((g) => [g.id, 0]));
+  const counts = Object.fromEntries([BEST, TABLE, ...GRADES].map((g) => [g.id, 0]));
   items.forEach((it) => counts[it.grade.id]++);
   const loss = items.reduce((s, it) => s + it.loss, 0);
   const accurate = items.filter((it) => it.loss === 0).length;
@@ -455,6 +473,15 @@ export function openReview(ctx) {
       const item = { n, decision: d, obs: r.obs, scored: r.scored, mine, best: r.scored[0] };
       item.loss = lossOf(item);
       item.grade = gradeOf(item);
+      const legal = r.scored.map((v) => v.action);
+      const tc = stopTableCheck(r.obs, mine.action, item.best.action, legal, ctx.seat);
+      item.table = tc;
+      if (tc && tc.followed && tc.aboutStop) {
+        // 기준표대로 둔 스톱 판단은 실수로 세지 않고, 시뮬레이션 의견은 참고로만 보여 준다
+        item.simGap = item.loss;
+        item.loss = 0;
+        item.grade = TABLE;
+      }
       const after = actions[d.index + 1];
       const m = parseAction(d.action);
       const nextTook =
@@ -463,9 +490,19 @@ export function openReview(ctx) {
         after.seat === (ctx.seat + 1) % ctx.players &&
         after.action.startsWith("thankyou ") &&
         after.action.split(" ").includes(m.cards[0]);
-      const ex = explain(item, { ...ctx, isLast: i === decisions.length - 1, nextTookMyDiscard: nextTook });
-      item.category = ex.category;
-      item.lines = ex.lines;
+      if (item.grade === TABLE) {
+        const t = item.table;
+        const rule = t.limit === null ? `상대 최소 ${t.fewest}장 → 스톱 금지` : `상대 최소 ${t.fewest}장 → ${t.limit}점 이하 스톱`;
+        item.category = "stop";
+        item.lines = [
+          `스톱 기준표(${rule})대로 ${mine.action === "stop" ? "스톱했다" : "스톱하지 않았다"}. 실수로 세지 않는다.`,
+          `참고: 시뮬레이션은 ${actionText(item.best.action, r.obs, ctx.seatName)} 쪽을 ${((item.best.value - mine.value) * 100).toFixed(0)}%p 높게 봤지만, 스톱 판단은 상대 손패 추정에 크게 좌우되는 장면이라 실측 기준표를 우선한다.`,
+        ];
+      } else {
+        const ex = explain(item, { ...ctx, isLast: i === decisions.length - 1, nextTookMyDiscard: nextTook });
+        item.category = ex.category;
+        item.lines = ex.lines;
+      }
       state.items.push(item);
     });
     const summary = renderSummary(state);

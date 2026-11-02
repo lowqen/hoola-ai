@@ -412,6 +412,15 @@ function runHint() {
     const expert = game.botAction("expert", 0);
     const scored = JSON.parse(game.evaluate(HINT_K, game.actionCount + 1));
     hint.innerHTML = "";
+    const legalNow = scored.map((v) => v.action);
+    if (obs.phase === "turn_start" && legalNow.includes("stop")) {
+      const fewest = Math.min(7, ...obs.hand_counts.filter((_, s) => s !== HUMAN));
+      const limit = STOP_TABLE[fewest];
+      const ok = limit !== null && obs.hand_points <= limit;
+      const note = el("p", "hint-table " + (ok ? "go" : "wait"));
+      note.textContent = `스톱 판단은 기준표 우선: 상대 최소 ${fewest}장 → ${limit === null ? "스톱 금지" : `${limit}점 이하`} → ${ok ? "스톱" : "스톱하지 않음"}. 아래 시뮬레이션의 스톱 수치는 참고만.`;
+      hint.appendChild(note);
+    }
     const ol = el("ol", "hint-list");
     scored.slice(0, 6).forEach((v, i) => {
       const li = el("li", i === 0 ? "best" : "");

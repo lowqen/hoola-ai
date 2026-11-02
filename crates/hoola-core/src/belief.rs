@@ -15,8 +15,21 @@ pub type RankWeights = [[f64; 13]; 8];
 /// 균일 (가중치 없음).
 pub const UNIFORM: RankWeights = [[1.0; 13]; 8];
 
-/// 학습된 가중치. `hoola-lab --only BELIEF`가 출력한 표 (전문가 봇·친구 페르소나 혼합 대전).
-pub const LEARNED: RankWeights = UNIFORM;
+/// 학습된 가중치. `hoola-lab --only BELIEF`가 출력한 표 (전문가 봇·친구 페르소나 혼합 대전,
+/// 2026-11-03). 보정 검증: 스톱 승률 추정의 Brier 점수 균일 0.153 → 학습 0.080,
+/// 상대가 1장일 때 평균 추정 균일 0.52 / 학습 0.18 / 실제 0.16.
+/// 7이 거의 0인 행은 7을 단독 등록하는 습관 때문이다.
+#[rustfmt::skip]
+pub const LEARNED: RankWeights = [
+    [1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000],
+    [4.086, 3.112, 2.264, 1.466, 0.879, 0.370, 0.020, 0.246, 0.235, 0.165, 0.100, 0.050, 0.027],
+    [2.501, 2.463, 2.233, 1.844, 1.273, 0.689, 0.287, 0.424, 0.508, 0.385, 0.224, 0.114, 0.055],
+    [2.096, 2.021, 1.926, 1.764, 1.467, 0.900, 0.353, 0.617, 0.682, 0.529, 0.343, 0.198, 0.105],
+    [1.804, 1.777, 1.739, 1.655, 1.464, 1.061, 0.382, 0.783, 0.783, 0.635, 0.460, 0.296, 0.161],
+    [1.795, 1.714, 1.695, 1.655, 1.429, 0.871, 0.020, 0.702, 0.937, 0.847, 0.647, 0.456, 0.252],
+    [1.554, 1.531, 1.479, 1.452, 1.416, 0.989, 0.020, 0.868, 1.078, 0.943, 0.779, 0.588, 0.325],
+    [1.272, 1.249, 1.231, 1.211, 1.203, 1.175, 0.880, 1.064, 0.945, 0.854, 0.759, 0.642, 0.518],
+];
 
 /// 추정 방식.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +141,27 @@ mod tests {
             assert_eq!(all, obs.unseen());
             assert_eq!(stock.len(), g.stock_len());
         }
+    }
+
+    #[test]
+    fn learned_belief_fixes_lone_card_overestimate() {
+        // 상대가 1장, 내가 4점: 실측 스톱 승률은 0.2 안팎 (전략서 H8). 균일 추정은 크게 과대평가한다
+        use crate::card::parse_cards;
+        let hand = |s: &str| -> CardSet { parse_cards(s).unwrap().into_iter().collect() };
+        let g = Game::with_hands(
+            Rules::default(),
+            &[hand("4S"), hand("9H")],
+            Some("QH".parse().unwrap()),
+            &[],
+            0,
+            3,
+        );
+        let obs = g.observation(0);
+        let mut rng = Rng::seed_from_u64(4);
+        let uniform = stop_win_estimate(&obs, &mut rng, &UNIFORM, 2000);
+        let learned = stop_win_estimate(&obs, &mut rng, &LEARNED, 2000);
+        assert!(uniform > 0.6, "uniform {uniform}");
+        assert!(learned < 0.3, "learned {learned}");
     }
 
     #[test]

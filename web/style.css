@@ -461,3 +461,10 @@ dialog::backdrop { background: rgba(8, 12, 10, 0.55); backdrop-filter: blur(2px)
   .rv-compare { grid-template-columns: 1fr; }
   .alt { grid-template-columns: minmax(0, 1fr) 70px 52px; }
 }
+
+.grade-table { background: #6b6b64; }
+.why.table p { color: var(--ink-2); font-weight: 500; margin: 2px 0; }
+.why.table p:first-child { color: var(--ink); font-weight: 700; }
+.hint-table { margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+.hint-table.go { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good-ink); }
+.hint-table.wait { background: var(--surface-2); color: var(--ink-2); }
