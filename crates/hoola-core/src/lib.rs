@@ -5,11 +5,13 @@
 pub mod card;
 pub mod game;
 pub mod meld;
+pub mod preset;
 pub mod rng;
 pub mod rules;
 
 pub use card::{Card, CardSet, ParseCardError, PointTable, Suit, parse_cards};
 pub use game::{Action, EndReason, Game, IllegalAction, Outcome, Phase, PlayerState};
 pub use meld::{AceMode, MeldKind, MeldRules, TableMeld, classify_new_meld};
+pub use preset::{Preset, PresetError};
 pub use rng::Rng;
-pub use rules::{Rules, StopRules, ThankYouRules};
+pub use rules::{DiscardVisibility, FirstPlayer, Rules, StockEmpty, StopRules, ThankYouRules};

@@ -7,7 +7,7 @@ use std::fmt;
 use crate::card::{Card, CardSet};
 use crate::meld::{MeldKind, TableMeld, classify_new_meld};
 use crate::rng::Rng;
-use crate::rules::Rules;
+use crate::rules::{Rules, StockEmpty};
 
 /// 플레이어 행동.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -60,7 +60,7 @@ pub enum EndReason {
     Out { player: usize },
     /// 스톱 판정 (§8.2). `success`면 선언자 단독 승리.
     Stop { caller: usize, success: bool },
-    /// 더미도 비고 섞을 버림패도 없음 (§9 예외).
+    /// 받을 카드가 없음 (§9 예외, 또는 `on_stock_empty` 설정). 승자가 없으면 무승부.
     NoCards,
     /// `max_turns` 초과. 규칙이 아닌 시뮬레이션 보호용 무승부.
     TurnLimit,
@@ -90,9 +90,9 @@ impl Outcome {
         }
     }
 
-    fn draw(num_players: usize) -> Outcome {
+    fn draw(reason: EndReason, num_players: usize) -> Outcome {
         Outcome {
-            reason: EndReason::TurnLimit,
+            reason,
             winners: Vec::new(),
             rewards: vec![1.0 / num_players as f64; num_players],
         }
@@ -441,8 +441,7 @@ impl Game {
         match action {
             Action::Stop => self.resolve_stop(seat),
             Action::Draw => {
-                if self.stock.is_empty() && !self.reshuffle() {
-                    self.finish_lowest(EndReason::NoCards);
+                if self.stock.is_empty() && !self.refill_stock() {
                     return Ok(());
                 }
                 let card = self.stock.pop().expect("stock refilled");
@@ -498,7 +497,7 @@ impl Game {
     fn begin_turn(&mut self) {
         if self.turn >= self.rules.max_turns {
             self.phase = Phase::Over;
-            self.outcome = Some(Outcome::draw(self.players.len()));
+            self.outcome = Some(Outcome::draw(EndReason::TurnLimit, self.players.len()));
             return;
         }
         self.turn += 1;
@@ -519,16 +518,40 @@ impl Game {
         true
     }
 
-    /// 버림패 맨 위 1장을 남기고 나머지를 섞어 더미로 만든다. 섞을 카드가 없으면 `false`.
-    fn reshuffle(&mut self) -> bool {
-        if self.discard.len() <= 1 {
+    /// 빈 더미를 설정에 따라 채운다. 판이 끝났으면 `false`.
+    fn refill_stock(&mut self) -> bool {
+        match self.rules.stock_empty {
+            StockEmpty::Reshuffle { keep_top, limit } => {
+                let allowed = limit == 0 || self.reshuffles < limit;
+                if allowed && self.reshuffle(keep_top) {
+                    return true;
+                }
+                self.finish_lowest(EndReason::NoCards);
+            }
+            StockEmpty::LowestWins => self.finish_lowest(EndReason::NoCards),
+            StockEmpty::Draw => {
+                self.phase = Phase::Over;
+                self.outcome = Some(Outcome::draw(EndReason::NoCards, self.players.len()));
+            }
+        }
+        false
+    }
+
+    /// 버림패를 섞어 더미로 만든다. `keep_top`이면 맨 위 1장은 남긴다 (계속 땡큐 대상).
+    /// 섞을 카드가 없으면 `false`.
+    fn reshuffle(&mut self, keep_top: bool) -> bool {
+        let keep = usize::from(keep_top);
+        if self.discard.len() <= keep {
             return false;
         }
-        let top = self.discard.pop().expect("non-empty");
+        let top = if keep_top { self.discard.pop() } else { None };
         let mut cards = std::mem::take(&mut self.discard);
         self.rng.shuffle(&mut cards);
         self.stock = cards;
-        self.discard.push(top);
+        self.discard.extend(top);
+        if !keep_top {
+            self.top_discarder = None;
+        }
         self.reshuffles += 1;
         true
     }

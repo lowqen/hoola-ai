@@ -46,9 +46,43 @@ impl Default for StopRules {
     }
 }
 
+/// 선 정하기 (`setup.first_player`). 엔진은 좌석을 직접 받고, 연속 대전 진행기가 이 값을 쓴다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FirstPlayer {
+    /// 판 시드로 정한다.
+    Seed,
+    /// 연속 대전에서 시계 방향으로 돌린다.
+    Rotate,
+    /// 항상 이 좌석.
+    Seat(usize),
+}
+
+/// 받아야 하는데 더미가 비었을 때 (`end.on_stock_empty`, RULES.md §9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StockEmpty {
+    /// 버림패를 섞어 새 더미를 만든다. `limit`이 0이면 무제한.
+    /// 섞을 카드가 없거나 횟수를 다 쓰면 최저 점수자가 승리한다.
+    Reshuffle { keep_top: bool, limit: u32 },
+    /// 즉시 최저 점수자 승리.
+    LowestWins,
+    /// 무승부.
+    Draw,
+}
+
+/// 버림패 이력 공개 범위 (`visibility.discard_history`, RULES.md §11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiscardVisibility {
+    /// 맨 위 1장만 보인다 (오프라인 방식).
+    TopOnly,
+    /// 전체 이력이 보인다.
+    Full,
+}
+
 /// 엔진이 쓰는 규칙 묶음.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rules {
+    pub min_players: usize,
+    pub max_players: usize,
     pub hand_size: usize,
     pub points: PointTable,
     pub meld: MeldRules,
@@ -60,6 +94,11 @@ pub struct Rules {
     pub stop: StopRules,
     /// 시작 시 더미 맨 위 1장을 버림패로 공개.
     pub initial_upcard: bool,
+    pub first_player: FirstPlayer,
+    pub stock_empty: StockEmpty,
+    pub discard_visibility: DiscardVisibility,
+    /// 더미 잔여 장수 공개.
+    pub stock_count_visible: bool,
     /// 이 턴 수를 넘기면 무승부 (시뮬레이션 보호용).
     pub max_turns: u32,
 }
@@ -67,6 +106,8 @@ pub struct Rules {
 impl Default for Rules {
     fn default() -> Self {
         Rules {
+            min_players: 2,
+            max_players: 5,
             hand_size: 7,
             points: PointTable::default(),
             meld: MeldRules::default(),
@@ -75,6 +116,13 @@ impl Default for Rules {
             thank_you: ThankYouRules::default(),
             stop: StopRules::default(),
             initial_upcard: true,
+            first_player: FirstPlayer::Seed,
+            stock_empty: StockEmpty::Reshuffle {
+                keep_top: true,
+                limit: 0,
+            },
+            discard_visibility: DiscardVisibility::TopOnly,
+            stock_count_visible: true,
             max_turns: 1000,
         }
     }
@@ -83,8 +131,22 @@ impl Default for Rules {
 impl Rules {
     /// 인원 수에 대해 판을 돌릴 수 있는 설정인지 검사한다.
     pub fn validate(&self, num_players: usize) -> Result<(), String> {
-        if !(2..=5).contains(&num_players) {
-            return Err(format!("players must be 2..=5, got {num_players}"));
+        if self.min_players < 2 || self.min_players > self.max_players {
+            return Err(format!(
+                "invalid player range {}..={}",
+                self.min_players, self.max_players
+            ));
+        }
+        if !(self.min_players..=self.max_players).contains(&num_players) {
+            return Err(format!(
+                "players must be {}..={}, got {num_players}",
+                self.min_players, self.max_players
+            ));
+        }
+        if let FirstPlayer::Seat(seat) = self.first_player
+            && seat >= num_players
+        {
+            return Err(format!("first_player seat {seat} out of range"));
         }
         if self.hand_size == 0 {
             return Err("hand_size must be positive".into());
