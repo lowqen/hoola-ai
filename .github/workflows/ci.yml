@@ -82,3 +82,43 @@ jobs:
 
       - name: 2인 Greedy 셀프플레이 속도
         run: ./target/release/hoola-sim --players 2 --games 100000 --bots greedy --no-duplicate | tee -a "$GITHUB_STEP_SUMMARY"
+
+  python:
+    name: Python wheel (PyO3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/hoola-py
+
+      - name: Format & Clippy (hoola-py)
+        working-directory: crates/hoola-py
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+
+      - name: Build wheel
+        run: |
+          python -m pip install "maturin>=1.8,<2"
+          maturin build --release -m crates/hoola-py/Cargo.toml -o dist
+
+      - name: Install wheel & pytest
+        run: |
+          python -m pip install dist/*.whl "pytest>=8"
+          python -m pytest -q crates/hoola-py/tests
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hoola-wheel
+          path: dist/*.whl

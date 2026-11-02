@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+name = "hoola"
+description = "훌라 규칙 엔진 Python 바인딩 (hoola-core)"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "hoola._hoola"
+features = ["pyo3/extension-module"]

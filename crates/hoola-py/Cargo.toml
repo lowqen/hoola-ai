@@ -1,0 +1,22 @@
+# Python 바인딩. 루트 워크스페이스에서 제외하고 maturin으로 빌드한다.
+[workspace]
+
+[package]
+name = "hoola-py"
+description = "훌라 규칙 엔진 Python 바인딩"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+name = "_hoola"
+crate-type = ["cdylib"]
+
+[dependencies]
+hoola-core = { path = "../hoola-core" }
+pyo3 = { version = "0.25", features = ["abi3-py39"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

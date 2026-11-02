@@ -2,6 +2,7 @@
 //!
 //! 규칙 명세는 저장소 루트의 `RULES.md`(v1.0, `offline_casual` 프리셋)를 따른다.
 
+pub mod arena;
 pub mod bot;
 pub mod card;
 pub mod game;

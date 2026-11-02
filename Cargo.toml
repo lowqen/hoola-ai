@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# PyO3 확장 모듈은 maturin으로 따로 빌드한다 (CI python 잡)
+exclude = ["crates/hoola-py"]
 
 [workspace.package]
 version = "0.1.0"
