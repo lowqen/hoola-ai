@@ -42,13 +42,14 @@ pub struct ExpertConfig {
 
 impl Default for ExpertConfig {
     fn default() -> Self {
+        // P2 1차 실험(hoola-lab H1·H5·H6)으로 조정한 값
         ExpertConfig {
-            stop: StopPolicy::Confidence(0.6),
+            stop: StopPolicy::Confidence(0.9),
             meld_now: true,
             single_seven: true,
             thank_you: true,
-            danger_weight: 1.0,
-            outs_weight: 1.5,
+            danger_weight: 0.0,
+            outs_weight: 3.0,
             samples: 32,
         }
     }
@@ -334,8 +335,7 @@ impl crate::bot::Bot for ExpertBot {
                 };
                 let plan_cards = plan.iter().fold(CardSet::EMPTY, |a, &m| a.union(m));
                 let after = hand.difference(plan_cards).points(&rules.points);
-                let register_now =
-                    going_out || self.cfg.meld_now || after <= rules.stop.limit;
+                let register_now = going_out || self.cfg.meld_now || after <= rules.stop.limit;
                 if register_now
                     && let Some(&m) = plan.iter().max_by_key(|m| m.points(&rules.points))
                 {
@@ -367,7 +367,8 @@ impl crate::bot::Bot for ExpertBot {
                     let mut score = f64::from(pts(card))
                         - self.cfg.outs_weight * outs(hand, card, unseen) as f64;
                     if self.cfg.danger_weight > 0.0 {
-                        score -= self.cfg.danger_weight * 10.0 * self.danger(obs, card, &unseen_vec);
+                        score -=
+                            self.cfg.danger_weight * 10.0 * self.danger(obs, card, &unseen_vec);
                     }
                     if best.is_none_or(|(s, c)| score > s || (score == s && card > c)) {
                         best = Some((score, card));
@@ -396,7 +397,8 @@ mod tests {
 
     #[test]
     fn parse_spec() {
-        let cfg = ExpertConfig::parse("stop=t5:meld=hold:seven=0:ty=off:danger=0:samples=8").unwrap();
+        let cfg =
+            ExpertConfig::parse("stop=t5:meld=hold:seven=0:ty=off:danger=0:samples=8").unwrap();
         assert_eq!(cfg.stop, StopPolicy::Threshold(5));
         assert!(!cfg.meld_now && !cfg.single_seven && !cfg.thank_you);
         assert_eq!(cfg.danger_weight, 0.0);

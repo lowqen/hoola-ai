@@ -13,7 +13,7 @@ use std::fmt::Write as _;
 use std::time::Instant;
 
 use hoola_core::arena::{MatchConfig, MatchReport, run_match};
-use hoola_core::{FirstPlayer, Rules};
+use hoola_core::{ExpertConfig, FirstPlayer, Rules};
 
 const BASE: &str = "expert";
 
@@ -30,10 +30,10 @@ fn hypotheses() -> Vec<Hypothesis> {
     for t in 0..=10 {
         stop.push(c(&format!("점수 ≤ {t}이면 스톱"), &format!("expert:stop=t{t}")));
     }
-    for p in [3, 4, 5, 6, 7, 8, 9] {
+    for p in ["0.5", "0.6", "0.7", "0.8", "0.85", "0.9", "0.95", "0.98", "1"] {
         stop.push(c(
-            &format!("승리 확률 ≥ 0.{p}이면 스톱"),
-            &format!("expert:stop=c0.{p}"),
+            &format!("승리 확률 ≥ {p}이면 스톱"),
+            &format!("expert:stop=c{p}"),
         ));
     }
     vec![
@@ -76,10 +76,10 @@ fn hypotheses() -> Vec<Hypothesis> {
             question: "다음 사람이 땡큐할 수 있는 카드를 피해 버리는 게 얼마나 중요한가?",
             candidates: vec![
                 c("위험 무시", "expert:danger=0"),
+                c("가중치 0.25", "expert:danger=0.25"),
                 c("가중치 0.5", "expert:danger=0.5"),
-                c("가중치 1 (기본)", "expert:danger=1"),
+                c("가중치 1", "expert:danger=1"),
                 c("가중치 2", "expert:danger=2"),
-                c("가중치 4", "expert:danger=4"),
             ],
         },
         Hypothesis {
@@ -88,10 +88,21 @@ fn hypotheses() -> Vec<Hypothesis> {
             question: "점수가 높아도 조합 직전 카드(페어·연속)를 남길 가치가 있나?",
             candidates: vec![
                 c("아웃 무시 (점수만)", "expert:outs=0"),
-                c("아웃당 1점", "expert:outs=1"),
-                c("아웃당 1.5점 (기본)", "expert:outs=1.5"),
+                c("아웃당 1.5점", "expert:outs=1.5"),
                 c("아웃당 3점", "expert:outs=3"),
                 c("아웃당 5점", "expert:outs=5"),
+                c("아웃당 8점", "expert:outs=8"),
+            ],
+        },
+        Hypothesis {
+            id: "H7",
+            title: "스톱 판단 샘플 수",
+            question: "상대 손패를 몇 번 샘플링해야 스톱 판단이 충분히 정확한가?",
+            candidates: vec![
+                c("16", "expert:samples=16"),
+                c("32", "expert:samples=32"),
+                c("64", "expert:samples=64"),
+                c("128", "expert:samples=128"),
             ],
         },
     ]
@@ -107,7 +118,7 @@ struct Args {
 
 fn parse_args() -> Result<Args, String> {
     let mut a = Args {
-        deals: 4000,
+        deals: 8000,
         seed: 1_000_000,
         out: None,
         only: None,
@@ -196,7 +207,11 @@ fn main() {
     // H0: 봇 사다리 + 기준 봇 셀프플레이 통계 + 선 이점
     let mut ladder = Vec::new();
     for &n in &args.players {
-        for (a, b) in [("expert", "greedy"), ("expert", "random"), ("greedy", "random")] {
+        for (a, b) in [
+            ("expert", "greedy"),
+            ("expert", "random"),
+            ("greedy", "random"),
+        ] {
             let mut bots = vec![a.to_string()];
             bots.extend(std::iter::repeat_n(b.to_string(), n - 1));
             ladder.push((n, a, b, cfg(n, bots, args.deals, args.seed, &rules)));
@@ -256,17 +271,36 @@ fn main() {
             for (label, spec) in &h.candidates {
                 let mut bots = vec![spec.clone()];
                 bots.extend(std::iter::repeat_n(BASE.to_string(), n - 1));
-                jobs.push((n, label.clone(), spec.clone(), cfg(n, bots, args.deals, args.seed, &rules)));
+                jobs.push((
+                    n,
+                    label.clone(),
+                    spec.clone(),
+                    cfg(n, bots, args.deals, args.seed, &rules),
+                ));
             }
         }
         let reports = run_all(jobs.iter().map(|j| j.3.clone()).collect());
         let _ = writeln!(md, "## {}. {}\n\n{}\n", h.id, h.title, h.question);
-        let _ = writeln!(md, "| 인원 | 후보 | 사양 | 좌석당 승률 | 95% CI | 기준 대비 | 평균 턴 | 털기 | 스톱 성공 | 스톱 실패 |");
+        let _ = writeln!(
+            md,
+            "| 인원 | 후보 | 사양 | 좌석당 승률 | 95% CI | 기준 대비 | 평균 턴 | 털기 | 스톱 성공 | 스톱 실패 |"
+        );
         let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|");
         for ((n, label, spec, _), r) in jobs.iter().zip(&reports) {
             let x = r.bot(spec).unwrap();
             let base = 1.0 / *n as f64;
-            let sig = if x.mean - x.ci95 > base {
+            let is_base = spec
+                .strip_prefix("expert:")
+                .and_then(|s| ExpertConfig::parse(s).ok())
+                .is_some_and(|c| c == ExpertConfig::default());
+            let label = if is_base {
+                format!("{label} **(기준)**")
+            } else {
+                label.clone()
+            };
+            let sig = if is_base || (x.mean - base).abs() < 1e-9 {
+                ""
+            } else if x.mean - x.ci95 > base {
                 " ▲"
             } else if x.mean + x.ci95 < base {
                 " ▼"

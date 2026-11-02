@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn expert_beats_greedy() {
         let mut c = cfg(&["expert", "greedy"], 2, true);
-        c.deals = 300;
+        c.deals = 3000;
         let r = run_match(&c).unwrap();
         let e = r.bot("expert").unwrap();
         assert!(e.mean > 0.5, "expert vs greedy {:.3}", e.mean);

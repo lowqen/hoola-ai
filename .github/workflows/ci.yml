@@ -138,7 +138,7 @@ jobs:
         run: cargo build --release -p hoola-lab
 
       - name: Run hypotheses
-        run: ./target/release/hoola-lab --deals 4000 --out lab-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+        run: ./target/release/hoola-lab --deals 8000 --out lab-results.md | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
