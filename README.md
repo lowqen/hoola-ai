@@ -13,7 +13,8 @@
 |---|---|
 | `crates/hoola-core` | Rust 규칙 엔진 코어 (카드, 등록·붙이기 판정, 규칙 설정, 게임 상태기계, 결정적 난수) |
 | `crates/hoola-core/tests/rules_spec.rs` | RULES.md 명세 테스트 (스톱 판정표, 엣지 케이스 E1–E11, 무작위 대전 불변식) |
+| `crates/hoola-py` | Python 바인딩 (`import hoola`, maturin · abi3 wheel은 CI 아티팩트) |
 | `crates/hoola-sim` | 봇 대전 시뮬레이션 CLI (듀플리케이트, 승률 95% CI, 초당 판 수) |
 | `.github/workflows/ci.yml` | 푸시마다 빌드·테스트·포맷·Clippy 검사, 시뮬레이션 벤치마크 (결과는 Actions 실행 요약) |
 
-빌드와 테스트는 GitHub Actions에서만 실행한다. 로컬에서 돌리려면 `cargo test --workspace`.
+빌드와 테스트는 GitHub Actions에서만 실행한다. 로컬에서 돌리려면 `cargo test --workspace`, Python 바인딩은 `cd crates/hoola-py && maturin develop`.
