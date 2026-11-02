@@ -107,7 +107,9 @@ fn e3_thank_you_then_out() {
     play(&mut g, Action::Draw);
     discard(&mut g, "4H");
     assert_eq!(g.current_player(), 1);
-    let ty = Action::ThankYou { meld: cs("4H 5H 6H") };
+    let ty = Action::ThankYou {
+        meld: cs("4H 5H 6H"),
+    };
     assert!(g.legal_actions().contains(&ty));
     play(&mut g, ty);
     assert_eq!(g.outcome().unwrap().reason, EndReason::Out { player: 1 });
@@ -183,8 +185,12 @@ fn e7_queen_king_ace_is_not_a_run() {
     let mut g = game(&["QS KS AS 2D 3D", "KH"], Some("2C"), &["4D"]);
     play(&mut g, Action::Draw);
     let legal = g.legal_actions();
-    assert!(!legal.contains(&Action::Register { cards: cs("QS KS AS") }));
-    assert!(legal.contains(&Action::Register { cards: cs("2D 3D 4D") }));
+    assert!(!legal.contains(&Action::Register {
+        cards: cs("QS KS AS")
+    }));
+    assert!(legal.contains(&Action::Register {
+        cards: cs("2D 3D 4D")
+    }));
 }
 
 #[test]
@@ -211,14 +217,21 @@ fn register_lists_every_valid_subset() {
 #[test]
 fn attach_requires_registration() {
     // 1번이 7D 단독을 등록해 둔 상태에서 0번이 붙이기를 시도
-    let mut g = game(&["8D 2H 3H 4H JS", "7D QC KC"], Some("2C"), &["TS", "JC", "9S"]);
+    let mut g = game(
+        &["8D 2H 3H 4H JS", "7D QC KC"],
+        Some("2C"),
+        &["TS", "JC", "9S"],
+    );
     play(&mut g, Action::Draw);
     discard(&mut g, "TS");
     play(&mut g, Action::Draw);
     register(&mut g, "7D");
     discard(&mut g, "JC");
     play(&mut g, Action::Draw);
-    let attach = Action::Attach { card: c("8D"), meld: 0 };
+    let attach = Action::Attach {
+        card: c("8D"),
+        meld: 0,
+    };
     assert!(!g.legal_actions().contains(&attach));
     register(&mut g, "2H 3H 4H");
     assert!(g.legal_actions().contains(&attach));
@@ -229,7 +242,11 @@ fn attach_requires_registration() {
 
 #[test]
 fn e8_seven_fixed_as_set_rejects_neighbors() {
-    let mut g = game(&["7S 6D 2H 3H 4H", "7D QC KC"], Some("2C"), &["TS", "JC", "9S"]);
+    let mut g = game(
+        &["7S 6D 2H 3H 4H", "7D QC KC"],
+        Some("2C"),
+        &["TS", "JC", "9S"],
+    );
     play(&mut g, Action::Draw);
     discard(&mut g, "TS");
     play(&mut g, Action::Draw);
@@ -237,8 +254,17 @@ fn e8_seven_fixed_as_set_rejects_neighbors() {
     discard(&mut g, "JC");
     play(&mut g, Action::Draw);
     register(&mut g, "2H 3H 4H");
-    play(&mut g, Action::Attach { card: c("7S"), meld: 0 });
-    let six = Action::Attach { card: c("6D"), meld: 0 };
+    play(
+        &mut g,
+        Action::Attach {
+            card: c("7S"),
+            meld: 0,
+        },
+    );
+    let six = Action::Attach {
+        card: c("6D"),
+        meld: 0,
+    };
     assert!(!g.legal_actions().contains(&six));
 }
 
@@ -253,10 +279,9 @@ fn thank_you_needs_two_hand_cards() {
             .any(|a| matches!(a, Action::ThankYou { .. }))
     );
     let g = game(&["5H 6H 9C", "KS"], Some("4H"), &[]);
-    assert!(
-        g.legal_actions()
-            .contains(&Action::ThankYou { meld: cs("4H 5H 6H") })
-    );
+    assert!(g.legal_actions().contains(&Action::ThankYou {
+        meld: cs("4H 5H 6H")
+    }));
 }
 
 #[test]
@@ -290,7 +315,12 @@ fn e10_single_seven_thank_you_forbidden_by_default() {
 #[test]
 fn thank_you_marks_registered_and_takes_top() {
     let mut g = game(&["5H 6H 9C JD", "KS"], Some("4H"), &[]);
-    play(&mut g, Action::ThankYou { meld: cs("4H 5H 6H") });
+    play(
+        &mut g,
+        Action::ThankYou {
+            meld: cs("4H 5H 6H"),
+        },
+    );
     assert!(g.player(0).registered);
     assert_eq!(g.hand(0), cs("9C JD"));
     assert!(g.discard_pile().is_empty());
@@ -322,7 +352,9 @@ fn e9_empty_stock_thank_you_or_no_cards() {
     assert_eq!(g.hand(0), cs("5H 6H KC"));
     assert_eq!(g.stock_len(), 0);
     let legal = g.legal_actions();
-    assert!(legal.contains(&Action::ThankYou { meld: cs("4H 5H 6H") }));
+    assert!(legal.contains(&Action::ThankYou {
+        meld: cs("4H 5H 6H")
+    }));
 
     // 땡큐하지 않고 받으려 하지만 섞을 버림패도 없음 → 최저 점수 승리 (0번 24점 vs 1번 35점)
     let mut g2 = g.clone();

@@ -99,8 +99,9 @@ impl TableMeld {
         }
         let first = self.cards.iter().next()?;
         match self.kind {
-            MeldKind::Set => (card.rank() == first.rank() && self.cards.len() < 4)
-                .then_some(MeldKind::Set),
+            MeldKind::Set => {
+                (card.rank() == first.rank() && self.cards.len() < 4).then_some(MeldKind::Set)
+            }
             MeldKind::Run => {
                 if card.suit() != first.suit() {
                     return None;
