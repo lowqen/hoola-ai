@@ -16,7 +16,9 @@ fn value_err(e: impl ToString) -> PyErr {
 }
 
 fn rules_from_toml(rules_toml: &str) -> PyResult<Rules> {
-    preset::parse(rules_toml).map(|p| p.rules).map_err(value_err)
+    preset::parse(rules_toml)
+        .map(|p| p.rules)
+        .map_err(value_err)
 }
 
 fn cards(set: CardSet) -> Vec<String> {
@@ -113,7 +115,8 @@ impl PyGame {
         if self.inner.is_over() {
             return Err(value_err("game is over"));
         }
-        let mut b = NamedBot::new(bot, seed).ok_or_else(|| value_err(format!("unknown bot {bot:?}")))?;
+        let mut b =
+            NamedBot::new(bot, seed).ok_or_else(|| value_err(format!("unknown bot {bot:?}")))?;
         let seat = self.inner.current_player();
         let legal = self.inner.legal_actions();
         Ok(b.act(&self.inner.observation(seat), &legal).to_string())
@@ -161,7 +164,10 @@ impl PyGame {
         d.set_item("known_discards", pile(o.known_discards))?;
         d.set_item("visible_discards", pile(o.visible_discards))?;
         d.set_item("stock_len", o.stock_len)?;
-        d.set_item("thank_you_target", o.thank_you_target.map(|c| c.to_string()))?;
+        d.set_item(
+            "thank_you_target",
+            o.thank_you_target.map(|c| c.to_string()),
+        )?;
         let events = o
             .events
             .iter()
