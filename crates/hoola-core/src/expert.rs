@@ -20,6 +20,9 @@ pub enum StopPolicy {
     Threshold(u32),
     /// 추정 승리 확률이 이 값 이상이면 스톱.
     Confidence(f64),
+    /// 사람용 규칙표: `limits[k]` = 가장 적게 든 상대가 k장일 때 스톱할 최대 점수 (`None`이면 스톱 안 함).
+    /// 표보다 많은 장수는 마지막 값을 쓴다. 사양: `stop=r-,2,5,9,10` (1장부터).
+    Table([Option<u32>; 8]),
 }
 
 /// 전문가 봇 설정.
@@ -71,7 +74,24 @@ impl ExpertConfig {
             };
             match key {
                 "stop" => {
-                    cfg.stop = if let Some(t) = value.strip_prefix('t') {
+                    cfg.stop = if let Some(list) = value.strip_prefix('r') {
+                        let mut limits = [None; 8];
+                        let items: Vec<&str> = list.split(',').collect();
+                        if items.is_empty() || items.len() > 7 {
+                            return Err(bad());
+                        }
+                        let mut last = None;
+                        for k in 1..8 {
+                            if let Some(item) = items.get(k - 1) {
+                                last = match *item {
+                                    "-" => None,
+                                    n => Some(n.parse().map_err(|_| bad())?),
+                                };
+                            }
+                            limits[k] = last;
+                        }
+                        StopPolicy::Table(limits)
+                    } else if let Some(t) = value.strip_prefix('t') {
                         StopPolicy::Threshold(t.parse().map_err(|_| bad())?)
                     } else if let Some(c) = value.strip_prefix('c') {
                         StopPolicy::Confidence(c.parse().map_err(|_| bad())?)
@@ -149,6 +169,15 @@ impl ExpertBot {
         match self.cfg.stop {
             StopPolicy::Threshold(t) => obs.hand_points() <= t,
             StopPolicy::Confidence(c) => self.stop_win_probability(obs) >= c,
+            StopPolicy::Table(limits) => {
+                let fewest = (0..obs.num_players)
+                    .filter(|&s| s != obs.seat)
+                    .map(|s| obs.hand_counts[s])
+                    .min()
+                    .unwrap_or(7)
+                    .min(7);
+                limits[fewest].is_some_and(|t| obs.hand_points() <= t)
+            }
         }
     }
 
@@ -404,7 +433,21 @@ mod tests {
         assert_eq!(cfg.danger_weight, 0.0);
         assert_eq!(cfg.samples, 8);
         assert_eq!(ExpertConfig::parse("").unwrap(), ExpertConfig::default());
-        for bad in ["stop=x1", "meld=later", "bogus=1", "samples=0", "nokey"] {
+        let table = ExpertConfig::parse("stop=r-,2,5,9,10").unwrap();
+        assert_eq!(
+            table.stop,
+            StopPolicy::Table([
+                None,
+                None,
+                Some(2),
+                Some(5),
+                Some(9),
+                Some(10),
+                Some(10),
+                Some(10)
+            ])
+        );
+        for bad in ["stop=x1", "stop=r", "stop=rx", "meld=later", "bogus=1", "samples=0", "nokey"] {
             assert!(ExpertConfig::parse(bad).is_err(), "{bad}");
         }
     }
