@@ -190,8 +190,7 @@ fn main() -> ExitCode {
                 .enumerate()
                 .map(|(s, name)| make_bot(name, seed.wrapping_mul(1000) + s as u64).unwrap())
                 .collect();
-            let mut bots: Vec<&mut dyn Bot> =
-                owned.iter_mut().map(|b| b as &mut dyn Bot).collect();
+            let mut bots: Vec<&mut dyn Bot> = owned.iter_mut().map(|b| b as &mut dyn Bot).collect();
             let mut game = Game::new(rules.clone(), n, seed, first).expect("validated");
             let outcome = play_out(&mut game, &mut bots);
 
