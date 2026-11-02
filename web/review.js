@@ -62,7 +62,7 @@ function fragmentOf(card, hand, unseen) {
   const cands = [];
   const same = others.filter((c) => rankNum(c) === r);
   if (same.length) {
-    cands.push({ kind: "페어", partner: same[0], outs: [...unseen].filter((c) => rankNum(c) === r) });
+    cands.push({ kind: "페어를", partner: same[0], outs: [...unseen].filter((c) => rankNum(c) === r) });
   }
   for (const d of [1, -1, 2, -2]) {
     const partner = others.find((c) => suitOf(c) === s && rankNum(c) === r + d);
@@ -71,7 +71,7 @@ function fragmentOf(card, hand, unseen) {
     const hi = Math.max(r, r + d);
     const need = Math.abs(d) === 1 ? [lo - 1, hi + 1] : [lo + 1];
     const outs = need.map((x) => cardOf(x, s)).filter((c) => c && unseen.has(c));
-    cands.push({ kind: Math.abs(d) === 1 ? "연속" : "한 칸 건너뛴 연속", partner, outs });
+    cands.push({ kind: Math.abs(d) === 1 ? "연속을" : "한 칸 건너뛴 연속을", partner, outs });
   }
   cands.sort((a, b) => b.outs.length - a.outs.length);
   return cands.length && cands[0].outs.length > 0 ? cands[0] : null;
@@ -134,7 +134,7 @@ function explain(item, ctx) {
     const mf = fragmentOf(mc, obs.hand, unseen);
     const bf = fragmentOf(bc, obs.hand, unseen);
     if (mf && !bf) {
-      lines.push(`${cardText(mc)}는 ${cardText(mf.partner)}와 ${mf.kind}을 이루는 조합 직전 카드였다. 살려 줄 카드 ${mf.outs.length}장(${cardsText(sortCards(mf.outs))})이 아직 안 나왔다.`);
+      lines.push(`${cardText(mc)}는 ${cardText(mf.partner)}와 ${mf.kind} 이루는 조합 직전 카드였다. 살려 줄 카드 ${mf.outs.length}장(${cardsText(sortCards(mf.outs))})이 아직 안 나왔다.`);
       lines.push(`조합과 상관없는 ${cardText(bc)}(${points(bc)}점)를 버렸어야 했다.`);
     } else if (points(bc) > points(mc) && !bf) {
       lines.push(`${cardText(bc)}(${points(bc)}점)가 ${cardText(mc)}(${points(mc)}점)보다 무겁고 조합에도 쓰이지 않는다.`);
@@ -361,9 +361,12 @@ function renderChart(state) {
   fig.appendChild(svg);
   fig.appendChild(tip);
   const legend = el("div", "chart-legend xsmall");
-  legend.innerHTML = [BEST, ...GRADES.slice(0, 3)]
-    .map((g) => `<span><i style="background:${g.color}"></i>${g.icon} ${g.label}</span>`)
-    .join("") + '<span class="muted">선 = 내 수의 추정 승률</span>';
+  const entries = [
+    { color: BEST.color, text: "★✓ 최선·좋음" },
+    ...GRADES.slice(0, 3).reverse().map((g) => ({ color: g.color, text: `${g.icon} ${g.label}` })),
+  ];
+  legend.innerHTML = entries.map((g) => `<span><i style="background:${g.color}"></i>${g.text}</span>`).join("")
+    + '<span class="muted">선 = 내 수의 추정 승률 · 점을 누르면 그 장면으로</span>';
   fig.appendChild(legend);
 }
 
