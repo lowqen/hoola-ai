@@ -1,0 +1,101 @@
+//! 규칙 설정 전체. 기본값은 `offline_casual` 프리셋(RULES.md v1.0)이다.
+
+use crate::card::PointTable;
+use crate::meld::MeldRules;
+
+/// 땡큐 설정 (`[thank_you]`, RULES.md §7). 정통훌라(앞사람 버림패만)만 지원한다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ThankYouRules {
+    /// 땡큐 카드와 합칠 손패 최소 장수.
+    pub min_hand_cards: usize,
+    /// 버려진 7 한 장만으로 단독 등록하는 땡큐 허용.
+    pub allow_single_seven: bool,
+    /// 가져온 카드를 바닥 등록패에 붙이기만 하는 땡큐 허용.
+    pub allow_attach_only: bool,
+    /// 선이 첫 차례에 첫 공개패를 땡큐할 수 있는지.
+    pub on_initial_upcard: bool,
+}
+
+impl Default for ThankYouRules {
+    fn default() -> Self {
+        ThankYouRules {
+            min_hand_cards: 2,
+            allow_single_seven: false,
+            allow_attach_only: false,
+            on_initial_upcard: true,
+        }
+    }
+}
+
+/// 스톱 설정 (`[stop]`, RULES.md §8). 판정은 항상 "엄격 최저"다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StopRules {
+    /// 손패 점수가 이 값 이하일 때 선언 가능.
+    pub limit: u32,
+    pub requires_registration: bool,
+    pub first_turn_allowed: bool,
+}
+
+impl Default for StopRules {
+    fn default() -> Self {
+        StopRules {
+            limit: 10,
+            requires_registration: false,
+            first_turn_allowed: true,
+        }
+    }
+}
+
+/// 엔진이 쓰는 규칙 묶음.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Rules {
+    pub hand_size: usize,
+    pub points: PointTable,
+    pub meld: MeldRules,
+    /// 등록(또는 땡큐)한 플레이어만 붙이기 가능.
+    pub attach_requires_registration: bool,
+    /// 다른 플레이어의 등록패에도 붙이기 가능.
+    pub attach_to_others_melds: bool,
+    pub thank_you: ThankYouRules,
+    pub stop: StopRules,
+    /// 시작 시 더미 맨 위 1장을 버림패로 공개.
+    pub initial_upcard: bool,
+    /// 이 턴 수를 넘기면 무승부 (시뮬레이션 보호용).
+    pub max_turns: u32,
+}
+
+impl Default for Rules {
+    fn default() -> Self {
+        Rules {
+            hand_size: 7,
+            points: PointTable::default(),
+            meld: MeldRules::default(),
+            attach_requires_registration: true,
+            attach_to_others_melds: true,
+            thank_you: ThankYouRules::default(),
+            stop: StopRules::default(),
+            initial_upcard: true,
+            max_turns: 1000,
+        }
+    }
+}
+
+impl Rules {
+    /// 인원 수에 대해 판을 돌릴 수 있는 설정인지 검사한다.
+    pub fn validate(&self, num_players: usize) -> Result<(), String> {
+        if !(2..=5).contains(&num_players) {
+            return Err(format!("players must be 2..=5, got {num_players}"));
+        }
+        if self.hand_size == 0 {
+            return Err("hand_size must be positive".into());
+        }
+        let needed = num_players * self.hand_size + usize::from(self.initial_upcard) + 1;
+        if needed > 52 {
+            return Err(format!("deck too small: need {needed} cards"));
+        }
+        if self.meld.min_set < 2 || self.meld.min_run < 2 {
+            return Err("min_set and min_run must be at least 2".into());
+        }
+        Ok(())
+    }
+}

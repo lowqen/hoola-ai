@@ -20,6 +20,10 @@ pub struct MeldRules {
     pub min_run: usize,
     pub ace_mode: AceMode,
     pub single_seven: bool,
+    /// 7 단독에 같은 무늬 6/8을 붙여 런으로 키울 수 있는지.
+    pub seven_accepts_neighbors: bool,
+    /// 7 단독에 다른 무늬 7을 붙여 세트로 키울 수 있는지.
+    pub seven_accepts_sevens: bool,
 }
 
 impl Default for MeldRules {
@@ -30,6 +34,8 @@ impl Default for MeldRules {
             min_run: 3,
             ace_mode: AceMode::Low,
             single_seven: true,
+            seven_accepts_neighbors: true,
+            seven_accepts_sevens: true,
         }
     }
 }
@@ -69,6 +75,70 @@ pub fn classify_new_meld(cards: &[Card], rules: &MeldRules) -> Option<MeldKind> 
         }
     }
     None
+}
+
+/// 바닥에 놓인 등록패 하나. RULES.md §6.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TableMeld {
+    /// 처음 등록한 플레이어 좌석.
+    pub owner: usize,
+    /// 현재 성격. 7 단독은 첫 붙이기로 세트나 런이 된다.
+    pub kind: MeldKind,
+    pub cards: CardSet,
+}
+
+impl TableMeld {
+    pub fn new(owner: usize, kind: MeldKind, cards: CardSet) -> TableMeld {
+        TableMeld { owner, kind, cards }
+    }
+
+    /// `card`를 붙일 수 있으면 붙인 뒤의 성격을 돌려준다.
+    pub fn attach_result(&self, card: Card, rules: &MeldRules) -> Option<MeldKind> {
+        if self.cards.contains(card) {
+            return None;
+        }
+        let first = self.cards.iter().next()?;
+        match self.kind {
+            MeldKind::Set => (card.rank() == first.rank() && self.cards.len() < 4)
+                .then_some(MeldKind::Set),
+            MeldKind::Run => {
+                if card.suit() != first.suit() {
+                    return None;
+                }
+                let mask = set_rank_mask(self.cards) | (1u16 << (card.rank() - 1));
+                ranks_form_run(mask, rules.ace_mode).then_some(MeldKind::Run)
+            }
+            MeldKind::SingleSeven => {
+                if card.rank() == 7 {
+                    rules.seven_accepts_sevens.then_some(MeldKind::Set)
+                } else if card.suit() == first.suit() && (card.rank() == 6 || card.rank() == 8) {
+                    rules.seven_accepts_neighbors.then_some(MeldKind::Run)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    pub fn can_attach(&self, card: Card, rules: &MeldRules) -> bool {
+        self.attach_result(card, rules).is_some()
+    }
+
+    /// 붙이기를 적용한다. 불가능하면 `false`를 돌려주고 바뀌지 않는다.
+    pub fn attach(&mut self, card: Card, rules: &MeldRules) -> bool {
+        match self.attach_result(card, rules) {
+            Some(kind) => {
+                self.kind = kind;
+                self.cards.insert(card);
+                true
+            }
+            None => false,
+        }
+    }
+}
+
+fn set_rank_mask(cards: CardSet) -> u16 {
+    cards.iter().fold(0u16, |m, c| m | (1u16 << (c.rank() - 1)))
 }
 
 /// 랭크 r을 비트 (r - 1)에 놓은 13비트 마스크.
@@ -178,6 +248,79 @@ mod tests {
         assert_eq!(classify("KS AS 2S", &r), Some(MeldKind::Run));
         assert_eq!(classify("QS KS AS 2S 3S", &r), Some(MeldKind::Run));
         assert_eq!(classify("KS AS 3S", &r), None);
+    }
+
+    fn meld(kind: MeldKind, s: &str) -> TableMeld {
+        TableMeld::new(0, kind, parse_cards(s).unwrap().into_iter().collect())
+    }
+
+    fn c(s: &str) -> Card {
+        s.parse().unwrap()
+    }
+
+    #[test]
+    fn attach_to_set() {
+        let r = MeldRules::default();
+        let mut m = meld(MeldKind::Set, "5S 5H 5D");
+        assert!(!m.can_attach(c("6S"), &r));
+        assert!(!m.can_attach(c("5S"), &r));
+        assert!(m.attach(c("5C"), &r));
+        assert_eq!(m.cards.len(), 4);
+    }
+
+    #[test]
+    fn attach_to_run_ends_only() {
+        let r = MeldRules::default();
+        let mut m = meld(MeldKind::Run, "4H 5H 6H");
+        assert!(m.can_attach(c("3H"), &r));
+        assert!(m.can_attach(c("7H"), &r));
+        assert!(!m.can_attach(c("8H"), &r));
+        assert!(!m.can_attach(c("7S"), &r));
+        assert!(!m.can_attach(c("5H"), &r));
+        assert!(m.attach(c("7H"), &r));
+        assert!(m.can_attach(c("8H"), &r));
+    }
+
+    #[test]
+    fn attach_run_ace_low_only() {
+        let r = MeldRules::default();
+        let low = meld(MeldKind::Run, "2S 3S 4S");
+        assert!(low.can_attach(c("AS"), &r));
+        let high = meld(MeldKind::Run, "JS QS KS");
+        assert!(!high.can_attach(c("AS"), &r));
+        assert!(high.can_attach(c("AS"), &with_ace(AceMode::HighLow)));
+    }
+
+    #[test]
+    fn single_seven_becomes_run_or_set() {
+        let r = MeldRules::default();
+        // 런으로 확정
+        let mut m = meld(MeldKind::SingleSeven, "7D");
+        assert!(!m.can_attach(c("6S"), &r));
+        assert!(!m.can_attach(c("9D"), &r));
+        assert!(m.attach(c("8D"), &r));
+        assert_eq!(m.kind, MeldKind::Run);
+        assert!(!m.can_attach(c("7S"), &r));
+        assert!(m.can_attach(c("6D"), &r));
+        assert!(m.can_attach(c("9D"), &r));
+        // 세트로 확정 (E8)
+        let mut m = meld(MeldKind::SingleSeven, "7D");
+        assert!(m.attach(c("7S"), &r));
+        assert_eq!(m.kind, MeldKind::Set);
+        assert!(!m.can_attach(c("6D"), &r));
+        assert!(m.can_attach(c("7H"), &r));
+    }
+
+    #[test]
+    fn single_seven_attach_switches() {
+        let r = MeldRules {
+            seven_accepts_neighbors: false,
+            seven_accepts_sevens: false,
+            ..MeldRules::default()
+        };
+        let m = meld(MeldKind::SingleSeven, "7D");
+        assert!(!m.can_attach(c("8D"), &r));
+        assert!(!m.can_attach(c("7S"), &r));
     }
 
     #[test]
