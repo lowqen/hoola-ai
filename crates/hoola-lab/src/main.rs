@@ -28,9 +28,14 @@ fn hypotheses() -> Vec<Hypothesis> {
     let c = |label: &str, spec: &str| (label.to_string(), spec.to_string());
     let mut stop = Vec::new();
     for t in 0..=10 {
-        stop.push(c(&format!("점수 ≤ {t}이면 스톱"), &format!("expert:stop=t{t}")));
+        stop.push(c(
+            &format!("점수 ≤ {t}이면 스톱"),
+            &format!("expert:stop=t{t}"),
+        ));
     }
-    for p in ["0.5", "0.6", "0.7", "0.8", "0.85", "0.9", "0.95", "0.98", "1"] {
+    for p in [
+        "0.5", "0.6", "0.7", "0.8", "0.85", "0.9", "0.95", "0.98", "1",
+    ] {
         stop.push(c(
             &format!("승리 확률 ≥ {p}이면 스톱"),
             &format!("expert:stop=c{p}"),
