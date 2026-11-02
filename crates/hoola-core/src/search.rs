@@ -27,6 +27,9 @@ pub struct SearchConfig {
     pub rollout: ExpertConfig,
     /// 내 결정이 아닌 부분(등록·붙이기)과 탐색 없이 둘 때 쓰는 정책.
     pub base: ExpertConfig,
+    /// 스톱도 탐색으로 정한다. 끄면 스톱 여부는 기본 정책(보정된 확률 기준)을 따른다.
+    /// 균일 결정화는 상대 점수를 과대평가해 스톱을 과하게 고르는 경향이 있다.
+    pub search_stop: bool,
 }
 
 impl Default for SearchConfig {
@@ -38,6 +41,7 @@ impl Default for SearchConfig {
                 ..ExpertConfig::default()
             },
             base: ExpertConfig::default(),
+            search_stop: false,
         }
     }
 }
@@ -63,6 +67,13 @@ impl SearchConfig {
                         .ok()
                         .filter(|&k| k > 0)
                         .ok_or_else(|| format!("bad k: {value:?}"))?
+                }
+                "stop" => {
+                    cfg.search_stop = match value {
+                        "1" | "on" | "true" => true,
+                        "0" | "off" | "false" => false,
+                        _ => return Err(format!("bad stop: {value:?}")),
+                    }
                 }
                 _ => return Err(format!("unknown search option {key:?}")),
             }
@@ -122,13 +133,21 @@ impl SearchBot {
         game.outcome().expect("over").rewards[seat]
     }
 
-    /// 탐색 대상 후보. `None`이면 탐색하지 않고 기본 정책을 따른다.
-    fn candidates(&self, obs: &Observation<'_>, legal: &[Action]) -> Option<Vec<Action>> {
-        if legal.len() < 2 {
-            return None;
-        }
-        match obs.phase {
-            Phase::TurnStart => Some(legal.to_vec()),
+    /// 탐색 대상 후보. `None`이면 탐색하지 않고 기본 정책(`default`)을 따른다.
+    fn candidates(
+        &self,
+        obs: &Observation<'_>,
+        legal: &[Action],
+        default: Action,
+    ) -> Option<Vec<Action>> {
+        let cands: Vec<Action> = match obs.phase {
+            Phase::TurnStart if self.cfg.search_stop => legal.to_vec(),
+            Phase::TurnStart => {
+                if default == Action::Stop {
+                    return None;
+                }
+                legal.iter().copied().filter(|&a| a != Action::Stop).collect()
+            }
             Phase::MeldPhase => {
                 let melding = legal
                     .iter()
@@ -136,10 +155,11 @@ impl SearchBot {
                 if melding {
                     return None;
                 }
-                Some(legal.to_vec())
+                legal.to_vec()
             }
-            Phase::Over => None,
-        }
+            Phase::Over => return None,
+        };
+        (cands.len() >= 2).then_some(cands)
     }
 
     /// 후보 수별 (행동, 추정 승률). 지금 차례가 `obs.seat`여야 한다.
@@ -168,12 +188,12 @@ impl Bot for SearchBot {
     }
 
     fn act(&mut self, obs: &Observation<'_>, legal: &[Action]) -> Action {
-        let Some(cands) = self.candidates(obs, legal) else {
-            return self.base.act(obs, legal);
+        let default = self.base.act(obs, legal);
+        let Some(cands) = self.candidates(obs, legal, default) else {
+            return default;
         };
         let scored = self.evaluate(obs, &cands);
         // 동점이면 기본 정책의 선택을 유지
-        let default = self.base.act(obs, legal);
         let best = scored
             .iter()
             .map(|&(_, v)| v)
@@ -205,6 +225,7 @@ mod tests {
         assert_eq!(SearchConfig::parse("").unwrap(), SearchConfig::default());
         assert!(SearchConfig::parse("k=0").is_err());
         assert!(SearchConfig::parse("depth=3").is_err());
+        assert!(SearchConfig::parse("stop=1").unwrap().search_stop);
     }
 
     #[test]

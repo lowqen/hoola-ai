@@ -247,11 +247,12 @@ pub fn search_probe(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     );
     let _ = writeln!(
         md,
-        "| 인원 | 대전 | k | 딜 | L3 승률 | 95% CI | 기준 대비 | 판당 시간 |\n|---|---|---|---|---|---|---|---|"
+        "| 인원 | 대전 | 설정 | 딜 | L3 승률 | 95% CI | 기준 대비 | 판당 시간 |\n|---|---|---|---|---|---|---|---|"
     );
     let probes: Vec<(usize, &str, u64)> = vec![
-        (2, "search:k=8", deals),
+        (2, "search:k=16:stop=1", deals),
         (2, "search:k=16", deals),
+        (2, "search:k=32", deals),
         (3, "search:k=16", (deals / 2).max(1)),
     ];
     for (n, search, d) in probes {
@@ -268,7 +269,7 @@ pub fn search_probe(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
             md,
             "| {n} | L3 vs expert ×{} | {} | {d} | **{:.2}%** | ±{:.2}%p | {:+.2}%p | {:.2}초 |",
             n - 1,
-            search.trim_start_matches("search:k="),
+            search.trim_start_matches("search:"),
             mean * 100.0,
             ci * 100.0,
             (mean - base) * 100.0,
