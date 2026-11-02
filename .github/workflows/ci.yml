@@ -243,9 +243,29 @@ jobs:
           name: hoola-web
           path: _site
 
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: web-screenshots
           path: web/test/*.png
           if-no-files-found: ignore
+
+  pages:
+    name: Deploy GitHub Pages
+    needs: web
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

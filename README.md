@@ -12,13 +12,18 @@
 
 브라우저에서 봇·친구 페르소나와 대전하는 연습 환경. 엔진은 WebAssembly로 브라우저 안에서 돈다.
 
+**바로 하기: https://lowqen.github.io/hoola-ai/** (main 푸시마다 CI가 자동 배포)
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/practice.ps1   # 최신 CI 빌드를 받아 http://localhost:8765 로 연다
+powershell -ExecutionPolicy Bypass -File scripts/practice.ps1   # 오프라인: 최신 CI 빌드를 받아 http://localhost:8765 로 연다
 ```
+
+- **기본은 셀프 모드**: 등록·붙이기·땡큐·스톱을 스스로 찾아서 한다 (카드를 골라 버튼, 붙이기는 카드 1장 고르고 바닥 조합 클릭). 틀리면 규칙 안내만 나온다
+- **초보자 모드**(상단 토글): 가능한 수를 버튼으로 보여 주고, 스톱 기준표 도우미와 L3 힌트를 켠다. 이 모드를 쓴 판은 전적에 "초보"로 따로 집계
 
 - 상대: 전문가(전략서 v1), 친구 A 버티기 / B 한방 / C 늦은 스톱·보류, Greedy, Random
 - 오프라인처럼 버림패는 맨 위 1장만 보인다 (설정에서 전체 보기)
-- 스톱 기준표 도우미, L3 힌트(수마다 추정 승률), 되돌리기, 같은 패 다시, 판 복기(확실한 실수만 지적)
+- 되돌리기, 같은 패 다시, 판 복기(L3로 확실한 실수만 지적 — 두 모드 모두)
 - 전적과 모든 판의 리플레이는 브라우저에 저장되고 JSON으로 내보낼 수 있다
 
 ## 구조

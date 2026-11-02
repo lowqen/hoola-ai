@@ -26,8 +26,9 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 await page.addInitScript(() => {
+  if (localStorage.getItem("hoola-practice-v1")) return; // 새로고침 때는 유지
   localStorage.setItem("hoola-practice-v1", JSON.stringify({
-    settings: { players: 3, opponents: ["friendA", "friendB", "expert", "expert"], speed: 150, seed: "777" },
+    settings: { players: 3, opponents: ["friendA", "friendB", "expert", "expert"], speed: 150, seed: "777", beginner: true },
     games: [],
   }));
 });
@@ -94,6 +95,43 @@ const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("hoola-p
 if (saved !== 1) await fail(`expected 1 saved game, got ${saved}`);
 
 await page.screenshot({ path: "screenshot.png", fullPage: true });
+
+// 5) 셀프 모드: 가능한 수 목록·힌트가 없고, 직접 고른 수만 검증한다
+await page.evaluate(() => {
+  const st = JSON.parse(localStorage.getItem("hoola-practice-v1"));
+  st.settings.beginner = false;
+  localStorage.setItem("hoola-practice-v1", JSON.stringify(st));
+});
+await page.reload();
+await page.waitForSelector("#my-hand .card", { timeout: 30000 });
+if (!(await page.isHidden("#hint-panel"))) await fail("hint panel visible in self mode");
+await waitMyTurn();
+const startButtons = await page.$$eval("#actions button", (bs) => bs.map((b) => b.textContent));
+if (JSON.stringify(startButtons) !== JSON.stringify(["스톱", "받기", "땡큐"])) await fail(`self-mode turn-start buttons: ${startButtons}`);
+const points = +(await page.textContent("#my-points"));
+if (points > 10) {
+  await page.click("#actions button.danger");
+  if (await page.isHidden("#msg")) await fail("illegal stop was not rejected with a message");
+}
+await page.click("#actions button.primary"); // 받기
+await waitMyTurn();
+const meldButtons = await page.$$eval("#actions button", (bs) => bs.map((b) => b.textContent));
+if (JSON.stringify(meldButtons) !== JSON.stringify(["등록"])) await fail(`self-mode meld buttons: ${meldButtons}`);
+const handCards = await page.$$("#my-hand button.card");
+let nonSeven = null;
+for (const c of handCards) {
+  if (!(await c.getAttribute("title")).startsWith("7")) { nonSeven = c; break; }
+}
+await nonSeven.click();
+await page.click("#actions button.good"); // 카드 1장(7 아님) 등록 → 거절
+if (await page.isHidden("#msg")) await fail("illegal register was not rejected with a message");
+const discardBtn = await page.$("#actions button.primary"); // 고른 카드 버리기
+if (!discardBtn) await fail("no discard button in self mode");
+await discardBtn.click();
+await page.waitForFunction(() => document.querySelectorAll("#log li.mine").length >= 2, null, { timeout: 10000 });
+await page.screenshot({ path: "self-mode.png", fullPage: true });
+console.log("self mode ok");
+
 if (errors.length) await fail("console errors");
 await browser.close();
 server.close();

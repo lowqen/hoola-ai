@@ -279,6 +279,12 @@ impl WasmGame {
         self.rewound(n).map_err(|e| JsError::new(&e))
     }
 
+    /// 마지막으로 적용한 행동 (정규화된 텍스트, 없으면 `undefined`).
+    #[wasm_bindgen(js_name = lastAction)]
+    pub fn last_action(&self) -> Option<String> {
+        self.replay.actions.last().cloned()
+    }
+
     /// 리플레이 JSON.
     #[wasm_bindgen(js_name = replayJson)]
     pub fn replay_json(&self) -> String {

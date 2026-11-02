@@ -10,6 +10,9 @@
   <header class="topbar">
     <h1>훌라 연습장</h1>
     <div class="topbar-actions">
+      <label class="toggle" title="가능한 등록·붙이기·땡큐·스톱을 버튼으로 보여 주고, 스톱 기준표와 L3 힌트를 켠다">
+        <input type="checkbox" id="set-beginner"> 초보자 모드
+      </label>
       <button id="btn-new" class="primary">새 판</button>
       <button id="btn-same">같은 패 다시</button>
       <button id="btn-undo" title="내 마지막 결정 이전으로">되돌리기</button>
@@ -29,8 +32,7 @@
       </label>
       <div id="set-opponents" class="opponents"></div>
       <label class="check"><input type="checkbox" id="set-full-discards"> 지나간 버림패 전부 보기 (끄면 맨 위 1장만)</label>
-      <label class="check"><input type="checkbox" id="set-stop-helper" checked> 스톱 기준표 도우미</label>
-      <label class="check"><input type="checkbox" id="set-show-hint"> 매 결정마다 힌트 자동 표시</label>
+      <label class="check"><input type="checkbox" id="set-show-hint"> (초보자 모드) 매 결정마다 힌트 자동 표시</label>
       <label>봇 속도
         <select id="set-speed">
           <option value="900">느리게</option>
@@ -73,11 +75,12 @@
         </div>
         <div id="my-hand" class="hand"></div>
         <div id="actions" class="actions"></div>
+        <div id="msg" class="msg" role="status" hidden></div>
       </div>
     </section>
 
     <aside class="side">
-      <section class="panel">
+      <section class="panel" id="hint-panel">
         <div class="panel-head">
           <h2>힌트</h2>
           <button id="btn-hint">L3 분석</button>

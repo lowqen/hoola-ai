@@ -40,7 +40,7 @@ const defaults = {
   players: 3,
   opponents: ["friendA", "friendB", "expert", "expert"],
   fullDiscards: false,
-  stopHelper: true,
+  beginner: false,
   autoHint: false,
   speed: 500,
   seed: "",
@@ -49,7 +49,8 @@ const settings = Object.assign({}, defaults, store.settings || {});
 let game = null;
 let config = null; // 이번 판 설정 스냅숏
 let humanDecisions = []; // [{index, action}]
-let selected = null; // 선택한 손패 카드
+const selected = new Set(); // 선택한 손패 카드
+let usedBeginner = false; // 이번 판에 초보자 모드로 결정한 적이 있는지
 let botTimer = null;
 let logged = 0;
 let recorded = false;
@@ -128,7 +129,9 @@ function startGame(seed) {
   game = new WasmGame(config.players, seed, first, rulesToml());
   usedUndo = false;
   humanDecisions = [];
-  selected = null;
+  selected.clear();
+  usedBeginner = false;
+  flash("");
   logged = 0;
   recorded = false;
   $("log").innerHTML = "";
@@ -157,7 +160,7 @@ function advance() {
     return;
   }
   if (game.currentPlayer === HUMAN) {
-    if (settings.autoHint) runHint();
+    if (settings.beginner && settings.autoHint) runHint();
     return;
   }
   botTimer = setTimeout(() => {
@@ -169,13 +172,50 @@ function advance() {
   }, settings.speed);
 }
 
-function play(action) {
-  if (game.isOver || game.currentPlayer !== HUMAN) return;
-  humanDecisions.push({ index: game.actionCount, action });
-  game.apply(action);
-  selected = null;
+// 내 행동을 시도한다. 불법이면 상태는 그대로이고 failMsg를 보여 준다.
+function play(action, failMsg = "지금은 할 수 없는 수다") {
+  if (game.isOver || game.currentPlayer !== HUMAN) return false;
+  const index = game.actionCount;
+  try {
+    game.apply(action);
+  } catch (_) {
+    flash(failMsg);
+    return false;
+  }
+  if (settings.beginner) usedBeginner = true;
+  humanDecisions.push({ index, action: game.lastAction() });
+  selected.clear();
+  flash("");
   $("hint").textContent = "";
   advance();
+  return true;
+}
+
+function flash(msg) {
+  const m = $("msg");
+  m.textContent = msg;
+  m.hidden = !msg;
+}
+
+function registerSelected(sel) {
+  if (sel.length === 0) return flash("등록할 카드를 고르세요");
+  play(`register ${sel.join(" ")}`, "세트(같은 숫자 3장 이상), 런(같은 무늬 연속 3장 이상), 7 한 장만 등록할 수 있다");
+}
+
+function thankYouSelected(obs, sel) {
+  if (!obs.discard_top) return flash("버림패가 없다");
+  if (sel.length < 2) return flash("버림패 맨 위 카드와 조합할 내 카드를 2장 이상 고르세요");
+  play(
+    `thankyou ${[...sel, obs.discard_top].join(" ")}`,
+    "땡큐할 수 없다: 바로 앞 사람이 버린 맨 위 카드와 고른 카드가 세트나 런이 되어야 한다",
+  );
+}
+
+function attachTo(idx, obs) {
+  if (selected.size !== 1) return flash("붙일 카드 1장을 먼저 고른 뒤 바닥 조합을 누르세요");
+  const [c] = selected;
+  const msg = obs.registered[HUMAN] ? "그 조합에는 붙일 수 없다" : "등록이나 땡큐를 한 번 한 뒤에만 붙일 수 있다";
+  play(`attach ${c} ${idx}`, msg);
 }
 
 function undo() {
@@ -190,7 +230,8 @@ function undo() {
   $("log").innerHTML = "";
   logged = 0;
   addLog(`되돌리기 · 시드 ${config.seed}`, "sys");
-  selected = null;
+  selected.clear();
+  flash("");
   if ($("result").open) $("result").close();
   advance();
 }
@@ -207,6 +248,9 @@ function addLog(text, cls = "") {
 
 function render() {
   const obs = obsNow();
+  const myTurn = obs.current_player === HUMAN && obs.phase !== "over";
+  const legal = myTurn ? JSON.parse(game.legalActions()) : [];
+  $("hint-panel").hidden = !settings.beginner;
   // 새 이벤트를 기록에 추가
   for (; logged < obs.events.length; logged++) {
     const e = obs.events[logged];
@@ -236,7 +280,7 @@ function render() {
   if (vis.length === 0) dt.innerHTML = '<span class="card empty"></span>';
   vis.slice(-12).forEach((c, i, arr) => {
     const el = cardEl(c, { small: i < arr.length - 1 });
-    if (i === arr.length - 1 && obs.thank_you_target === c && obs.current_player === HUMAN) el.classList.add("target");
+    if (settings.beginner && i === arr.length - 1 && obs.thank_you_target === c && myTurn) el.classList.add("target");
     dt.appendChild(el);
   });
 
@@ -254,6 +298,11 @@ function render() {
     row.className = "meld-cards";
     sortCards(m.cards).forEach((c) => row.appendChild(cardEl(c, { small: true })));
     d.appendChild(row);
+    if (myTurn && obs.phase === "meld") {
+      d.classList.add("clickable");
+      d.title = "고른 카드 1장을 이 조합에 붙이기";
+      d.addEventListener("click", () => attachTo(m.index, obs));
+    }
     melds.appendChild(d);
   });
 
@@ -262,18 +311,19 @@ function render() {
   $("me-label").textContent = "나" + (obs.registered[HUMAN] ? " · 등록" : "");
   const hand = $("my-hand");
   hand.innerHTML = "";
-  const myTurn = obs.current_player === HUMAN && obs.phase !== "over";
-  const legal = myTurn ? JSON.parse(game.legalActions()) : [];
+  for (const c of [...selected]) if (!obs.hand.includes(c)) selected.delete(c);
   sortCards(obs.hand).forEach((c) => {
     const el = cardEl(c, { button: true });
-    if (selected === c) el.classList.add("selected");
-    el.disabled = !(myTurn && obs.phase === "meld");
+    if (selected.has(c)) el.classList.add("selected");
+    el.disabled = !myTurn;
     el.addEventListener("click", () => {
-      selected = selected === c ? null : c;
+      if (selected.has(c)) selected.delete(c);
+      else selected.add(c);
+      flash("");
       render();
     });
     el.addEventListener("dblclick", () => {
-      if (legal.includes(`discard ${c}`)) play(`discard ${c}`);
+      if (obs.phase === "meld") play(`discard ${c}`);
     });
     hand.appendChild(el);
   });
@@ -293,35 +343,55 @@ function button(text, onClick, cls = "") {
   return b;
 }
 
+function guide(box, text) {
+  const p = document.createElement("span");
+  p.className = "muted small";
+  p.textContent = text;
+  box.appendChild(p);
+}
+
 function renderActions(obs, legal, myTurn) {
   const box = $("actions");
   box.innerHTML = "";
   if (!myTurn) return;
+  const sel = sortCards([...selected]);
   if (obs.phase === "turn_start") {
-    if (legal.includes("stop")) box.appendChild(button(`스톱 (${obs.hand_points}점)`, () => play("stop"), "danger"));
-    box.appendChild(button("받기", () => play("draw"), "primary"));
-    legal.filter((a) => a.startsWith("thankyou")).forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
+    if (settings.beginner) {
+      if (legal.includes("stop")) box.appendChild(button(`스톱 (${obs.hand_points}점)`, () => play("stop"), "danger"));
+      box.appendChild(button("받기", () => play("draw"), "primary"));
+      legal.filter((a) => a.startsWith("thankyou")).forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
+    } else {
+      box.appendChild(button("스톱", () => play("stop", `손패 ${obs.hand_points}점: ${obs.stop_limit}점 이하일 때만 스톱할 수 있다`), "danger"));
+      box.appendChild(button("받기", () => play("draw"), "primary"));
+      box.appendChild(button(sel.length ? `땡큐 (${cardsText(sel)} + 버림패)` : "땡큐", () => thankYouSelected(obs, sel), "good"));
+      guide(box, "땡큐: 버림패 맨 위와 조합할 내 카드를 고른 뒤 누르세요");
+    }
     return;
   }
-  const regs = legal.filter((a) => a.startsWith("register "));
-  regs.forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
-  const attaches = legal.filter((a) => a.startsWith("attach ") && (!selected || a.split(" ")[1] === selected));
-  attaches.forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
-  if (selected && legal.includes(`discard ${selected}`)) {
-    box.appendChild(button(`버리기 ${cardText(selected)}`, () => play(`discard ${selected}`), "primary"));
+  if (settings.beginner) {
+    legal.filter((a) => a.startsWith("register ")).forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
+    legal
+      .filter((a) => a.startsWith("attach ") && (selected.size !== 1 || a.split(" ")[1] === sel[0]))
+      .forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
   } else {
-    const p = document.createElement("span");
-    p.className = "muted small";
-    p.textContent = "버릴 카드를 눌러 고르거나 두 번 누르세요";
-    box.appendChild(p);
+    box.appendChild(button(sel.length ? `등록 ${cardsText(sel)}` : "등록", () => registerSelected(sel), "good"));
   }
+  if (sel.length === 1) {
+    box.appendChild(button(`버리기 ${cardText(sel[0])}`, () => play(`discard ${sel[0]}`), "primary"));
+  }
+  guide(
+    box,
+    settings.beginner
+      ? "버릴 카드를 눌러 고르거나 두 번 누르세요"
+      : "카드를 골라 등록 · 1장 고르고 바닥 조합을 누르면 붙이기 · 1장 고르고 버리기 (두 번 누르면 바로 버림)",
+  );
 }
 
 function renderHelper(obs, legal, myTurn) {
   const el = $("stop-helper");
   el.textContent = "";
   el.className = "helper";
-  if (!settings.stopHelper || !myTurn || obs.phase !== "turn_start" || !legal.includes("stop")) return;
+  if (!settings.beginner || !myTurn || obs.phase !== "turn_start" || !legal.includes("stop")) return;
   const fewest = Math.min(7, ...obs.hand_counts.filter((_, s) => s !== HUMAN));
   const limit = STOP_TABLE[fewest];
   const ok = limit !== null && obs.hand_points <= limit;
@@ -343,7 +413,7 @@ function renderStatus(obs) {
 
 // ---------- 힌트·복기 ----------
 function runHint() {
-  if (!game || game.isOver || game.currentPlayer !== HUMAN) return;
+  if (!settings.beginner || !game || game.isOver || game.currentPlayer !== HUMAN) return;
   const obs = obsNow();
   const hint = $("hint");
   hint.textContent = "분석 중…";
@@ -469,6 +539,7 @@ function finish() {
       reason: out.reason,
       share,
       undo: usedUndo,
+      beginner: usedBeginner,
       replay: JSON.parse(game.replayJson()),
       human_seat: HUMAN,
     });
@@ -489,7 +560,7 @@ function renderStats() {
   }
   const groups = {};
   games.forEach((g) => {
-    const key = `${g.players}인 · ${g.opponents.map((o) => (BOTS[o] ? BOTS[o].short : o)).join("·")}`;
+    const key = `${g.beginner ? "초보 · " : ""}${g.players}인 · ${g.opponents.map((o) => (BOTS[o] ? BOTS[o].short : o)).join("·")}`;
     const x = (groups[key] ||= { n: 0, share: 0, players: g.players });
     x.n += 1;
     x.share += g.share;
@@ -541,7 +612,7 @@ function persistSettings() {
 function bindSettings() {
   $("set-players").value = String(settings.players);
   $("set-full-discards").checked = settings.fullDiscards;
-  $("set-stop-helper").checked = settings.stopHelper;
+  $("set-beginner").checked = settings.beginner;
   $("set-show-hint").checked = settings.autoHint;
   $("set-speed").value = String(settings.speed);
   $("set-seed").value = settings.seed;
@@ -552,7 +623,13 @@ function bindSettings() {
     persistSettings();
   });
   $("set-full-discards").addEventListener("change", (e) => { settings.fullDiscards = e.target.checked; persistSettings(); });
-  $("set-stop-helper").addEventListener("change", (e) => { settings.stopHelper = e.target.checked; persistSettings(); if (game) render(); });
+  $("set-beginner").addEventListener("change", (e) => {
+    settings.beginner = e.target.checked;
+    persistSettings();
+    flash("");
+    if (game) render();
+    if (settings.beginner && settings.autoHint && game && !game.isOver && game.currentPlayer === HUMAN) runHint();
+  });
   $("set-show-hint").addEventListener("change", (e) => { settings.autoHint = e.target.checked; persistSettings(); });
   $("set-speed").addEventListener("change", (e) => { settings.speed = +e.target.value; persistSettings(); });
   $("set-seed").addEventListener("change", (e) => { settings.seed = e.target.value.trim(); persistSettings(); });

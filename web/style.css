@@ -197,3 +197,15 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .review { margin-top: 10px; }
 .review ol { padding-left: 20px; }
+
+.toggle {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 14px;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+}
+.msg {
+  margin-top: 8px; padding: 6px 10px; border-radius: 6px; font-size: 13px;
+  background: var(--danger); color: #fff;
+}
+.meld.clickable { cursor: pointer; }
+.meld.clickable:hover { outline: 2px solid var(--select); }
+[hidden] { display: none !important; }
