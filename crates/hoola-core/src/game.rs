@@ -114,6 +114,17 @@ impl fmt::Display for IllegalAction {
 
 impl std::error::Error for IllegalAction {}
 
+/// 공개 이벤트. 모든 플레이어가 보는 판의 기록이다 (RULES.md §11).
+///
+/// 행동 자체가 공개 정보다: `Draw`에는 받은 카드가 들어 있지 않고, 땡큐·등록·붙이기·버리기의
+/// 카드는 모두에게 보인다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Event {
+    Action { seat: usize, action: Action },
+    /// 버림패를 섞어 더미를 다시 만들었다. `stock`은 새 더미 장수.
+    Reshuffle { stock: usize },
+}
+
 /// 플레이어별 상태.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerState {
@@ -143,6 +154,7 @@ pub struct Game {
     turn: u32,
     reshuffles: u32,
     outcome: Option<Outcome>,
+    events: Vec<Event>,
 }
 
 impl Game {
@@ -205,6 +217,7 @@ impl Game {
             turn: 0,
             reshuffles: 0,
             outcome: None,
+            events: Vec::new(),
         };
         game.begin_turn();
         game
@@ -259,6 +272,7 @@ impl Game {
             turn: 0,
             reshuffles: 0,
             outcome: None,
+            events: Vec::new(),
         };
         game.begin_turn();
         game
@@ -325,6 +339,11 @@ impl Game {
 
     pub fn reshuffles(&self) -> u32 {
         self.reshuffles
+    }
+
+    /// 지금까지의 공개 이벤트.
+    pub fn events(&self) -> &[Event] {
+        &self.events
     }
 
     fn previous_player(&self) -> usize {
@@ -438,6 +457,7 @@ impl Game {
             });
         }
         let seat = self.current;
+        self.events.push(Event::Action { seat, action });
         match action {
             Action::Stop => self.resolve_stop(seat),
             Action::Draw => {
@@ -553,6 +573,9 @@ impl Game {
             self.top_discarder = None;
         }
         self.reshuffles += 1;
+        self.events.push(Event::Reshuffle {
+            stock: self.stock.len(),
+        });
         true
     }
 
