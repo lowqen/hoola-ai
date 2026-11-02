@@ -9,6 +9,8 @@
 //! hoola-lab --only H1 --deals 1000
 //! ```
 
+mod stop_table;
+
 use std::fmt::Write as _;
 use std::time::Instant;
 
@@ -326,6 +328,20 @@ fn main() {
         }
         let _ = writeln!(md);
         eprintln!("{} done ({:.0}s)", h.id, started.elapsed().as_secs_f64());
+    }
+    if args.only.as_deref().is_none_or(|o| o == "H8") {
+        let _ = writeln!(
+            md,
+            "## H8. 스톱 기준표 (실측)\n\n기준 봇 셀프플레이에서 스톱 가능한 순간마다 \"지금 스톱했다면 이겼는가\"를 실제 손패로 판정한 비율. \
+             행 = 상대들의 손패 장수, 열 = 내 손패 점수. 표본 200 미만 칸은 `·`. 상대 스톱으로 판이 먼저 끝나는 경우는 들어 있지 않다.\n"
+        );
+        for &n in &args.players {
+            let table = stop_table::collect(n, args.deals * 3, args.seed, &rules);
+            let _ = writeln!(md, "### {n}인\n");
+            stop_table::render(&table, rules.stop.limit, 200, &mut md);
+            let _ = writeln!(md);
+        }
+        eprintln!("H8 done ({:.0}s)", started.elapsed().as_secs_f64());
     }
     let _ = writeln!(
         md,
