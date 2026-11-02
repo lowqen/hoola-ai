@@ -5,6 +5,12 @@ on:
     branches: ["**"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      experiment:
+        description: "수동 실험 (all | friends | search | belief)"
+        type: choice
+        options: [all, friends, search, belief]
+        default: all
 
 # 같은 브랜치에 새 푸시가 오면 이전 실행은 취소
 concurrency:
@@ -147,8 +153,8 @@ jobs:
 
   lab-friends:
     name: Friend persona lab
-    # 무거운 실험: 수동 실행(gh workflow run ci.yml)일 때만
-    if: github.event_name == 'workflow_dispatch'
+    # 무거운 실험: 수동 실행(gh workflow run ci.yml -f experiment=...)일 때만
+    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'friends')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -171,8 +177,8 @@ jobs:
 
   lab-search:
     name: L3 search headroom
-    # 무거운 실험: 수동 실행(gh workflow run ci.yml)일 때만
-    if: github.event_name == 'workflow_dispatch'
+    # 무거운 실험: 수동 실행(gh workflow run ci.yml -f experiment=...)일 때만
+    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'search')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -269,3 +275,26 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  lab-belief:
+    name: Belief calibration lab
+    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'belief')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release -p hoola-lab
+
+      - name: Learn opponent-hand weights & calibrate
+        run: ./target/release/hoola-lab --only BELIEF --deals 8000 --out belief-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: belief-results
+          path: belief-results.md

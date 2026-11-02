@@ -11,8 +11,8 @@
 //! 사양 문자열: `search` 또는 `search:k=16:rollout=stop=c0.9;outs=3`
 //! (`rollout=` 뒤는 롤아웃용 전문가 설정, `;`로 구분)
 
+use crate::belief::{Belief, sample_hidden};
 use crate::bot::Bot;
-use crate::card::{Card, CardSet};
 use crate::expert::{ExpertBot, ExpertConfig};
 use crate::game::{Action, Game, Phase};
 use crate::observation::Observation;
@@ -30,6 +30,8 @@ pub struct SearchConfig {
     /// 스톱도 탐색으로 정한다. 끄면 스톱 여부는 기본 정책(보정된 확률 기준)을 따른다.
     /// 균일 결정화는 상대 점수를 과대평가해 스톱을 과하게 고르는 경향이 있다.
     pub search_stop: bool,
+    /// 상대 손패 추정 방식 (사양 `belief=uniform|learned`).
+    pub belief: Belief,
 }
 
 impl Default for SearchConfig {
@@ -42,6 +44,7 @@ impl Default for SearchConfig {
             },
             base: ExpertConfig::default(),
             search_stop: false,
+            belief: Belief::Learned,
         }
     }
 }
@@ -75,6 +78,13 @@ impl SearchConfig {
                         _ => return Err(format!("bad stop: {value:?}")),
                     }
                 }
+                "belief" => {
+                    cfg.belief = match value {
+                        "uniform" => Belief::Uniform,
+                        "learned" => Belief::Learned,
+                        _ => return Err(format!("bad belief: {value:?}")),
+                    }
+                }
                 _ => return Err(format!("unknown search option {key:?}")),
             }
         }
@@ -100,20 +110,9 @@ impl SearchBot {
         }
     }
 
-    /// 관측과 맞는 판 하나를 샘플링한다.
+    /// 관측과 맞는 판 하나를 샘플링한다 (상대 손패는 [`SearchConfig::belief`] 방식).
     fn determinize(&mut self, obs: &Observation<'_>) -> Game {
-        let mut pool: Vec<Card> = obs.unseen().iter().collect();
-        self.rng.shuffle(&mut pool);
-        let mut hands = vec![CardSet::EMPTY; obs.num_players];
-        let mut it = pool.into_iter();
-        for (s, hand) in hands.iter_mut().enumerate() {
-            if s == obs.seat {
-                *hand = obs.hand;
-            } else {
-                *hand = it.by_ref().take(obs.hand_counts[s]).collect();
-            }
-        }
-        let stock: Vec<Card> = it.collect();
+        let (hands, stock) = sample_hidden(obs, &mut self.rng, self.cfg.belief.table());
         let rng = Rng::seed_from_u64(self.rng.next_u64());
         Game::from_observation(obs, &hands, stock, rng)
     }
@@ -277,6 +276,7 @@ mod tests {
         assert!(SearchConfig::parse("k=0").is_err());
         assert!(SearchConfig::parse("depth=3").is_err());
         assert!(SearchConfig::parse("stop=1").unwrap().search_stop);
+        assert_eq!(SearchConfig::parse("belief=uniform").unwrap().belief, Belief::Uniform);
     }
 
     #[test]

@@ -9,6 +9,7 @@
 //! hoola-lab --only H1 --deals 1000
 //! ```
 
+mod belief_lab;
 mod friends;
 mod stop_table;
 
@@ -255,6 +256,11 @@ fn main() {
     match args.only.as_deref() {
         Some("F") => {
             friends::friends(&mut md, args.deals, args.seed, &rules);
+            finish(&md, &args, started);
+            return;
+        }
+        Some("BELIEF") => {
+            belief_lab::run(&mut md, args.deals, args.seed, &rules);
             finish(&md, &args, started);
             return;
         }
