@@ -60,7 +60,9 @@ impl Bot for GreedyBot {
         // 손패에서 빠지는 점수가 큰 순 (땡큐는 가져온 카드를 뺀 손패 몫만 센다)
         let gain = |a: &Action| -> Option<u32> {
             match *a {
-                Action::ThankYou { meld } => Some(meld.intersection(obs.hand).points(&obs.rules.points)),
+                Action::ThankYou { meld } => {
+                    Some(meld.intersection(obs.hand).points(&obs.rules.points))
+                }
                 Action::Register { cards } => Some(cards.points(&obs.rules.points)),
                 Action::Attach { card, .. } => Some(pts(card)),
                 _ => None,
@@ -69,7 +71,12 @@ impl Bot for GreedyBot {
         let melding = legal
             .iter()
             .filter_map(|a| gain(a).map(|g| (g, *a)))
-            .max_by_key(|&(g, a)| (g, matches!(a, Action::Register { .. } | Action::ThankYou { .. })));
+            .max_by_key(|&(g, a)| {
+                (
+                    g,
+                    matches!(a, Action::Register { .. } | Action::ThankYou { .. }),
+                )
+            });
         if let Some((_, a)) = melding {
             return a;
         }

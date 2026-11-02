@@ -43,7 +43,10 @@ pub enum ReplayError {
     Rules(String),
     Setup(String),
     /// `index`번째 행동이 잘못됨.
-    Action { index: usize, message: String },
+    Action {
+        index: usize,
+        message: String,
+    },
 }
 
 impl fmt::Display for ReplayError {
@@ -83,8 +86,7 @@ impl Replay {
         let rules = preset::parse(&self.rules_toml)
             .map_err(|e| ReplayError::Rules(e.to_string()))?
             .rules;
-        Game::new(rules, self.num_players, self.seed, self.first_player)
-            .map_err(ReplayError::Setup)
+        Game::new(rules, self.num_players, self.seed, self.first_player).map_err(ReplayError::Setup)
     }
 
     pub fn push(&mut self, action: Action) {
