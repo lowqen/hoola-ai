@@ -1,0 +1,72 @@
+# 오프라인 친구 대전용 캐주얼 룰 — 기본 프리셋
+# 명세: RULES.md v1.0 (각 키 옆 § 번호 참조)
+# [확정] 사용자 확정 / [기본] 관례 기본값 (하우스 룰에 맞게 변경 가능)
+
+[meta]
+name = "offline_casual"
+rules_version = "1.0"
+description = "단판 승패 · 정통훌라 · 52장 · 정산/박/배율 없음"
+
+[players]                         # §3
+min = 2
+max = 5
+hand_size = 7                     # [확정]
+
+[deck]                            # §2
+jokers = 0                        # [확정]
+
+[card_points]                     # §2 [확정]
+ace = 1
+jack = 11
+queen = 12
+king = 13
+seven = 7
+
+[setup]                           # §3
+initial_upcard = true             # [기본]
+first_player = "seed"             # [기본] "seed" | "rotate" | 좌석 번호
+
+[meld]                            # §5, §6
+min_set = 3                       # [기본]
+min_run = 3                       # [기본]
+run_ace_mode = "low"              # [확정] "low" | "high_low" | "wrap"
+single_seven = true               # [기본]
+seven_accepts_neighbors = true    # [기본] 7 단독에 같은 무늬 6/8
+seven_accepts_sevens = true       # [기본] 7 단독에 다른 7
+allow_rearrange = false           # [기본]
+
+[attach]                          # §6
+requires_registration = true      # [기본]
+to_others_melds = true            # [기본]
+
+[thank_you]                       # §7
+mode = "orthodox"                 # [확정] "orthodox" | "battle"
+source = "previous_player"        # [확정]
+min_hand_cards = 2                # [기본] 땡큐 카드와 합칠 손패 최소 장수
+must_meld_taken_card = true       # [기본]
+allow_single_seven = false        # [기본]
+allow_attach_only = false         # [기본]
+on_initial_upcard = true          # [기본]
+
+[stop]                            # §8
+timing = "before_acquire"         # [확정]
+limit = 10                        # [확정] 손패 점수 ≤ limit, 인원 무관
+requires_registration = false     # [확정]
+first_turn_allowed = true         # [기본]
+win_rule = "strictly_lowest"      # [확정] 동점 또는 더 낮은 사람 있으면 선언자 패배
+fallback_winner = "lowest_excluding_caller"  # [확정]
+
+[end]                             # §9
+on_stock_empty = "reshuffle"      # [확정] "reshuffle" | "lowest_wins" | "draw"
+reshuffle_keep_top = true         # [기본]
+reshuffle_limit = 0               # [확정] 0 = 무제한
+
+[result]                          # §10
+tie_reward = "split"              # [확정] 공동 승리 시 1/k
+
+[visibility]                      # §11
+discard_history = "top_only"      # [기본] "top_only" | "full"
+stock_count = true                # [기본]
+
+[engine]                          # 규칙 아님: 시뮬레이션 보호용
+max_turns = 1000                  # 초과 시 무승부로 기록
