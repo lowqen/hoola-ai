@@ -51,9 +51,12 @@ fn play_deals(
     }
 }
 
+/// `[장수][랭크]` 누적 개수.
+type Counts = [[f64; 13]; 8];
+
 /// 손패 장수 k별, 보이지 않는 카드 중 랭크 r이 그 상대 손에 있는 비율 → 평균 1로 정규화한 가중치.
 pub fn learn_weights(deals: u64, seed: u64, rules: &Rules) -> (RankWeights, [[u64; 13]; 8]) {
-    let parts: Vec<([[f64; 13]; 8], [[f64; 13]; 8])> = std::thread::scope(|scope| {
+    let parts: Vec<(Counts, Counts)> = std::thread::scope(|scope| {
         let handles: Vec<_> = LINEUPS
             .iter()
             .enumerate()
