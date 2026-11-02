@@ -33,9 +33,7 @@ fn collect_range(
     for seed in seeds {
         let mut g = Game::new(rules.clone(), n, seed, (seed % n as u64) as usize).expect("valid");
         // 딜마다 배치를 돌려 좌석 편향을 없앤다
-        let seating: Vec<&str> = (0..n)
-            .map(|s| lineup[(s + seed as usize) % n])
-            .collect();
+        let seating: Vec<&str> = (0..n).map(|s| lineup[(s + seed as usize) % n]).collect();
         let mut bots: Vec<NamedBot> = seating
             .iter()
             .enumerate()

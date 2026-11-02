@@ -4,10 +4,10 @@ use std::collections::BTreeMap;
 
 use crate::bot::{Bot, GreedyBot, RandomBot, play_out};
 use crate::expert::{ExpertBot, ExpertConfig};
-use crate::search::{SearchBot, SearchConfig};
 use crate::game::{Action, EndReason, Game};
 use crate::observation::Observation;
 use crate::rules::{FirstPlayer, Rules};
+use crate::search::{SearchBot, SearchConfig};
 
 /// 이름으로 고를 수 있는 봇.
 #[derive(Debug, Clone)]

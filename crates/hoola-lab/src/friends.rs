@@ -57,7 +57,11 @@ fn split_run(base: &MatchConfig, parts: u64) -> Vec<MatchReport> {
 
 fn merged(reports: &[MatchReport], bot: &str) -> (f64, f64) {
     let k = reports.len() as f64;
-    let mean = reports.iter().map(|r| r.bot(bot).unwrap().mean).sum::<f64>() / k;
+    let mean = reports
+        .iter()
+        .map(|r| r.bot(bot).unwrap().mean)
+        .sum::<f64>()
+        / k;
     let ci = reports
         .iter()
         .map(|r| r.bot(bot).unwrap().ci95.powi(2))
@@ -152,22 +156,35 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     // F2: 친구 저격용 스톱 기준 탐색 (A·B 테이블, B·B 테이블)
     let mut stop_specs: Vec<(String, String)> = Vec::new();
     for t in [10, 9, 8, 7, 6, 5, 4, 3] {
-        stop_specs.push((format!("점수 ≤ {t}이면 즉시 스톱"), format!("expert:stop=t{t}")));
+        stop_specs.push((
+            format!("점수 ≤ {t}이면 즉시 스톱"),
+            format!("expert:stop=t{t}"),
+        ));
     }
     for c in ["0.5", "0.7", "0.8", "0.9", "0.95"] {
         stop_specs.push((format!("승리 확률 ≥ {c}"), format!("expert:stop=c{c}")));
     }
-    stop_specs.push(("전략서 v1 규칙표 -,4,8,10".into(), "expert:stop=r-,4,8,10".into()));
+    stop_specs.push((
+        "전략서 v1 규칙표 -,4,8,10".into(),
+        "expert:stop=r-,4,8,10".into(),
+    ));
     stop_specs.push(("규칙표 -,6,10,10".into(), "expert:stop=r-,6,10".into()));
     stop_specs.push(("규칙표 2,6,10,10".into(), "expert:stop=r2,6,10".into()));
     stop_specs.push(("규칙표 4,8,10,10".into(), "expert:stop=r4,8,10".into()));
-    stop_specs.push(("스톱 안 함 (나도 버티기)".into(), "expert:stop=never".into()));
+    stop_specs.push((
+        "스톱 안 함 (나도 버티기)".into(),
+        "expert:stop=never".into(),
+    ));
     let sweep_deals = (deals / 3).max(1);
     let _ = writeln!(
         md,
         "\n## F2. 친구 저격용 스톱 기준\n\n나머지 설정은 전략서 v1과 같고 스톱 기준만 바꾼다. 딜 {sweep_deals}개 × 3회전\n"
     );
-    for (tname, ids) in [("A·B", ["A", "B"]), ("B·B", ["B", "B"]), ("C·C", ["C", "C"])] {
+    for (tname, ids) in [
+        ("A·B", ["A", "B"]),
+        ("B·B", ["B", "B"]),
+        ("C·C", ["C", "C"]),
+    ] {
         let configs: Vec<MatchConfig> = stop_specs
             .iter()
             .map(|(_, s)| {
@@ -188,7 +205,11 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         );
         for (r, (label, s)) in reports.iter().zip(&stop_specs) {
             let x = r.bot(s).unwrap();
-            let mark = if (x.mean - best).abs() < 1e-12 { " ★" } else { "" };
+            let mark = if (x.mean - best).abs() < 1e-12 {
+                " ★"
+            } else {
+                ""
+            };
             let _ = writeln!(
                 md,
                 "| {label}{mark} | {:.1}% | ±{:.1}%p | {:.1} | {:.1}% | {:.1}% | {:.1}% |",
@@ -253,7 +274,10 @@ pub fn search_probe(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
             (mean - base) * 100.0,
             secs * threads / games as f64,
         );
-        eprintln!("L3 {n}p {search} done ({:.0}s)", started.elapsed().as_secs_f64());
+        eprintln!(
+            "L3 {n}p {search} done ({:.0}s)",
+            started.elapsed().as_secs_f64()
+        );
     }
     let _ = writeln!(md);
 }
