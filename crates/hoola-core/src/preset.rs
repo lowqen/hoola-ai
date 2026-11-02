@@ -244,7 +244,11 @@ impl RawPreset {
             return Err(unsupported("meld.allow_rearrange", true));
         }
         expect_str("thank_you.mode", &self.thank_you.mode, "orthodox")?;
-        expect_str("thank_you.source", &self.thank_you.source, "previous_player")?;
+        expect_str(
+            "thank_you.source",
+            &self.thank_you.source,
+            "previous_player",
+        )?;
         if !self.thank_you.must_meld_taken_card {
             return Err(unsupported("thank_you.must_meld_taken_card", false));
         }

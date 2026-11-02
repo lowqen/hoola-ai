@@ -120,9 +120,14 @@ impl std::error::Error for IllegalAction {}
 /// 카드는 모두에게 보인다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
-    Action { seat: usize, action: Action },
+    Action {
+        seat: usize,
+        action: Action,
+    },
     /// 버림패를 섞어 더미를 다시 만들었다. `stock`은 새 더미 장수.
-    Reshuffle { stock: usize },
+    Reshuffle {
+        stock: usize,
+    },
 }
 
 /// 플레이어별 상태.

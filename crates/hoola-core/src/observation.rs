@@ -92,7 +92,9 @@ impl Game {
             thank_you_target: self.thank_you_target(),
             events: self.events(),
             outcome: self.outcome(),
-            revealed_hands: self.is_over().then(|| (0..n).map(|s| self.hand(s)).collect()),
+            revealed_hands: self
+                .is_over()
+                .then(|| (0..n).map(|s| self.hand(s)).collect()),
         }
     }
 }
