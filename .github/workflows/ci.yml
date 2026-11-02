@@ -182,7 +182,7 @@ jobs:
         run: cargo build --release -p hoola-lab
 
       - name: Run L3 probe
-        run: ./target/release/hoola-lab --only L3 --deals 1500 --out search-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+        run: ./target/release/hoola-lab --only L3 --deals 1000 --out search-results.md | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:

@@ -146,7 +146,11 @@ impl SearchBot {
                 if default == Action::Stop {
                     return None;
                 }
-                legal.iter().copied().filter(|&a| a != Action::Stop).collect()
+                legal
+                    .iter()
+                    .copied()
+                    .filter(|&a| a != Action::Stop)
+                    .collect()
             }
             Phase::MeldPhase => {
                 let melding = legal
@@ -162,24 +166,57 @@ impl SearchBot {
         (cands.len() >= 2).then_some(cands)
     }
 
-    /// 후보 수별 (행동, 추정 승률). 지금 차례가 `obs.seat`여야 한다.
-    /// `legal` 전체를 평가한다 (등록·붙이기 포함).
-    pub fn evaluate(&mut self, obs: &Observation<'_>, legal: &[Action]) -> Vec<(Action, f64)> {
-        let mut sums = vec![0.0f64; legal.len()];
+    /// 후보 수별 롤아웃 보상 표본 (`[수][샘플]`, 같은 샘플 번호는 같은 결정화).
+    fn sample_values(&mut self, obs: &Observation<'_>, legal: &[Action]) -> Vec<Vec<f64>> {
+        let mut values = vec![Vec::with_capacity(self.cfg.k); legal.len()];
         for _ in 0..self.cfg.k {
             let world = self.determinize(obs);
             for (i, &a) in legal.iter().enumerate() {
                 let mut g = world.clone();
                 g.apply(a).expect("legal in every determinization");
-                sums[i] += self.rollout(g, obs.seat);
+                values[i].push(self.rollout(g, obs.seat));
             }
         }
+        values
+    }
+
+    /// 후보 수별 추정 승률과 표준오차. 지금 차례가 `obs.seat`여야 한다.
+    /// `legal` 전체를 평가한다 (등록·붙이기 포함). 코칭 분석기용.
+    pub fn evaluate(&mut self, obs: &Observation<'_>, legal: &[Action]) -> Vec<ActionValue> {
+        let values = self.sample_values(obs, legal);
         legal
             .iter()
-            .zip(sums)
-            .map(|(&a, s)| (a, s / self.cfg.k as f64))
+            .zip(&values)
+            .map(|(&action, v)| {
+                let (value, stderr) = mean_se(v);
+                ActionValue {
+                    action,
+                    value,
+                    stderr,
+                }
+            })
             .collect()
     }
+}
+
+/// 수 하나의 평가.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ActionValue {
+    pub action: Action,
+    /// 추정 승률 (보상 기댓값).
+    pub value: f64,
+    /// 표준오차.
+    pub stderr: f64,
+}
+
+fn mean_se(v: &[f64]) -> (f64, f64) {
+    let n = v.len() as f64;
+    let mean = v.iter().sum::<f64>() / n;
+    if v.len() < 2 {
+        return (mean, f64::INFINITY);
+    }
+    let var = v.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1.0);
+    (mean, (var / n).sqrt())
 }
 
 impl Bot for SearchBot {
@@ -187,28 +224,29 @@ impl Bot for SearchBot {
         "L3-search"
     }
 
+    /// 기본 정책의 수를 쓰되, 같은 결정화 위에서 짝지어 비교한 차이가
+    /// 표준오차의 2배를 넘는 더 좋은 수가 있을 때만 바꾼다 (노이즈로 수를 바꾸지 않도록).
     fn act(&mut self, obs: &Observation<'_>, legal: &[Action]) -> Action {
         let default = self.base.act(obs, legal);
         let Some(cands) = self.candidates(obs, legal, default) else {
             return default;
         };
-        let scored = self.evaluate(obs, &cands);
-        // 동점이면 기본 정책의 선택을 유지
-        let best = scored
-            .iter()
-            .map(|&(_, v)| v)
-            .fold(f64::NEG_INFINITY, f64::max);
-        if scored
-            .iter()
-            .any(|&(a, v)| a == default && (best - v).abs() < 1e-12)
-        {
+        let Some(d) = cands.iter().position(|&a| a == default) else {
             return default;
+        };
+        let values = self.sample_values(obs, &cands);
+        let mut best: Option<(f64, usize)> = None;
+        for (i, v) in values.iter().enumerate() {
+            if i == d {
+                continue;
+            }
+            let diffs: Vec<f64> = v.iter().zip(&values[d]).map(|(a, b)| a - b).collect();
+            let (gain, se) = mean_se(&diffs);
+            if gain > 2.0 * se && best.is_none_or(|(g, _)| gain > g) {
+                best = Some((gain, i));
+            }
         }
-        scored
-            .into_iter()
-            .find(|&(_, v)| (best - v).abs() < 1e-12)
-            .map(|(a, _)| a)
-            .unwrap_or(default)
+        best.map_or(default, |(_, i)| cands[i])
     }
 }
 
@@ -257,6 +295,7 @@ mod tests {
         let legal = g.legal_actions();
         let scores = bot.evaluate(&g.observation(0), &legal);
         assert_eq!(scores.len(), legal.len());
-        assert!(scores.iter().all(|&(_, v)| (0.0..=1.0).contains(&v)));
+        assert!(scores.iter().all(|v| (0.0..=1.0).contains(&v.value)));
+        assert!(scores.iter().all(|v| v.stderr >= 0.0));
     }
 }

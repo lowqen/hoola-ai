@@ -243,17 +243,17 @@ pub fn search_probe(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     let _ = writeln!(md, "# L3 탐색 봇 헤드룸 측정\n");
     let _ = writeln!(
         md,
-        "- L3 = 결정화 몬테카를로(PIMC): 숨은 정보 k개 샘플 × 후보 수마다 전원 전문가 봇 롤아웃\n- 판정: 2인에서 +3%p 이상이면 딥러닝(P3) 가치 있음, +1~2%p 이하면 P4·P5 우선\n"
+        "- L3 = 결정화 몬테카를로(PIMC): 숨은 정보 k개 샘플 × 후보 수마다 전원 전문가 봇 롤아웃. 전문가 봇의 수를 기본으로 두고, 같은 샘플로 짝지은 차이가 표준오차 2배를 넘을 때만 바꾼다\n- 판정: 2인에서 +3%p 이상이면 딥러닝(P3) 가치 있음, +1~2%p 이하면 P4·P5 우선\n"
     );
     let _ = writeln!(
         md,
         "| 인원 | 대전 | 설정 | 딜 | L3 승률 | 95% CI | 기준 대비 | 판당 시간 |\n|---|---|---|---|---|---|---|---|"
     );
     let probes: Vec<(usize, &str, u64)> = vec![
-        (2, "search:k=16:stop=1", deals),
-        (2, "search:k=16", deals),
         (2, "search:k=32", deals),
-        (3, "search:k=16", (deals / 2).max(1)),
+        (2, "search:k=128", deals),
+        (2, "search:k=128:stop=1", deals),
+        (3, "search:k=128", (deals / 2).max(1)),
     ];
     for (n, search, d) in probes {
         let mut bots = vec![search.to_string()];

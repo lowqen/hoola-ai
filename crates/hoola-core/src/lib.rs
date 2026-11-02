@@ -27,4 +27,4 @@ pub use preset::{Preset, PresetError};
 pub use replay::{Replay, ReplayError};
 pub use rng::Rng;
 pub use rules::{DiscardVisibility, FirstPlayer, Rules, StockEmpty, StopRules, ThankYouRules};
-pub use search::{SearchBot, SearchConfig};
+pub use search::{ActionValue, SearchBot, SearchConfig};
