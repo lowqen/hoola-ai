@@ -447,7 +447,15 @@ mod tests {
                 Some(10)
             ])
         );
-        for bad in ["stop=x1", "stop=r", "stop=rx", "meld=later", "bogus=1", "samples=0", "nokey"] {
+        for bad in [
+            "stop=x1",
+            "stop=r",
+            "stop=rx",
+            "meld=later",
+            "bogus=1",
+            "samples=0",
+            "nokey",
+        ] {
             assert!(ExpertConfig::parse(bad).is_err(), "{bad}");
         }
     }
