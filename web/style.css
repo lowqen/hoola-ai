@@ -173,9 +173,11 @@ button.card:not(:disabled):hover { transform: translateY(-3px); }
 
 /* 사이드 */
 .side { min-width: 0; }
-.log { margin: 0; padding-left: 20px; max-height: 280px; overflow-y: auto; font-size: 13px; }
-.log li.me { font-weight: 600; }
-.log li.sys { color: var(--muted); list-style: none; margin-left: -20px; }
+.log { margin: 0; padding: 0; list-style: none; max-height: 280px; overflow-y: auto; font-size: 13px; }
+.log li { padding: 1px 0; }
+.log li.mine { font-weight: 600; }
+.log li.sys { color: var(--muted); }
+.loss { color: var(--danger); font-weight: 600; }
 .hint-list { margin: 0; padding-left: 20px; }
 .hint-list li { margin: 2px 0; }
 .hint-list li.best b { color: var(--good); }

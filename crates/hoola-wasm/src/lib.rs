@@ -115,9 +115,7 @@ impl WasmGame {
         first_player: usize,
         rules_toml: &str,
     ) -> Result<WasmGame, String> {
-        let rules = preset::parse(rules_toml)
-            .map_err(|e| e.to_string())?
-            .rules;
+        let rules = preset::parse(rules_toml).map_err(|e| e.to_string())?.rules;
         let inner = Game::new(rules, players, u64::from(seed), first_player)?;
         Ok(WasmGame {
             inner,
@@ -140,7 +138,8 @@ impl WasmGame {
         let bot_seed = self.replay.seed.wrapping_mul(0x9E37_79B9)
             ^ (self.replay.actions.len() as u64) << 20
             ^ u64::from(seed);
-        let mut bot = NamedBot::new(spec, bot_seed).ok_or_else(|| format!("unknown bot {spec:?}"))?;
+        let mut bot =
+            NamedBot::new(spec, bot_seed).ok_or_else(|| format!("unknown bot {spec:?}"))?;
         let seat = self.inner.current_player();
         let legal = self.inner.legal_actions();
         Ok(bot.act(&self.inner.observation(seat), &legal).to_string())
@@ -162,7 +161,7 @@ impl WasmGame {
         Ok(Value::Array(
             scored
                 .iter()
-                .map(|v| json!({"action": v.action.to_string(), "value": v.value, "stderr": v.stderr}))
+                .map(|v| json!({"action": v.action.to_string(), "value": v.value, "stderr": v.stderr, "gap": v.gap, "gap_se": v.gap_se}))
                 .collect(),
         ))
     }
@@ -344,10 +343,7 @@ mod tests {
     fn evaluate_lists_all_legal_actions() {
         let g = WasmGame::create(2, 5, 0, "").unwrap();
         let v = g.try_evaluate(2, 1).unwrap();
-        assert_eq!(
-            v.as_array().unwrap().len(),
-            g.inner.legal_actions().len()
-        );
+        assert_eq!(v.as_array().unwrap().len(), g.inner.legal_actions().len());
     }
 
     #[test]

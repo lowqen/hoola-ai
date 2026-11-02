@@ -12,7 +12,9 @@ const BOTS = {
 const HUMAN = 0;
 const STOP_TABLE = [null, null, 4, 8, 10, 10, 10, 10]; // 가장 적게 든 상대 장수 → 최대 점수
 const HINT_K = 96;
-const REVIEW_K = 48;
+const REVIEW_K = 160;
+// 복기 등급: 최선 수 대비 짝지은 손실이 표준오차 2배를 넘고 이 값 이상일 때만 지적
+const GRADES = [[0.1, "블런더"], [0.05, "실수"], [0.02, "부정확"]];
 const STORE_KEY = "hoola-practice-v1";
 
 const $ = (id) => document.getElementById(id);
@@ -209,7 +211,7 @@ function render() {
   for (; logged < obs.events.length; logged++) {
     const e = obs.events[logged];
     if (e.reshuffle !== undefined) addLog(`버림패를 섞어 더미 ${e.reshuffle}장`, "sys");
-    else addLog(`${seatName(e.seat)}: ${actionText(e.action, obs)}`, e.seat === HUMAN ? "me" : "");
+    else addLog(`${seatName(e.seat)}: ${actionText(e.action, obs)}`, e.seat === HUMAN ? "mine" : "");
   }
 
   // 상대
@@ -354,14 +356,16 @@ function runHint() {
     scored.slice(0, 6).forEach((v, i) => {
       const li = document.createElement("li");
       const tag = v.action === expert ? ' <span class="badge">전문가 선택</span>' : "";
-      li.innerHTML = `<b>${(v.value * 100).toFixed(1)}%</b> <span class="muted">±${(v.stderr * 196).toFixed(0)}</span> ${actionText(v.action, obs)}${tag}`;
+      const sig = v.gap > 2 * v.gap_se;
+      const gapText = i === 0 ? "" : sig ? ` <span class="loss">−${(v.gap * 100).toFixed(1)}%p</span>` : ' <span class="muted">(차이 불확실)</span>';
+      li.innerHTML = `<b>${(v.value * 100).toFixed(1)}%</b>${gapText} ${actionText(v.action, obs)}${tag}`;
       if (i === 0) li.className = "best";
       ol.appendChild(li);
     });
     hint.appendChild(ol);
     const note = document.createElement("p");
     note.className = "muted small";
-    note.textContent = `L3: 숨은 패 ${HINT_K}개 샘플 × 수마다 끝까지 시뮬레이션한 추정 승률 (±는 95% 범위, %p). 차이가 범위 안이면 사실상 같은 수다.`;
+    note.textContent = `L3: 숨은 패 ${HINT_K}개 샘플 × 수마다 끝까지 시뮬레이션한 추정 승률. −%p는 1위 수보다 확실히 나쁜 만큼(같은 샘플로 비교, 95%), "차이 불확실"은 1위와 사실상 같은 수다.`;
     hint.appendChild(note);
   }, 20);
 }
@@ -389,7 +393,8 @@ function review() {
       const scored = JSON.parse(g.evaluate(REVIEW_K, d.index + 7));
       const best = scored[0];
       const mine = scored.find((v) => v.action === d.action);
-      const loss = mine ? best.value - mine.value : 0;
+      const significant = mine && mine.gap > 2 * mine.gap_se;
+      const loss = significant ? mine.gap : 0;
       rows.push({ obs, d, best, mine, loss });
     }
     g.free();
@@ -403,21 +408,21 @@ function review() {
 function showReview(rows) {
   const out = $("review");
   out.innerHTML = "";
-  const total = rows.reduce((s, r) => s + Math.max(0, r.loss), 0);
+  const total = rows.reduce((s, r) => s + r.loss, 0);
   const p = document.createElement("p");
-  p.innerHTML = `결정 ${rows.length}개 · 추정 승률 손실 합 <b>${(total * 100).toFixed(1)}%p</b> (L3 ${REVIEW_K}샘플 추정이라 ±수 %p 오차가 있다)`;
+  p.innerHTML = `선택지가 있던 결정 ${rows.length}개 · 확실한 손실 합 <b>${(total * 100).toFixed(1)}%p</b> <span class="muted">(L3 ${REVIEW_K}샘플, 같은 샘플로 비교해 95% 확실한 차이만 셈)</span>`;
   out.appendChild(p);
-  const worst = rows.filter((r) => r.loss > 0.03).sort((a, b) => b.loss - a.loss).slice(0, 5);
+  const worst = rows.filter((r) => r.loss >= GRADES[GRADES.length - 1][0]).sort((a, b) => b.loss - a.loss).slice(0, 6);
   if (worst.length === 0) {
     const ok = document.createElement("p");
-    ok.textContent = "눈에 띄는 실수(3%p 이상)는 없었다.";
+    ok.textContent = "확실한 실수(2%p 이상)는 없었다.";
     out.appendChild(ok);
     return;
   }
   const ol = document.createElement("ol");
   worst.forEach((r) => {
     const li = document.createElement("li");
-    const grade = r.loss >= 0.1 ? "블런더" : r.loss >= 0.05 ? "실수" : "부정확";
+    const grade = GRADES.find(([t]) => r.loss >= t)[1];
     li.innerHTML = `<b>${grade}</b> −${(r.loss * 100).toFixed(1)}%p · 손패 ${r.obs.hand_points}점 · 내 수: ${actionText(r.d.action, r.obs)} → 추천: ${actionText(r.best.action, r.obs)} (${(r.best.value * 100).toFixed(0)}%)`;
     ol.appendChild(li);
   });

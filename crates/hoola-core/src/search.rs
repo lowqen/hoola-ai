@@ -184,15 +184,24 @@ impl SearchBot {
     /// `legal` 전체를 평가한다 (등록·붙이기 포함). 코칭 분석기용.
     pub fn evaluate(&mut self, obs: &Observation<'_>, legal: &[Action]) -> Vec<ActionValue> {
         let values = self.sample_values(obs, legal);
+        let means: Vec<f64> = values.iter().map(|v| mean_se(v).0).collect();
+        let best = (0..legal.len())
+            .max_by(|&a, &b| means[a].total_cmp(&means[b]))
+            .unwrap_or(0);
         legal
             .iter()
             .zip(&values)
             .map(|(&action, v)| {
                 let (value, stderr) = mean_se(v);
+                // 같은 결정화끼리 짝지은 차이: 최선 수보다 얼마나 나쁜가
+                let diffs: Vec<f64> = values[best].iter().zip(v).map(|(b, x)| b - x).collect();
+                let (gap, gap_se) = mean_se(&diffs);
                 ActionValue {
                     action,
                     value,
                     stderr,
+                    gap,
+                    gap_se,
                 }
             })
             .collect()
@@ -207,6 +216,10 @@ pub struct ActionValue {
     pub value: f64,
     /// 표준오차.
     pub stderr: f64,
+    /// 최선 수(추정 승률 최고)와의 차이 (같은 샘플로 짝지은 값, 0 이상이 보통).
+    pub gap: f64,
+    /// `gap`의 표준오차. `gap > 2 * gap_se`이면 최선 수보다 유의하게 나쁘다.
+    pub gap_se: f64,
 }
 
 fn mean_se(v: &[f64]) -> (f64, f64) {
@@ -297,5 +310,6 @@ mod tests {
         assert_eq!(scores.len(), legal.len());
         assert!(scores.iter().all(|v| (0.0..=1.0).contains(&v.value)));
         assert!(scores.iter().all(|v| v.stderr >= 0.0));
+        assert!(scores.iter().any(|v| v.gap == 0.0));
     }
 }
