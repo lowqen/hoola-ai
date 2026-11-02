@@ -79,15 +79,28 @@ pub fn collect(n: usize, deals: u64, seed: u64, rules: &Rules) -> Table {
 }
 
 /// 마크다운 표. 표본이 `min_samples`보다 적은 칸은 `·`.
-pub fn render(table: &Table, limit: u32, min_samples: u64, md: &mut String) {
+/// `group_min`이면 행을 "가장 적게 든 상대의 장수"로 묶는다 (3인 이상).
+pub fn render(table: &Table, limit: u32, min_samples: u64, group_min: bool, md: &mut String) {
     let mut rows: BTreeMap<Vec<usize>, BTreeMap<u32, Cell>> = BTreeMap::new();
     for ((counts, pts), c) in table {
-        rows.entry(counts.clone()).or_default().insert(*pts, *c);
+        let key = if group_min {
+            vec![counts[0]]
+        } else {
+            counts.clone()
+        };
+        let e = rows.entry(key).or_default().entry(*pts).or_default();
+        e.wins += c.wins;
+        e.total += c.total;
     }
     let header: Vec<String> = (0..=limit).map(|p| format!("{p}점")).collect();
     let _ = writeln!(
         md,
-        "| 상대 손패 장수 | {} | P≥0.9 최대 점수 | P≥0.8 최대 점수 | 표본 |",
+        "| {} | {} | P≥0.9 최대 점수 | P≥0.8 최대 점수 | 표본 |",
+        if group_min {
+            "가장 적게 든 상대의 장수"
+        } else {
+            "상대 손패 장수"
+        },
         header.join(" | ")
     );
     let _ = writeln!(md, "|---|{}---|---|---|", "---|".repeat(limit as usize + 1));

@@ -338,7 +338,7 @@ fn main() {
         for &n in &args.players {
             let table = stop_table::collect(n, args.deals * 3, args.seed, &rules);
             let _ = writeln!(md, "### {n}인\n");
-            stop_table::render(&table, rules.stop.limit, 200, &mut md);
+            stop_table::render(&table, rules.stop.limit, 200, n > 2, &mut md);
             let _ = writeln!(md);
         }
         eprintln!("H8 done ({:.0}s)", started.elapsed().as_secs_f64());
