@@ -8,6 +8,19 @@
 - 전략서: [STRATEGY.md](STRATEGY.md) (v1.1, 2인·3인 — 스톱 기준표, 친구 상대 분석)
 - 규칙 명세: [RULES.md](RULES.md) · 기본 프리셋 [`config/presets/offline_casual.toml`](config/presets/offline_casual.toml)
 
+## 연습장 (웹앱)
+
+브라우저에서 봇·친구 페르소나와 대전하는 연습 환경. 엔진은 WebAssembly로 브라우저 안에서 돈다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/practice.ps1   # 최신 CI 빌드를 받아 http://localhost:8765 로 연다
+```
+
+- 상대: 전문가(전략서 v1), 친구 A 버티기 / B 한방 / C 늦은 스톱·보류, Greedy, Random
+- 오프라인처럼 버림패는 맨 위 1장만 보인다 (설정에서 전체 보기)
+- 스톱 기준표 도우미, L3 힌트(수마다 추정 승률), 되돌리기, 같은 패 다시, 판 복기(확실한 실수만 지적)
+- 전적과 모든 판의 리플레이는 브라우저에 저장되고 JSON으로 내보낼 수 있다
+
 ## 구조
 
 | 경로 | 내용 |
@@ -16,6 +29,7 @@
 | `crates/hoola-core/tests/rules_spec.rs` | RULES.md 명세 테스트 (스톱 판정표, 엣지 케이스 E1–E11, 무작위 대전 불변식) |
 | `crates/hoola-py` | Python 바인딩 (`import hoola`, maturin · abi3 wheel은 CI 아티팩트) |
 | `crates/hoola-lab` | 전략 가설 실험 (P2), 친구 페르소나(`--only F`), L3 헤드룸(`--only L3`). 결과는 CI 아티팩트, 기록은 `docs/lab/`. 무거운 실험은 `gh workflow run ci.yml`로 수동 실행 |
+| `crates/hoola-wasm`, `web/` | 연습장: WASM 바인딩과 정적 웹앱 (CI `hoola-web` 아티팩트, Node·Chromium 스모크 테스트) |
 | `crates/hoola-sim` | 봇 대전 시뮬레이션 CLI (듀플리케이트, 승률 95% CI, 초당 판 수) |
 | `.github/workflows/ci.yml` | 푸시마다 빌드·테스트·포맷·Clippy 검사, 시뮬레이션 벤치마크 (결과는 Actions 실행 요약) |
 
