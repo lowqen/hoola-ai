@@ -1,5 +1,9 @@
 // 훌라 연습장. 엔진은 WebAssembly(hoola-wasm), 화면은 사람 좌석의 관측만으로 그린다.
 import init, { WasmGame, version } from "./pkg/hoola_wasm.js";
+import {
+  STOP_TABLE, actionText, cardBack, cardEl, cardText, cardsText, el, parseAction, sortCards,
+} from "./common.js";
+import { CATEGORY, openReview } from "./review.js";
 
 const BOTS = {
   expert: { label: "전문가 (전략서 v1)", short: "전문가", spec: "expert" },
@@ -10,15 +14,10 @@ const BOTS = {
   random: { label: "Random", short: "Random", spec: "random" },
 };
 const HUMAN = 0;
-const STOP_TABLE = [null, null, 4, 8, 10, 10, 10, 10]; // 가장 적게 든 상대 장수 → 최대 점수
 const HINT_K = 96;
-const REVIEW_K = 160;
-// 복기 등급: 최선 수 대비 짝지은 손실이 표준오차 2배를 넘고 이 값 이상일 때만 지적
-const GRADES = [[0.1, "블런더"], [0.05, "실수"], [0.02, "부정확"]];
 const STORE_KEY = "hoola-practice-v1";
 
 const $ = (id) => document.getElementById(id);
-const SUIT = { S: "♠", H: "♥", D: "♦", C: "♣" };
 
 // ---------- 저장소 (실패해도 동작) ----------
 function loadStore() {
@@ -34,6 +33,7 @@ function saveStore() {
   } catch (_) { /* 무시 */ }
 }
 const store = loadStore();
+store.games ||= [];
 
 // ---------- 상태 ----------
 const defaults = {
@@ -51,61 +51,20 @@ let config = null; // 이번 판 설정 스냅숏
 let humanDecisions = []; // [{index, action}]
 const selected = new Set(); // 선택한 손패 카드
 let usedBeginner = false; // 이번 판에 초보자 모드로 결정한 적이 있는지
+let usedUndo = false;
 let botTimer = null;
 let logged = 0;
 let recorded = false;
-let usedUndo = false;
+let lastRecord = null;
+let lastTop = null;
 
-// ---------- 카드 표시 ----------
-function rankLabel(r) {
-  return r === "T" ? "10" : r;
-}
-function cardText(c) {
-  return rankLabel(c.slice(0, -1)) + SUIT[c.slice(-1)];
-}
-function cardEl(c, opts = {}) {
-  const el = document.createElement(opts.button ? "button" : "span");
-  el.className = "card" + ("HD".includes(c.slice(-1)) ? " red" : "") + (opts.small ? " small" : "");
-  el.innerHTML = `<span class="rank">${rankLabel(c.slice(0, -1))}</span><span class="suit">${SUIT[c.slice(-1)]}</span>`;
-  el.title = cardText(c);
-  return el;
-}
-const RANK_ORDER = "A23456789TJQK";
-function sortCards(cs) {
-  return [...cs].sort((a, b) => {
-    const s = "SHDC".indexOf(a.slice(-1)) - "SHDC".indexOf(b.slice(-1));
-    return s !== 0 ? s : RANK_ORDER.indexOf(a.slice(0, -1)) - RANK_ORDER.indexOf(b.slice(0, -1));
-  });
-}
-function cardsText(list) {
-  return list.map(cardText).join(" ");
-}
-
-// ---------- 이름·행동 문장 ----------
+// ---------- 이름 ----------
 function seatName(s) {
   if (s === HUMAN) return "나";
   const b = BOTS[config.opponents[s - 1]];
   return `${s}번 ${b ? b.short : "봇"}`;
 }
-function meldOwnerText(obs, idx) {
-  const m = obs.melds[idx];
-  if (!m) return `#${idx}`;
-  const kind = { set: "세트", run: "런", seven: "7" }[m.kind];
-  return `${seatName(m.owner)}의 ${kind} [${cardsText(m.cards)}]`;
-}
-function actionText(a, obs) {
-  const [verb, ...rest] = a.split(" ");
-  switch (verb) {
-    case "stop": return "스톱";
-    case "draw": return "받기";
-    case "thankyou": return `땡큐 ${cardsText(rest)}`;
-    case "thankyou-attach": return `땡큐 붙이기 → ${meldOwnerText(obs, +rest[0])}`;
-    case "register": return `등록 ${cardsText(rest)}`;
-    case "attach": return `붙이기 ${cardText(rest[0])} → ${meldOwnerText(obs, +rest[1])}`;
-    case "discard": return `버림 ${cardText(rest[0])}`;
-    default: return a;
-  }
-}
+const actText = (a, obs) => actionText(a, obs, seatName);
 
 // ---------- 게임 진행 ----------
 function rulesToml() {
@@ -115,6 +74,11 @@ function randomSeed() {
   const a = new Uint32Array(1);
   crypto.getRandomValues(a);
   return a[0];
+}
+function resetLog(text) {
+  $("log").innerHTML = "";
+  logged = 0;
+  addLog(text, "sys");
 }
 function startGame(seed) {
   clearTimeout(botTimer);
@@ -127,18 +91,17 @@ function startGame(seed) {
   const first = seed % config.players;
   if (game) game.free();
   game = new WasmGame(config.players, seed, first, rulesToml());
-  usedUndo = false;
   humanDecisions = [];
   selected.clear();
   usedBeginner = false;
-  flash("");
-  logged = 0;
+  usedUndo = false;
   recorded = false;
-  $("log").innerHTML = "";
+  lastRecord = null;
+  lastTop = null;
+  flash("");
   $("hint").textContent = "";
-  $("review").innerHTML = "";
   if ($("result").open) $("result").close();
-  addLog(`판 시작 · 시드 ${seed} · 선: ${seatName(first)}`, "sys");
+  resetLog(`판 시작 · 시드 ${seed} · 선: ${seatName(first)}`);
   advance();
 }
 function newGame() {
@@ -148,10 +111,7 @@ function newGame() {
 function sameGame() {
   if (config) startGame(config.seed);
 }
-
-function obsNow() {
-  return JSON.parse(game.observation(HUMAN));
-}
+const obsNow = () => JSON.parse(game.observation(HUMAN));
 
 function advance() {
   render();
@@ -166,8 +126,7 @@ function advance() {
   botTimer = setTimeout(() => {
     const seat = game.currentPlayer;
     const spec = BOTS[config.opponents[seat - 1]].spec;
-    const a = game.botAction(spec, seat);
-    game.apply(a);
+    game.apply(game.botAction(spec, seat));
     advance();
   }, settings.speed);
 }
@@ -218,32 +177,55 @@ function attachTo(idx, obs) {
   play(`attach ${c} ${idx}`, msg);
 }
 
-function undo() {
-  if (!game || humanDecisions.length === 0) return;
+function rewindTo(index, note) {
   clearTimeout(botTimer);
-  const last = humanDecisions.pop();
   const old = game;
-  game = old.rewind(last.index);
+  game = old.rewind(index);
   old.free();
+  humanDecisions = humanDecisions.filter((d) => d.index < index);
   usedUndo = true;
-  // 기록 패널 다시 그리기
-  $("log").innerHTML = "";
-  logged = 0;
-  addLog(`되돌리기 · 시드 ${config.seed}`, "sys");
   selected.clear();
   flash("");
+  lastTop = null;
   if ($("result").open) $("result").close();
+  resetLog(note);
   advance();
+}
+
+function undo() {
+  if (!game || humanDecisions.length === 0) return;
+  rewindTo(humanDecisions[humanDecisions.length - 1].index, `되돌리기 · 시드 ${config.seed}`);
+}
+
+function replayFrom(index) {
+  // 복기에서 고른 장면부터 다시 두는 연습판 (전적에 다시 기록하지 않는다)
+  recorded = true;
+  lastRecord = null;
+  rewindTo(index, `복기한 장면부터 다시 두기 · 시드 ${config.seed}`);
 }
 
 // ---------- 그리기 ----------
 function addLog(text, cls = "") {
-  const li = document.createElement("li");
-  li.textContent = text;
-  if (cls) li.className = cls;
+  const li = el("li", cls, text);
   const log = $("log");
   log.appendChild(li);
   log.scrollTop = log.scrollHeight;
+}
+
+function button(text, onClick, cls = "") {
+  const b = el("button", cls, text);
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function guide(box, text) {
+  box.appendChild(el("span", "guide", text));
+}
+
+function lastActionBySeat(obs) {
+  const last = {};
+  for (const e of obs.events) if (e.action !== undefined) last[e.seat] = e.action;
+  return last;
 }
 
 function render() {
@@ -251,52 +233,83 @@ function render() {
   const myTurn = obs.current_player === HUMAN && obs.phase !== "over";
   const legal = myTurn ? JSON.parse(game.legalActions()) : [];
   $("hint-panel").hidden = !settings.beginner;
-  // 새 이벤트를 기록에 추가
+
   for (; logged < obs.events.length; logged++) {
     const e = obs.events[logged];
     if (e.reshuffle !== undefined) addLog(`버림패를 섞어 더미 ${e.reshuffle}장`, "sys");
-    else addLog(`${seatName(e.seat)}: ${actionText(e.action, obs)}`, e.seat === HUMAN ? "mine" : "");
+    else addLog(`${seatName(e.seat)} · ${actText(e.action, obs)}`, e.seat === HUMAN ? "mine" : "");
   }
 
-  // 상대
-  const opp = $("opponents");
-  opp.innerHTML = "";
+  renderSeats(obs);
+  renderBoard(obs, myTurn);
+  renderHand(obs, myTurn);
+  renderActions(obs, legal, myTurn);
+  renderHelper(obs, legal, myTurn);
+  renderStatus(obs);
+  renderStats();
+  $("btn-undo").disabled = humanDecisions.length === 0;
+}
+
+function renderSeats(obs) {
+  const box = $("opponents");
+  box.innerHTML = "";
+  const last = lastActionBySeat(obs);
   for (let s = 1; s < obs.num_players; s++) {
-    const d = document.createElement("div");
-    d.className = "opp" + (obs.current_player === s && obs.phase !== "over" ? " turn" : "");
+    const bot = BOTS[config.opponents[s - 1]];
+    const turn = obs.current_player === s && obs.phase !== "over";
+    const seat = el("div", "seat" + (turn ? " turn" : ""));
+    const head = el("div", "seat-head");
+    head.appendChild(el("span", `avatar a${s}`, bot ? bot.short.slice(0, 1) : "?"));
+    const id = el("div", "seat-id");
+    id.appendChild(el("div", "seat-name", `${s}번 ${bot ? bot.short : "봇"}`));
+    const tags = el("div", "seat-tags");
+    if (obs.registered[s]) tags.appendChild(el("span", "tag", "등록"));
+    if (turn) tags.appendChild(el("span", "thinking", "생각 중"));
+    id.appendChild(tags);
+    head.appendChild(id);
     const n = obs.hand_counts[s];
-    d.innerHTML = `<div class="seat-name">${seatName(s)}${obs.registered[s] ? ' <span class="badge">등록</span>' : ""}</div>
-      <div class="backs">${'<span class="card back mini"></span>'.repeat(Math.min(n, 8))}</div>
-      <div class="count"><b>${n}</b>장</div>`;
-    opp.appendChild(d);
+    const count = el("div", "seat-count" + (n <= 3 ? " low" : ""));
+    count.innerHTML = `<b>${n}</b><span>장</span>`;
+    head.appendChild(count);
+    seat.appendChild(head);
+    const fan = el("div", "fan");
+    for (let i = 0; i < Math.min(n, 9); i++) fan.appendChild(cardBack("xs"));
+    seat.appendChild(fan);
+    seat.appendChild(el("div", "seat-last", last[s] ? `방금 · ${actText(last[s], obs)}` : " "));
+    box.appendChild(seat);
   }
+}
 
-  // 더미·버림패
+function renderBoard(obs, myTurn) {
+  // 더미
+  const stock = $("stock-stack");
+  stock.innerHTML = "";
+  stock.appendChild(cardBack("md"));
   $("stock-count").textContent = obs.stock_len ?? "?";
   $("discard-count").textContent = obs.discard_count;
+  // 버림패
   const dt = $("discard-top");
   dt.innerHTML = "";
   const vis = obs.visible_discards;
-  if (vis.length === 0) dt.innerHTML = '<span class="card empty"></span>';
+  if (vis.length === 0) dt.appendChild(el("span", "card md empty"));
   vis.slice(-12).forEach((c, i, arr) => {
-    const el = cardEl(c, { small: i < arr.length - 1 });
-    if (settings.beginner && i === arr.length - 1 && obs.thank_you_target === c && myTurn) el.classList.add("target");
-    dt.appendChild(el);
+    const isTop = i === arr.length - 1;
+    const card = cardEl(c, { size: isTop ? "md" : "sm" });
+    if (isTop && c !== lastTop) card.classList.add("pop");
+    if (isTop && settings.beginner && obs.thank_you_target === c && myTurn) card.classList.add("target");
+    dt.appendChild(card);
   });
-
-  // 바닥 등록패
+  lastTop = obs.discard_top;
+  // 바닥 조합
   const melds = $("melds");
   melds.innerHTML = "";
-  if (obs.melds.length === 0) melds.innerHTML = '<p class="muted small">바닥 등록패 없음</p>';
+  if (obs.melds.length === 0) melds.appendChild(el("p", "empty-note", "아직 바닥에 조합이 없다"));
   obs.melds.forEach((m) => {
-    const d = document.createElement("div");
-    d.className = "meld" + (m.owner === HUMAN ? " mine" : "");
-    d.dataset.index = m.index;
+    const d = el("div", "meld" + (m.owner === HUMAN ? " mine" : ""));
     const kind = { set: "세트", run: "런", seven: "7" }[m.kind];
-    d.innerHTML = `<div class="meld-head">#${m.index} ${seatName(m.owner)} · ${kind}</div>`;
-    const row = document.createElement("div");
-    row.className = "meld-cards";
-    sortCards(m.cards).forEach((c) => row.appendChild(cardEl(c, { small: true })));
+    d.appendChild(el("div", "meld-head", `${seatName(m.owner)} · ${kind}`));
+    const row = el("div", "meld-cards");
+    sortCards(m.cards).forEach((c) => row.appendChild(cardEl(c, { size: "sm" })));
     d.appendChild(row);
     if (myTurn && obs.phase === "meld") {
       d.classList.add("clickable");
@@ -305,49 +318,30 @@ function render() {
     }
     melds.appendChild(d);
   });
+}
 
-  // 내 손패
+function renderHand(obs, myTurn) {
   $("my-points").textContent = obs.hand_points;
   $("me-label").textContent = "나" + (obs.registered[HUMAN] ? " · 등록" : "");
   const hand = $("my-hand");
   hand.innerHTML = "";
+  hand.classList.toggle("active", myTurn);
   for (const c of [...selected]) if (!obs.hand.includes(c)) selected.delete(c);
   sortCards(obs.hand).forEach((c) => {
-    const el = cardEl(c, { button: true });
-    if (selected.has(c)) el.classList.add("selected");
-    el.disabled = !myTurn;
-    el.addEventListener("click", () => {
+    const card = cardEl(c, { button: true, size: "lg" });
+    if (selected.has(c)) card.classList.add("selected");
+    card.disabled = !myTurn;
+    card.addEventListener("click", () => {
       if (selected.has(c)) selected.delete(c);
       else selected.add(c);
       flash("");
       render();
     });
-    el.addEventListener("dblclick", () => {
+    card.addEventListener("dblclick", () => {
       if (obs.phase === "meld") play(`discard ${c}`);
     });
-    hand.appendChild(el);
+    hand.appendChild(card);
   });
-
-  renderActions(obs, legal, myTurn);
-  renderHelper(obs, legal, myTurn);
-  renderStatus(obs);
-  renderStats();
-  $("btn-undo").disabled = humanDecisions.length === 0;
-}
-
-function button(text, onClick, cls = "") {
-  const b = document.createElement("button");
-  b.textContent = text;
-  if (cls) b.className = cls;
-  b.addEventListener("click", onClick);
-  return b;
-}
-
-function guide(box, text) {
-  const p = document.createElement("span");
-  p.className = "muted small";
-  p.textContent = text;
-  box.appendChild(p);
 }
 
 function renderActions(obs, legal, myTurn) {
@@ -359,7 +353,7 @@ function renderActions(obs, legal, myTurn) {
     if (settings.beginner) {
       if (legal.includes("stop")) box.appendChild(button(`스톱 (${obs.hand_points}점)`, () => play("stop"), "danger"));
       box.appendChild(button("받기", () => play("draw"), "primary"));
-      legal.filter((a) => a.startsWith("thankyou")).forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
+      legal.filter((a) => a.startsWith("thankyou")).forEach((a) => box.appendChild(button(actText(a, obs), () => play(a), "good")));
     } else {
       box.appendChild(button("스톱", () => play("stop", `손패 ${obs.hand_points}점: ${obs.stop_limit}점 이하일 때만 스톱할 수 있다`), "danger"));
       box.appendChild(button("받기", () => play("draw"), "primary"));
@@ -369,16 +363,14 @@ function renderActions(obs, legal, myTurn) {
     return;
   }
   if (settings.beginner) {
-    legal.filter((a) => a.startsWith("register ")).forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
+    legal.filter((a) => a.startsWith("register ")).forEach((a) => box.appendChild(button(actText(a, obs), () => play(a), "good")));
     legal
-      .filter((a) => a.startsWith("attach ") && (selected.size !== 1 || a.split(" ")[1] === sel[0]))
-      .forEach((a) => box.appendChild(button(actionText(a, obs), () => play(a), "good")));
+      .filter((a) => a.startsWith("attach ") && (selected.size !== 1 || parseAction(a).cards[0] === sel[0]))
+      .forEach((a) => box.appendChild(button(actText(a, obs), () => play(a), "good")));
   } else {
     box.appendChild(button(sel.length ? `등록 ${cardsText(sel)}` : "등록", () => registerSelected(sel), "good"));
   }
-  if (sel.length === 1) {
-    box.appendChild(button(`버리기 ${cardText(sel[0])}`, () => play(`discard ${sel[0]}`), "primary"));
-  }
+  if (sel.length === 1) box.appendChild(button(`버리기 ${cardText(sel[0])}`, () => play(`discard ${sel[0]}`), "primary"));
   guide(
     box,
     settings.beginner
@@ -388,115 +380,50 @@ function renderActions(obs, legal, myTurn) {
 }
 
 function renderHelper(obs, legal, myTurn) {
-  const el = $("stop-helper");
-  el.textContent = "";
-  el.className = "helper";
+  const h = $("stop-helper");
+  h.textContent = "";
+  h.className = "helper";
+  h.hidden = true;
   if (!settings.beginner || !myTurn || obs.phase !== "turn_start" || !legal.includes("stop")) return;
   const fewest = Math.min(7, ...obs.hand_counts.filter((_, s) => s !== HUMAN));
   const limit = STOP_TABLE[fewest];
   const ok = limit !== null && obs.hand_points <= limit;
-  el.textContent = `기준표: 상대 최소 ${fewest}장 → ${limit === null ? "스톱 금지" : `${limit}점 이하 스톱`} · ${ok ? "스톱 권장" : "기다림"}`;
-  el.classList.add(ok ? "go" : "wait");
+  h.hidden = false;
+  h.textContent = `스톱 기준표 · 상대 최소 ${fewest}장 → ${limit === null ? "스톱 금지" : `${limit}점 이하`} · ${ok ? "스톱 권장" : "기다림"}`;
+  h.classList.add(ok ? "go" : "wait");
 }
 
 function renderStatus(obs) {
   const st = $("status");
-  if (obs.phase === "over") {
-    st.textContent = "판 종료";
-  } else if (obs.current_player === HUMAN) {
-    st.textContent = obs.phase === "turn_start" ? "내 차례: 스톱 / 받기 / 땡큐" : "내 차례: 등록·붙이기 후 버리기";
-  } else {
-    st.textContent = `${seatName(obs.current_player)} 생각 중…`;
-  }
+  if (obs.phase === "over") st.textContent = "판 종료";
+  else if (obs.current_player === HUMAN) st.textContent = obs.phase === "turn_start" ? "내 차례 · 스톱 / 받기 / 땡큐" : "내 차례 · 등록·붙이기 후 버리기";
+  else st.textContent = `${seatName(obs.current_player)} 차례`;
   st.className = "status" + (obs.current_player === HUMAN && obs.phase !== "over" ? " my-turn" : "");
+  $("rack").classList.toggle("my-turn", obs.current_player === HUMAN && obs.phase !== "over");
 }
 
-// ---------- 힌트·복기 ----------
+// ---------- 힌트 (초보자 모드) ----------
 function runHint() {
   if (!settings.beginner || !game || game.isOver || game.currentPlayer !== HUMAN) return;
   const obs = obsNow();
   const hint = $("hint");
-  hint.textContent = "분석 중…";
+  hint.innerHTML = '<p class="muted small">분석 중…</p>';
   setTimeout(() => {
     const expert = game.botAction("expert", 0);
     const scored = JSON.parse(game.evaluate(HINT_K, game.actionCount + 1));
     hint.innerHTML = "";
-    const ol = document.createElement("ol");
-    ol.className = "hint-list";
+    const ol = el("ol", "hint-list");
     scored.slice(0, 6).forEach((v, i) => {
-      const li = document.createElement("li");
-      const tag = v.action === expert ? ' <span class="badge">전문가 선택</span>' : "";
+      const li = el("li", i === 0 ? "best" : "");
       const sig = v.gap > 2 * v.gap_se;
       const gapText = i === 0 ? "" : sig ? ` <span class="loss">−${(v.gap * 100).toFixed(1)}%p</span>` : ' <span class="muted">(차이 불확실)</span>';
-      li.innerHTML = `<b>${(v.value * 100).toFixed(1)}%</b>${gapText} ${actionText(v.action, obs)}${tag}`;
-      if (i === 0) li.className = "best";
+      const tag = v.action === expert ? ' <span class="tag">전문가</span>' : "";
+      li.innerHTML = `<b>${(v.value * 100).toFixed(1)}%</b>${gapText} ${actText(v.action, obs)}${tag}`;
       ol.appendChild(li);
     });
     hint.appendChild(ol);
-    const note = document.createElement("p");
-    note.className = "muted small";
-    note.textContent = `L3: 숨은 패 ${HINT_K}개 샘플 × 수마다 끝까지 시뮬레이션한 추정 승률. −%p는 1위 수보다 확실히 나쁜 만큼(같은 샘플로 비교, 95%), "차이 불확실"은 1위와 사실상 같은 수다.`;
-    hint.appendChild(note);
+    hint.appendChild(el("p", "muted xsmall", `숨은 패 ${HINT_K}가지 × 수마다 끝까지 시뮬레이션한 추정 승률. −%p는 1위보다 확실히 나쁜 만큼, "차이 불확실"은 사실상 같은 수.`));
   }, 20);
-}
-
-function review() {
-  const out = $("review");
-  const decisions = humanDecisions.slice();
-  if (decisions.length === 0) {
-    out.textContent = "복기할 내 결정이 없다.";
-    return;
-  }
-  out.textContent = `복기 중… 0 / ${decisions.length}`;
-  const rows = [];
-  let i = 0;
-  const stepReview = () => {
-    if (i >= decisions.length) {
-      showReview(rows);
-      return;
-    }
-    const d = decisions[i];
-    const g = game.rewind(d.index);
-    const legal = JSON.parse(g.legalActions());
-    if (legal.length > 1) {
-      const obs = JSON.parse(g.observation(HUMAN));
-      const scored = JSON.parse(g.evaluate(REVIEW_K, d.index + 7));
-      const best = scored[0];
-      const mine = scored.find((v) => v.action === d.action);
-      const significant = mine && mine.gap > 2 * mine.gap_se;
-      const loss = significant ? mine.gap : 0;
-      rows.push({ obs, d, best, mine, loss });
-    }
-    g.free();
-    i++;
-    out.textContent = `복기 중… ${i} / ${decisions.length}`;
-    setTimeout(stepReview, 0);
-  };
-  setTimeout(stepReview, 0);
-}
-
-function showReview(rows) {
-  const out = $("review");
-  out.innerHTML = "";
-  const total = rows.reduce((s, r) => s + r.loss, 0);
-  const p = document.createElement("p");
-  p.innerHTML = `선택지가 있던 결정 ${rows.length}개 · 확실한 손실 합 <b>${(total * 100).toFixed(1)}%p</b> <span class="muted">(L3 ${REVIEW_K}샘플, 같은 샘플로 비교해 95% 확실한 차이만 셈)</span>`;
-  out.appendChild(p);
-  const worst = rows.filter((r) => r.loss >= GRADES[GRADES.length - 1][0]).sort((a, b) => b.loss - a.loss).slice(0, 6);
-  if (worst.length === 0) {
-    const ok = document.createElement("p");
-    ok.textContent = "확실한 실수(2%p 이상)는 없었다.";
-    out.appendChild(ok);
-    return;
-  }
-  const ol = document.createElement("ol");
-  worst.forEach((r) => {
-    const li = document.createElement("li");
-    const grade = GRADES.find(([t]) => r.loss >= t)[1];
-    li.innerHTML = `<b>${grade}</b> −${(r.loss * 100).toFixed(1)}%p · 손패 ${r.obs.hand_points}점 · 내 수: ${actionText(r.d.action, r.obs)} → 추천: ${actionText(r.best.action, r.obs)} (${(r.best.value * 100).toFixed(0)}%)`;
-    ol.appendChild(li);
-  });
-  out.appendChild(ol);
 }
 
 // ---------- 종료·전적 ----------
@@ -504,8 +431,9 @@ function finish() {
   const out = JSON.parse(game.outcome());
   const obs = obsNow();
   const won = out.winners.includes(HUMAN);
-  const share = out.rewards[HUMAN];
-  $("result-title").textContent = out.winners.length === 0 ? "무승부" : won ? (out.winners.length > 1 ? "공동 승리" : "승리!") : "패배";
+  const title = $("result-title");
+  title.textContent = out.winners.length === 0 ? "무승부" : won ? (out.winners.length > 1 ? "공동 승리" : "승리") : "패배";
+  title.className = "result-title " + (won ? "win" : out.winners.length === 0 ? "draw" : "lose");
   const reasons = {
     out: `${seatName(out.player)} 털기`,
     "stop-success": `${seatName(out.caller)} 스톱 성공`,
@@ -517,32 +445,31 @@ function finish() {
   const body = $("result-body");
   body.innerHTML = "";
   obs.revealed_hands.forEach((h, s) => {
-    const tr = document.createElement("tr");
-    if (out.winners.includes(s)) tr.className = "winner";
-    const td = document.createElement("td");
-    td.textContent = seatName(s);
-    const tc = document.createElement("td");
-    sortCards(h).forEach((c) => tc.appendChild(cardEl(c, { small: true })));
-    const tp = document.createElement("td");
-    tp.textContent = `${out.points[s]}점`;
+    const tr = el("tr", out.winners.includes(s) ? "winner" : "");
+    const td = el("td", "who", seatName(s) + (out.winners.includes(s) ? " 🏆" : ""));
+    const tc = el("td", "cards");
+    sortCards(h).forEach((c) => tc.appendChild(cardEl(c, { size: "sm" })));
+    if (h.length === 0) tc.appendChild(el("span", "muted small", "털었음"));
+    const tp = el("td", "pts", `${out.points[s]}점`);
     tr.append(td, tc, tp);
     body.appendChild(tr);
   });
-  $("review").innerHTML = "";
+  $("res-review").disabled = humanDecisions.length === 0;
   if (!recorded) {
     recorded = true;
-    store.games.push({
+    lastRecord = {
       at: new Date().toISOString(),
       players: config.players,
       opponents: config.opponents,
       seed: config.seed,
       reason: out.reason,
-      share,
+      share: out.rewards[HUMAN],
       undo: usedUndo,
       beginner: usedBeginner,
       replay: JSON.parse(game.replayJson()),
       human_seat: HUMAN,
-    });
+    };
+    store.games.push(lastRecord);
     if (store.games.length > 500) store.games.splice(0, store.games.length - 500);
     saveStore();
   }
@@ -550,12 +477,35 @@ function finish() {
   if (!$("result").open) $("result").showModal();
 }
 
+function startReview() {
+  if (!game || humanDecisions.length === 0) return;
+  if ($("result").open) $("result").close();
+  const record = lastRecord;
+  openReview({
+    replayJson: game.replayJson(),
+    decisions: humanDecisions.slice(),
+    seat: HUMAN,
+    players: config.players,
+    seatName,
+    outcome: JSON.parse(game.outcome()),
+    finalEvents: obsNow().events,
+    onReplayFrom: replayFrom,
+    onSummary: (summary) => {
+      if (!record) return;
+      record.review = summary;
+      saveStore();
+      renderStats();
+    },
+  });
+}
+
 function renderStats() {
-  const el = $("stats");
+  const box = $("stats");
+  box.innerHTML = "";
   const games = store.games.filter((g) => !g.undo);
   const practice = store.games.length - games.length;
   if (games.length === 0) {
-    el.textContent = practice ? `되돌리기를 쓴 연습판 ${practice}판 (전적 제외)` : "아직 끝낸 판이 없다.";
+    box.appendChild(el("p", "muted small", practice ? `되돌리기를 쓴 연습판 ${practice}판 (전적 제외)` : "아직 끝낸 판이 없다."));
     return;
   }
   const groups = {};
@@ -565,12 +515,47 @@ function renderStats() {
     x.n += 1;
     x.share += g.share;
   });
-  const rows = Object.entries(groups)
+  const list = el("div", "stat-rows");
+  Object.entries(groups)
     .sort((a, b) => b[1].n - a[1].n)
-    .map(([k, x]) => `<tr><td>${k}</td><td>${x.n}판</td><td><b>${((x.share / x.n) * 100).toFixed(0)}%</b></td><td class="muted">기준 ${(100 / x.players).toFixed(0)}%</td></tr>`)
-    .join("");
-  const note = practice ? `<p class="muted">되돌리기를 쓴 연습판 ${practice}판은 전적에서 뺐다.</p>` : "";
-  el.innerHTML = `<table class="stats-table"><tbody>${rows}</tbody></table>${note}`;
+    .forEach(([k, x]) => {
+      const rate = x.share / x.n;
+      const fair = 1 / x.players;
+      const row = el("div", "stat-row");
+      row.innerHTML = `<div class="stat-name">${k}</div>
+        <div class="stat-bar"><div class="fill" style="width:${Math.min(100, rate * 100)}%"></div><div class="fair" style="left:${fair * 100}%" title="공평한 몫 ${(fair * 100).toFixed(0)}%"></div></div>
+        <div class="stat-num"><b>${(rate * 100).toFixed(0)}%</b> <span class="muted">${x.n}판</span></div>`;
+      list.appendChild(row);
+    });
+  box.appendChild(list);
+
+  const reviewed = store.games.filter((g) => g.review);
+  if (reviewed.length) {
+    const cats = {};
+    let loss = 0;
+    let decisions = 0;
+    let accurate = 0;
+    reviewed.forEach((g) => {
+      loss += g.review.loss;
+      decisions += g.review.decisions;
+      accurate += g.review.accurate;
+      for (const [c, n] of Object.entries(g.review.categories || {})) cats[c] = (cats[c] || 0) + n;
+    });
+    const weak = el("div", "weak");
+    weak.appendChild(el("h3", "", "복기로 본 약점"));
+    weak.appendChild(el("p", "small", `복기 ${reviewed.length}판 · 정확도 ${decisions ? Math.round((accurate / decisions) * 100) : 0}% · 판당 손실 ${((loss / reviewed.length) * 100).toFixed(1)}%p`));
+    const max = Math.max(1, ...Object.values(cats));
+    Object.entries(cats)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([c, n]) => {
+        const row = el("div", "weak-row");
+        row.innerHTML = `<span>${CATEGORY[c] || c}</span><span class="weak-bar"><span style="width:${(n / max) * 100}%"></span></span><b>${n}</b>`;
+        weak.appendChild(row);
+      });
+    if (!Object.keys(cats).length) weak.appendChild(el("p", "muted small", "확실한 실수가 아직 없다."));
+    box.appendChild(weak);
+  }
+  if (practice) box.appendChild(el("p", "muted xsmall", `되돌리기·다시 두기를 쓴 연습판 ${practice}판은 승률에서 뺐다.`));
 }
 
 function exportGames() {
@@ -587,8 +572,8 @@ function renderOpponentSelects() {
   const box = $("set-opponents");
   box.innerHTML = "";
   for (let i = 0; i < settings.players - 1; i++) {
-    const label = document.createElement("label");
-    label.textContent = `${i + 1}번 상대`;
+    const label = el("label", "field");
+    label.appendChild(el("span", "", `${i + 1}번 상대`));
     const sel = document.createElement("select");
     Object.entries(BOTS).forEach(([k, b]) => {
       const o = document.createElement("option");
@@ -644,7 +629,7 @@ function bindSettings() {
 // ---------- 시작 ----------
 async function main() {
   await init();
-  document.title = `훌라 연습장 · 엔진 ${version()}`;
+  $("engine-ver").textContent = `엔진 ${version()} · 브라우저에서 실행`;
   bindSettings();
   $("btn-new").addEventListener("click", newGame);
   $("btn-same").addEventListener("click", sameGame);
@@ -653,7 +638,7 @@ async function main() {
   $("btn-export").addEventListener("click", exportGames);
   $("res-new").addEventListener("click", newGame);
   $("res-same").addEventListener("click", sameGame);
-  $("res-review").addEventListener("click", review);
+  $("res-review").addEventListener("click", startReview);
   newGame();
 }
 

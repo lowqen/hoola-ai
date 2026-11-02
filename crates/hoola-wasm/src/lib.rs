@@ -67,6 +67,8 @@ fn observation_json(o: &Observation<'_>) -> Value {
         "melds": melds,
         "discard_top": o.discard_top.map(|c| c.to_string()),
         "discard_count": o.known_discards.len(),
+        // 완벽한 기억 기준의 버림패 전체 (복기 설명용, 플레이 화면에는 쓰지 않는다)
+        "known_discards": pile(o.known_discards),
         "visible_discards": pile(o.visible_discards),
         "stock_len": o.stock_len,
         "thank_you_target": o.thank_you_target.map(|c| c.to_string()),

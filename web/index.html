@@ -3,26 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="훌라 연습장 — 전략서 기반 봇과 친구 페르소나를 상대로 연습하고 L3 분석으로 복기한다">
   <title>훌라 연습장</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c5b43'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='%23f3efe4'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
-    <h1>훌라 연습장</h1>
+    <div class="brand">
+      <span class="logo" aria-hidden="true">♠</span>
+      <div>
+        <h1>훌라 연습장</h1>
+        <div class="sub" id="engine-ver">엔진 불러오는 중…</div>
+      </div>
+    </div>
     <div class="topbar-actions">
-      <label class="toggle" title="가능한 등록·붙이기·땡큐·스톱을 버튼으로 보여 주고, 스톱 기준표와 L3 힌트를 켠다">
-        <input type="checkbox" id="set-beginner"> 초보자 모드
+      <label class="switch" title="가능한 등록·붙이기·땡큐·스톱을 버튼으로 보여 주고, 스톱 기준표와 L3 힌트를 켠다">
+        <input type="checkbox" id="set-beginner">
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span>초보자 모드</span>
       </label>
       <button id="btn-new" class="primary">새 판</button>
       <button id="btn-same">같은 패 다시</button>
       <button id="btn-undo" title="내 마지막 결정 이전으로">되돌리기</button>
-      <button id="btn-settings" aria-expanded="false">설정</button>
+      <button id="btn-settings" aria-expanded="false" aria-controls="settings">설정</button>
     </div>
   </header>
 
-  <section id="settings" class="panel settings" hidden>
+  <section id="settings" class="settings" hidden>
     <div class="settings-grid">
-      <label>인원
+      <label class="field"><span>인원</span>
         <select id="set-players">
           <option value="2">2인</option>
           <option value="3" selected>3인</option>
@@ -30,49 +41,56 @@
           <option value="5">5인</option>
         </select>
       </label>
-      <div id="set-opponents" class="opponents"></div>
-      <label class="check"><input type="checkbox" id="set-full-discards"> 지나간 버림패 전부 보기 (끄면 맨 위 1장만)</label>
-      <label class="check"><input type="checkbox" id="set-show-hint"> (초보자 모드) 매 결정마다 힌트 자동 표시</label>
-      <label>봇 속도
+      <div id="set-opponents" class="contents"></div>
+      <label class="field"><span>봇 속도</span>
         <select id="set-speed">
           <option value="900">느리게</option>
           <option value="500" selected>보통</option>
           <option value="150">빠르게</option>
         </select>
       </label>
-      <label>시드 (비우면 무작위)
+      <label class="field"><span>시드 (비우면 무작위)</span>
         <input id="set-seed" inputmode="numeric" placeholder="예: 12345">
       </label>
+      <label class="check"><input type="checkbox" id="set-full-discards"> 지나간 버림패 전부 보기 (끄면 맨 위 1장만)</label>
+      <label class="check"><input type="checkbox" id="set-show-hint"> 초보자 모드에서 매 결정마다 힌트 자동 표시</label>
     </div>
-    <p class="muted small">설정은 다음 판부터 적용된다.</p>
+    <p class="muted xsmall">인원·상대·버림패 공개는 다음 판부터 적용된다.</p>
   </section>
 
   <main class="layout">
-    <section class="table">
-      <div id="opponents" class="opp-row"></div>
+    <section class="table" aria-label="게임 테이블">
+      <div id="opponents" class="seats"></div>
 
-      <div class="center">
+      <div class="board">
         <div class="piles">
           <div class="pile">
-            <div class="card back" aria-hidden="true"></div>
-            <div class="pile-label">더미 <b id="stock-count">-</b>장</div>
+            <div id="stock-stack" class="stack"></div>
+            <div class="pile-label">더미 <b id="stock-count">-</b></div>
           </div>
           <div class="pile">
             <div id="discard-top" class="discard-stack"></div>
-            <div class="pile-label">버림패 <b id="discard-count">-</b>장</div>
+            <div class="pile-label">버림패 <b id="discard-count">-</b></div>
           </div>
         </div>
-        <div id="melds" class="melds"></div>
+        <div class="melds-wrap">
+          <div class="melds-title">바닥 조합</div>
+          <div id="melds" class="melds"></div>
+        </div>
       </div>
 
-      <div id="status" class="status"></div>
-
-      <div class="me">
-        <div class="me-head">
-          <span id="me-label" class="seat-name">나</span>
-          <span class="points">손패 <b id="my-points">-</b>점</span>
-          <span id="stop-helper" class="helper"></span>
+      <div id="rack" class="rack">
+        <div class="rack-head">
+          <div class="me-id">
+            <span class="avatar me" aria-hidden="true">나</span>
+            <div>
+              <div id="me-label" class="seat-name">나</div>
+              <div id="status" class="status"></div>
+            </div>
+          </div>
+          <div class="score" aria-label="내 손패 점수"><span id="my-points" class="score-v">-</span><span class="score-k">점</span></div>
         </div>
+        <div id="stop-helper" class="helper" hidden></div>
         <div id="my-hand" class="hand"></div>
         <div id="actions" class="actions"></div>
         <div id="msg" class="msg" role="status" hidden></div>
@@ -83,35 +101,58 @@
       <section class="panel" id="hint-panel">
         <div class="panel-head">
           <h2>힌트</h2>
-          <button id="btn-hint">L3 분석</button>
+          <button id="btn-hint" class="small">L3 분석</button>
         </div>
-        <div id="hint" class="hint muted small">내 차례에 "L3 분석"을 누르면 수마다 추정 승률을 보여 준다.</div>
+        <div id="hint" class="hint"><p class="muted small">내 차례에 "L3 분석"을 누르면 수마다 추정 승률을 보여 준다.</p></div>
       </section>
       <section class="panel">
-        <h2>기록</h2>
+        <div class="panel-head"><h2>기록</h2></div>
         <ol id="log" class="log"></ol>
       </section>
       <section class="panel">
         <div class="panel-head">
           <h2>전적</h2>
-          <button id="btn-export">기록 내보내기</button>
+          <button id="btn-export" class="small ghost">내보내기</button>
         </div>
-        <div id="stats" class="stats small"></div>
+        <div id="stats" class="stats"></div>
       </section>
     </aside>
   </main>
 
-  <dialog id="result">
-    <h2 id="result-title"></h2>
-    <p id="result-reason" class="muted"></p>
+  <dialog id="result" aria-labelledby="result-title">
+    <div class="result-hero">
+      <div id="result-title" class="result-title"></div>
+      <div id="result-reason" class="result-reason"></div>
+    </div>
     <table class="result-table"><tbody id="result-body"></tbody></table>
     <div class="dialog-actions">
-      <button id="res-review">판 복기 (L3)</button>
+      <button id="res-review" class="primary">복기하기</button>
       <button id="res-same">같은 패 다시</button>
-      <button id="res-new" class="primary">새 판</button>
+      <button id="res-new">새 판</button>
     </div>
-    <div id="review" class="review small"></div>
   </dialog>
+
+  <section id="review-view" class="review-view" hidden aria-label="판 복기">
+    <div class="rv-inner">
+      <header class="rv-head">
+        <div>
+          <h2>판 복기</h2>
+          <p class="muted small">결정마다 L3로 다시 계산한 추정 승률과, 확실히 손해 본 결정의 이유</p>
+        </div>
+        <button id="rv-close">닫기</button>
+      </header>
+      <div id="rv-progress" class="rv-progress">
+        <div class="bar"><div class="bar-fill"></div></div>
+        <span class="bar-label"></span>
+      </div>
+      <div id="rv-summary" class="rv-summary"></div>
+      <figure id="rv-chart" class="rv-chart"></figure>
+      <div class="rv-body">
+        <ol id="rv-list" class="rv-list" aria-label="결정 목록"></ol>
+        <article id="rv-detail" class="rv-detail"></article>
+      </div>
+    </div>
+  </section>
 
   <noscript>이 페이지는 JavaScript와 WebAssembly가 필요합니다.</noscript>
   <script type="module" src="app.js"></script>

@@ -82,17 +82,31 @@ for (let i = 0; i < 600; i++) {
 if (!(await page.evaluate(() => document.querySelector("#result").open))) await fail("game did not finish");
 console.log("result:", await page.textContent("#result-title"), "-", await page.textContent("#result-reason"));
 
-// 3) 복기
+// 3) 복기 (워커 분석 → 요약·그래프·목록·장면)
+await page.screenshot({ path: "result.png" });
 await page.click("#res-review");
-await page.waitForFunction(() => {
-  const t = document.querySelector("#review")?.textContent || "";
-  return t.length > 0 && !t.startsWith("복기 중");
-}, null, { timeout: 120000 });
-console.log("review:", (await page.textContent("#review")).slice(0, 200));
+await page.waitForSelector("#rv-detail .rv-compare", { timeout: 240000 });
+const summary = await page.textContent("#rv-summary");
+const items = await page.$$eval("#rv-list li", (ls) => ls.length);
+const why = await page.$eval("#rv-detail", (d) => d.innerText.slice(0, 300));
+console.log("review:", summary.replace(/\s+/g, " "), "| items", items);
+console.log("detail:", why.replace(/\s+/g, " "));
+if (items < 1) await fail("review list empty");
+if (!(await page.$("#rv-detail .scene-hand .card"))) await fail("review scene missing");
+await page.screenshot({ path: "review.png", fullPage: true });
+await page.click("#rv-chart .pt >> nth=0");
+await page.waitForSelector("#rv-detail .rv-compare");
+// 4) 전적 저장 (복기 요약 포함)
+const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("hoola-practice-v1")).games);
+if (saved.length !== 1) await fail(`expected 1 saved game, got ${saved.length}`);
+if (!saved[0].review) await fail("review summary not saved");
 
-// 4) 전적 저장
-const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("hoola-practice-v1")).games.length);
-if (saved !== 1) await fail(`expected 1 saved game, got ${saved}`);
+// 4-1) 이 장면부터 다시 두기 → 연습판, 전적에 다시 기록하지 않음
+await page.click("#rv-detail .rv-nav button.primary");
+if (!(await page.isHidden("#review-view"))) await fail("review did not close on replay");
+await waitMyTurn();
+const savedAfter = await page.evaluate(() => JSON.parse(localStorage.getItem("hoola-practice-v1")).games.length);
+if (savedAfter !== 1) await fail("replay-from created a new record");
 
 await page.screenshot({ path: "screenshot.png", fullPage: true });
 
