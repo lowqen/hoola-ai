@@ -15,12 +15,21 @@ const LINEUPS: &[&[&str]] = &[
     &["expert", "expert:stop=never:meld=allin"],
     &["expert", "expert:stop=t2:meld=hold"],
     &["expert", "expert", "expert"],
-    &["expert", "expert:stop=never", "expert:stop=never:meld=allin"],
+    &[
+        "expert",
+        "expert:stop=never",
+        "expert:stop=never:meld=allin",
+    ],
     &["expert", "expert:stop=t2:meld=hold", "expert:stop=never"],
 ];
 
 /// 한 판을 두면서 차례 시작마다 `visit(game, seat)`를 부른다. 배치는 딜마다 돌린다.
-fn play_deals(lineup: &[&str], seeds: std::ops::Range<u64>, rules: &Rules, mut visit: impl FnMut(&Game, usize)) {
+fn play_deals(
+    lineup: &[&str],
+    seeds: std::ops::Range<u64>,
+    rules: &Rules,
+    mut visit: impl FnMut(&Game, usize),
+) {
     let n = lineup.len();
     for seed in seeds {
         let mut g = Game::new(rules.clone(), n, seed, (seed % n as u64) as usize).expect("valid");
@@ -91,7 +100,13 @@ pub fn learn_weights(deals: u64, seed: u64, rules: &Rules) -> (RankWeights, [[u6
     let mut held = [[0u64; 13]; 8];
     for k in 1..8 {
         let rates: Vec<f64> = (0..13)
-            .map(|r| if den[k][r] > 0.0 { num[k][r] / den[k][r] } else { 0.0 })
+            .map(|r| {
+                if den[k][r] > 0.0 {
+                    num[k][r] / den[k][r]
+                } else {
+                    0.0
+                }
+            })
             .collect();
         let mean = rates.iter().sum::<f64>() / 13.0;
         let total_held: f64 = num[k].iter().sum();
@@ -139,7 +154,8 @@ fn calibrate(deals: u64, seed: u64, rules: &Rules, learned: &RankWeights) -> Cal
                         }
                         let obs = g.observation(seat);
                         let mine = g.hand_points(seat);
-                        let truth = (0..g.num_players()).all(|s| s == seat || g.hand_points(s) > mine);
+                        let truth =
+                            (0..g.num_players()).all(|s| s == seat || g.hand_points(s) > mine);
                         let y = f64::from(u8::from(truth));
                         let eu = stop_win_estimate(&obs, &mut rng, &UNIFORM, 32);
                         let el = stop_win_estimate(&obs, &mut rng, learned, 32);
@@ -213,12 +229,21 @@ pub fn run(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     );
     let (w, held) = learn_weights(deals, seed, rules);
     let _ = writeln!(md, "## 학습된 가중치 (행 = 상대 손패 장수)\n");
-    let _ = writeln!(md, "| 장수 | A | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | J | Q | K | 표본(든 카드) |");
+    let _ = writeln!(
+        md,
+        "| 장수 | A | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | J | Q | K | 표본(든 카드) |"
+    );
     let _ = writeln!(md, "|---|{}---|", "---|".repeat(13));
     for k in 1..8 {
         let row: Vec<String> = w[k].iter().map(|x| format!("{x:.2}")).collect();
         let total: u64 = held[k].iter().sum();
-        let _ = writeln!(md, "| {}{} | {} | {total} |", k, if k == 7 { "+" } else { "" }, row.join(" | "));
+        let _ = writeln!(
+            md,
+            "| {}{} | {} | {total} |",
+            k,
+            if k == 7 { "+" } else { "" },
+            row.join(" | ")
+        );
     }
     let _ = writeln!(md, "\n```rust\npub const LEARNED: RankWeights = [");
     for row in &w {
@@ -235,12 +260,21 @@ pub fn run(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         LINEUPS.len(),
         cal.n
     );
-    let _ = writeln!(md, "| 추정 구간 | 균일: 수 | 균일: 평균 추정 | 균일: 실제 | 학습: 수 | 학습: 평균 추정 | 학습: 실제 |");
+    let _ = writeln!(
+        md,
+        "| 추정 구간 | 균일: 수 | 균일: 평균 추정 | 균일: 실제 | 학습: 수 | 학습: 평균 추정 | 학습: 실제 |"
+    );
     let _ = writeln!(md, "|---|---|---|---|---|---|---|");
     for i in 0..10 {
         let (su, yu, nu) = cal.bins_u[i];
         let (sl, yl, nl) = cal.bins_l[i];
-        let f = |s: f64, n: u64| if n > 0 { format!("{:.3}", s / n as f64) } else { "·".into() };
+        let f = |s: f64, n: u64| {
+            if n > 0 {
+                format!("{:.3}", s / n as f64)
+            } else {
+                "·".into()
+            }
+        };
         let _ = writeln!(
             md,
             "| {:.1}–{:.1} | {nu} | {} | {} | {nl} | {} | {} |",
@@ -258,15 +292,28 @@ pub fn run(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         cal.brier_u / cal.n as f64,
         cal.brier_l / cal.n as f64
     );
-    let _ = writeln!(md, "| 가장 적게 든 상대 | 상태 수 | 균일 평균 추정 | 학습 평균 추정 | 실제 스톱 승률 |");
+    let _ = writeln!(
+        md,
+        "| 가장 적게 든 상대 | 상태 수 | 균일 평균 추정 | 학습 평균 추정 | 실제 스톱 승률 |"
+    );
     let _ = writeln!(md, "|---|---|---|---|---|");
     for (i, (u, l, y, n)) in cal.by_fewest.iter().enumerate() {
         if *n == 0 {
             continue;
         }
-        let label = if i == 4 { "5장+".to_string() } else { format!("{}장", i + 1) };
+        let label = if i == 4 {
+            "5장+".to_string()
+        } else {
+            format!("{}장", i + 1)
+        };
         let nf = *n as f64;
-        let _ = writeln!(md, "| {label} | {n} | {:.3} | {:.3} | {:.3} |", u / nf, l / nf, y / nf);
+        let _ = writeln!(
+            md,
+            "| {label} | {n} | {:.3} | {:.3} | {:.3} |",
+            u / nf,
+            l / nf,
+            y / nf
+        );
     }
     let _ = writeln!(md);
 }

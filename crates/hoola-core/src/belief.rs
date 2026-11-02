@@ -66,7 +66,11 @@ pub fn draw_weighted(
 }
 
 /// 관측과 맞는 숨은 정보 하나: (좌석별 손패, 더미 순서). 관측 좌석의 손패는 그대로.
-pub fn sample_hidden(obs: &Observation<'_>, rng: &mut Rng, table: &RankWeights) -> (Vec<CardSet>, Vec<Card>) {
+pub fn sample_hidden(
+    obs: &Observation<'_>,
+    rng: &mut Rng,
+    table: &RankWeights,
+) -> (Vec<CardSet>, Vec<Card>) {
     let mut pool: Vec<Card> = obs.unseen().iter().collect();
     let mut hands = vec![CardSet::EMPTY; obs.num_players];
     // 좌석 순서로 뽑으면 앞 좌석이 유리해지지 않도록 장수가 적은 상대부터 (가중치 영향이 큼)
@@ -82,7 +86,12 @@ pub fn sample_hidden(obs: &Observation<'_>, rng: &mut Rng, table: &RankWeights) 
 }
 
 /// 지금 스톱하면 이길 확률 추정 (내 점수가 모든 상대보다 엄격히 낮은 샘플 비율).
-pub fn stop_win_estimate(obs: &Observation<'_>, rng: &mut Rng, table: &RankWeights, samples: usize) -> f64 {
+pub fn stop_win_estimate(
+    obs: &Observation<'_>,
+    rng: &mut Rng,
+    table: &RankWeights,
+    samples: usize,
+) -> f64 {
     let mine = obs.hand_points();
     let mut wins = 0usize;
     for _ in 0..samples {
@@ -113,7 +122,9 @@ mod tests {
                 assert_eq!(h.len(), obs.hand_counts[s]);
                 assert!(h.is_subset(obs.unseen()));
             }
-            let all = hands[1].union(hands[2]).union(stock.iter().copied().collect());
+            let all = hands[1]
+                .union(hands[2])
+                .union(stock.iter().copied().collect());
             assert_eq!(all, obs.unseen());
             assert_eq!(stock.len(), g.stock_len());
         }

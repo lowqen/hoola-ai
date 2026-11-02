@@ -276,7 +276,10 @@ mod tests {
         assert!(SearchConfig::parse("k=0").is_err());
         assert!(SearchConfig::parse("depth=3").is_err());
         assert!(SearchConfig::parse("stop=1").unwrap().search_stop);
-        assert_eq!(SearchConfig::parse("belief=uniform").unwrap().belief, Belief::Uniform);
+        assert_eq!(
+            SearchConfig::parse("belief=uniform").unwrap().belief,
+            Belief::Uniform
+        );
     }
 
     #[test]
