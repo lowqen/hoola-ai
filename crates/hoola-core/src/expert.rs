@@ -81,14 +81,14 @@ impl ExpertConfig {
                             return Err(bad());
                         }
                         let mut last = None;
-                        for k in 1..8 {
+                        for (k, slot) in limits.iter_mut().enumerate().skip(1) {
                             if let Some(item) = items.get(k - 1) {
                                 last = match *item {
                                     "-" => None,
                                     n => Some(n.parse().map_err(|_| bad())?),
                                 };
                             }
-                            limits[k] = last;
+                            *slot = last;
                         }
                         StopPolicy::Table(limits)
                     } else if let Some(t) = value.strip_prefix('t') {
