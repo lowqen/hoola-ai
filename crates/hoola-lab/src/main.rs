@@ -9,6 +9,7 @@
 //! hoola-lab --only H1 --deals 1000
 //! ```
 
+mod friends;
 mod stop_table;
 
 use std::fmt::Write as _;
@@ -177,7 +178,7 @@ fn cfg(players: usize, bots: Vec<String>, deals: u64, seed: u64, rules: &Rules) 
 }
 
 /// 여러 대전을 스레드로 나눠 돌린다 (입력 순서 유지).
-fn run_all(configs: Vec<MatchConfig>) -> Vec<MatchReport> {
+pub(crate) fn run_all(configs: Vec<MatchConfig>) -> Vec<MatchReport> {
     let threads = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1);
@@ -250,6 +251,20 @@ fn main() {
         })
         .collect();
 
+    // 친구 페르소나 실험과 L3 탐색은 오래 걸려서 --only로만 돈다 (CI 별도 잡)
+    match args.only.as_deref() {
+        Some("F") => {
+            friends::friends(&mut md, args.deals, args.seed, &rules);
+            finish(&md, &args, started);
+            return;
+        }
+        Some("L3") => {
+            friends::search_probe(&mut md, args.deals, args.seed, &rules);
+            finish(&md, &args, started);
+            return;
+        }
+        _ => {}
+    }
     let run_h0 = args.only.as_deref().is_none_or(|o| o == "H0");
     if run_h0 {
         let reports = run_all(ladder.iter().map(|x| x.3.clone()).collect());
@@ -350,19 +365,21 @@ fn main() {
              행 = 상대들의 손패 장수, 열 = 내 손패 점수. 표본 200 미만 칸은 `·`. 상대 스톱으로 판이 먼저 끝나는 경우는 들어 있지 않다.\n"
         );
         for &n in &args.players {
-            let table = stop_table::collect(n, args.deals * 3, args.seed, &rules);
+            let lineup = vec![BASE; n];
+            let table = stop_table::collect(&lineup, BASE, args.deals * 3, args.seed, &rules);
             let _ = writeln!(md, "### {n}인\n");
             stop_table::render(&table, rules.stop.limit, 200, n > 2, &mut md);
             let _ = writeln!(md);
         }
         eprintln!("H8 done ({:.0}s)", started.elapsed().as_secs_f64());
     }
-    let _ = writeln!(
-        md,
-        "▲/▼: 95% 신뢰구간이 기준 몫(1/n)을 넘음/밑돎. 총 소요 {:.0}초",
-        started.elapsed().as_secs_f64()
-    );
+    let _ = writeln!(md, "▲/▼: 95% 신뢰구간이 기준 몫(1/n)을 넘음/밑돎.");
+    finish(&md, &args, started);
+}
 
+fn finish(md: &str, args: &Args, started: Instant) {
+    let elapsed = started.elapsed().as_secs_f64();
+    let md = format!("{md}\n총 소요 {elapsed:.0}초\n");
     print!("{md}");
     if let Some(path) = &args.out {
         std::fs::write(path, &md).expect("write --out");

@@ -23,14 +23,26 @@ pub enum StopPolicy {
     /// 사람용 규칙표: `limits[k]` = 가장 적게 든 상대가 k장일 때 스톱할 최대 점수 (`None`이면 스톱 안 함).
     /// 표보다 많은 장수는 마지막 값을 쓴다. 사양: `stop=r-,2,5,9,10` (1장부터).
     Table([Option<u32>; 8]),
+    /// 스톱하지 않는다 (털기만 노림). 사양: `stop=never`.
+    Never,
+}
+
+/// 등록 방식.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MeldMode {
+    /// 조합이 생기면 즉시 등록. 사양 `meld=now`.
+    Now,
+    /// 털기나 스톱(손패 ≤ 스톱 한도)이 가능해질 때만 등록. 사양 `meld=hold`.
+    Hold,
+    /// 한 번에 털 수 있을 때만 등록 ("한 방"). 사양 `meld=allin`.
+    AllIn,
 }
 
 /// 전문가 봇 설정.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExpertConfig {
     pub stop: StopPolicy,
-    /// `true`면 조합이 생기는 즉시 등록, `false`면 털기나 스톱이 가능해질 때만 등록.
-    pub meld_now: bool,
+    pub meld: MeldMode,
     /// 7 단독 등록 허용 (털기 직전에는 항상 허용).
     pub single_seven: bool,
     /// 땡큐 사용.
@@ -48,7 +60,7 @@ impl Default for ExpertConfig {
         // P2 1차 실험(hoola-lab H1·H5·H6)으로 조정한 값
         ExpertConfig {
             stop: StopPolicy::Confidence(0.9),
-            meld_now: true,
+            meld: MeldMode::Now,
             single_seven: true,
             thank_you: true,
             danger_weight: 0.0,
@@ -74,7 +86,9 @@ impl ExpertConfig {
             };
             match key {
                 "stop" => {
-                    cfg.stop = if let Some(list) = value.strip_prefix('r') {
+                    cfg.stop = if value == "never" {
+                        StopPolicy::Never
+                    } else if let Some(list) = value.strip_prefix('r') {
                         let mut limits = [None; 8];
                         let items: Vec<&str> = list.split(',').collect();
                         if items.is_empty() || items.len() > 7 {
@@ -100,9 +114,10 @@ impl ExpertConfig {
                     }
                 }
                 "meld" => {
-                    cfg.meld_now = match value {
-                        "now" => true,
-                        "hold" => false,
+                    cfg.meld = match value {
+                        "now" => MeldMode::Now,
+                        "hold" => MeldMode::Hold,
+                        "allin" => MeldMode::AllIn,
                         _ => return Err(bad()),
                     }
                 }
@@ -167,6 +182,7 @@ impl ExpertBot {
 
     fn wants_stop(&mut self, obs: &Observation<'_>) -> bool {
         match self.cfg.stop {
+            StopPolicy::Never => false,
             StopPolicy::Threshold(t) => obs.hand_points() <= t,
             StopPolicy::Confidence(c) => self.stop_win_probability(obs) >= c,
             StopPolicy::Table(limits) => {
@@ -364,7 +380,12 @@ impl crate::bot::Bot for ExpertBot {
                 };
                 let plan_cards = plan.iter().fold(CardSet::EMPTY, |a, &m| a.union(m));
                 let after = hand.difference(plan_cards).points(&rules.points);
-                let register_now = going_out || self.cfg.meld_now || after <= rules.stop.limit;
+                let register_now = going_out
+                    || match self.cfg.meld {
+                        MeldMode::Now => true,
+                        MeldMode::Hold => after <= rules.stop.limit,
+                        MeldMode::AllIn => false,
+                    };
                 if register_now
                     && let Some(&m) = plan.iter().max_by_key(|m| m.points(&rules.points))
                 {
@@ -429,7 +450,11 @@ mod tests {
         let cfg =
             ExpertConfig::parse("stop=t5:meld=hold:seven=0:ty=off:danger=0:samples=8").unwrap();
         assert_eq!(cfg.stop, StopPolicy::Threshold(5));
-        assert!(!cfg.meld_now && !cfg.single_seven && !cfg.thank_you);
+        assert_eq!(cfg.meld, MeldMode::Hold);
+        assert!(!cfg.single_seven && !cfg.thank_you);
+        let friend = ExpertConfig::parse("stop=never:meld=allin").unwrap();
+        assert_eq!(friend.stop, StopPolicy::Never);
+        assert_eq!(friend.meld, MeldMode::AllIn);
         assert_eq!(cfg.danger_weight, 0.0);
         assert_eq!(cfg.samples, 8);
         assert_eq!(ExpertConfig::parse("").unwrap(), ExpertConfig::default());

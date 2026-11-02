@@ -34,6 +34,11 @@ pub struct Observation<'a> {
     pub stock_len: Option<usize>,
     /// 지금 차례 플레이어가 땡큐할 수 있는 카드 (대상 조건만 검사).
     pub thank_you_target: Option<Card>,
+    /// 버림패 맨 위를 버린 좌석 (첫 공개패면 `None`).
+    pub top_discarder: Option<usize>,
+    /// 좌석별로 지금까지 시작한 차례 수.
+    pub turns_started: Vec<u32>,
+    pub reshuffles: u32,
     /// 공개 이벤트 전체.
     pub events: &'a [Event],
     pub outcome: Option<&'a Outcome>,
@@ -90,6 +95,9 @@ impl Game {
             visible_discards: visible,
             stock_len: rules.stock_count_visible.then(|| self.stock_len()),
             thank_you_target: self.thank_you_target(),
+            top_discarder: self.top_discarder(),
+            turns_started: (0..n).map(|s| self.player(s).turns_started).collect(),
+            reshuffles: self.reshuffles(),
             events: self.events(),
             outcome: self.outcome(),
             revealed_hands: self

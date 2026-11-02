@@ -22,17 +22,32 @@ impl Cell {
 /// 키: (상대 손패 장수 오름차순, 내 손패 점수).
 pub type Table = BTreeMap<(Vec<usize>, u32), Cell>;
 
-fn collect_range(n: usize, seeds: std::ops::Range<u64>, rules: &Rules) -> Table {
+fn collect_range(
+    lineup: &[&str],
+    target: &str,
+    seeds: std::ops::Range<u64>,
+    rules: &Rules,
+) -> Table {
+    let n = lineup.len();
     let mut table = Table::new();
     for seed in seeds {
         let mut g = Game::new(rules.clone(), n, seed, (seed % n as u64) as usize).expect("valid");
-        let mut bots: Vec<NamedBot> = (0..n)
-            .map(|s| NamedBot::new("expert", seed.wrapping_mul(1000) + s as u64).expect("bot"))
+        // 딜마다 배치를 돌려 좌석 편향을 없앤다
+        let seating: Vec<&str> = (0..n)
+            .map(|s| lineup[(s + seed as usize) % n])
+            .collect();
+        let mut bots: Vec<NamedBot> = seating
+            .iter()
+            .enumerate()
+            .map(|(s, name)| NamedBot::new(name, seed.wrapping_mul(1000) + s as u64).expect("bot"))
             .collect();
         while !g.is_over() {
             let seat = g.current_player();
             let legal = g.legal_actions();
-            if g.phase() == Phase::TurnStart && legal.contains(&Action::Stop) {
+            if seating[seat] == target
+                && g.phase() == Phase::TurnStart
+                && legal.contains(&Action::Stop)
+            {
                 let mine = g.hand_points(seat);
                 let win = (0..n).all(|s| s == seat || g.hand_points(s) > mine);
                 let mut counts: Vec<usize> = (0..n)
@@ -51,8 +66,8 @@ fn collect_range(n: usize, seeds: std::ops::Range<u64>, rules: &Rules) -> Table 
     table
 }
 
-/// 딜을 스레드로 나눠 모은다.
-pub fn collect(n: usize, deals: u64, seed: u64, rules: &Rules) -> Table {
+/// 딜을 스레드로 나눠 모은다. `lineup` 배치로 두면서 `target` 봇의 스톱 기회만 기록한다.
+pub fn collect(lineup: &[&str], target: &str, deals: u64, seed: u64, rules: &Rules) -> Table {
     let threads = std::thread::available_parallelism()
         .map(|t| t.get() as u64)
         .unwrap_or(1);
@@ -62,7 +77,7 @@ pub fn collect(n: usize, deals: u64, seed: u64, rules: &Rules) -> Table {
             .map(|t| {
                 let lo = seed + t * chunk;
                 let hi = (seed + (t + 1) * chunk).min(seed + deals);
-                scope.spawn(move || collect_range(n, lo..hi.max(lo), rules))
+                scope.spawn(move || collect_range(lineup, target, lo..hi.max(lo), rules))
             })
             .collect();
         handles.into_iter().map(|h| h.join().unwrap()).collect()

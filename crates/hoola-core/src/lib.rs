@@ -13,10 +13,11 @@ pub mod preset;
 pub mod replay;
 pub mod rng;
 pub mod rules;
+pub mod search;
 
 pub use bot::{Bot, GreedyBot, RandomBot, play_out};
 pub use card::{Card, CardSet, ParseCardError, PointTable, Suit, parse_cards};
-pub use expert::{ExpertBot, ExpertConfig, StopPolicy};
+pub use expert::{ExpertBot, ExpertConfig, MeldMode, StopPolicy};
 pub use game::{
     Action, EndReason, Event, Game, IllegalAction, Outcome, ParseActionError, Phase, PlayerState,
 };
@@ -26,3 +27,4 @@ pub use preset::{Preset, PresetError};
 pub use replay::{Replay, ReplayError};
 pub use rng::Rng;
 pub use rules::{DiscardVisibility, FirstPlayer, Rules, StockEmpty, StopRules, ThankYouRules};
+pub use search::{SearchBot, SearchConfig};

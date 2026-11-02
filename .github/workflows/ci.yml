@@ -144,3 +144,47 @@ jobs:
         with:
           name: lab-results
           path: lab-results.md
+
+  lab-friends:
+    name: Friend persona lab
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release -p hoola-lab
+
+      - name: Run friend experiments (테이블당 약 10만 판)
+        run: ./target/release/hoola-lab --only F --deals 33334 --out friends-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: friends-results
+          path: friends-results.md
+
+  lab-search:
+    name: L3 search headroom
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release -p hoola-lab
+
+      - name: Run L3 probe
+        run: ./target/release/hoola-lab --only L3 --deals 1500 --out search-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: search-results
+          path: search-results.md

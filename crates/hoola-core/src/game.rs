@@ -7,6 +7,7 @@ use std::str::FromStr;
 
 use crate::card::{Card, CardSet};
 use crate::meld::{MeldKind, TableMeld, classify_new_meld};
+use crate::observation::Observation;
 use crate::rng::Rng;
 use crate::rules::{Rules, StockEmpty};
 
@@ -394,6 +395,50 @@ impl Game {
 
     pub fn reshuffles(&self) -> u32 {
         self.reshuffles
+    }
+
+    /// 버림패 맨 위를 버린 좌석. 첫 공개패(또는 재섞기로 비운 뒤)면 `None`.
+    pub fn top_discarder(&self) -> Option<usize> {
+        self.top_discarder
+    }
+
+    /// 관측과 숨은 정보 추정치로 판을 다시 만든다 (결정화, 탐색용).
+    ///
+    /// `hands[s]`는 좌석 s의 손패(관측 좌석은 자기 손패), `stock`은 더미(맨 위가 끝).
+    /// 손패 장수와 카드 보존이 관측과 맞아야 한다.
+    pub fn from_observation(
+        obs: &Observation<'_>,
+        hands: &[CardSet],
+        stock: Vec<Card>,
+        rng: Rng,
+    ) -> Game {
+        assert_eq!(hands.len(), obs.num_players, "one hand per seat");
+        assert_eq!(hands[obs.seat], obs.hand, "own hand must match");
+        let players = (0..obs.num_players)
+            .map(|s| {
+                debug_assert_eq!(hands[s].len(), obs.hand_counts[s]);
+                PlayerState {
+                    hand: hands[s],
+                    registered: obs.registered[s],
+                    turns_started: obs.turns_started[s],
+                }
+            })
+            .collect();
+        Game {
+            rules: obs.rules.clone(),
+            rng,
+            players,
+            stock,
+            discard: obs.known_discards.to_vec(),
+            top_discarder: obs.top_discarder,
+            melds: obs.melds.to_vec(),
+            current: obs.current_player,
+            phase: obs.phase,
+            turn: obs.turn,
+            reshuffles: obs.reshuffles,
+            outcome: obs.outcome.cloned(),
+            events: obs.events.to_vec(),
+        }
     }
 
     /// 지금까지의 공개 이벤트.

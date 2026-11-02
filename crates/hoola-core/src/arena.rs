@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use crate::bot::{Bot, GreedyBot, RandomBot, play_out};
 use crate::expert::{ExpertBot, ExpertConfig};
+use crate::search::{SearchBot, SearchConfig};
 use crate::game::{Action, EndReason, Game};
 use crate::observation::Observation;
 use crate::rules::{FirstPlayer, Rules};
@@ -14,11 +15,13 @@ pub enum NamedBot {
     Random(RandomBot),
     Greedy(GreedyBot),
     Expert(Box<ExpertBot>),
+    Search(Box<SearchBot>),
 }
 
 /// 사용 가능한 봇 이름. `expert`는 `expert:stop=c0.6:meld=hold`처럼 설정을 붙일 수 있다
 /// ([`ExpertConfig::parse`]).
-pub const BOT_NAMES: &[&str] = &["random", "greedy", "expert"];
+/// `search`는 `search:k=16`처럼 설정을 붙일 수 있다 ([`SearchConfig::parse`]).
+pub const BOT_NAMES: &[&str] = &["random", "greedy", "expert", "search"];
 
 impl NamedBot {
     /// `name`으로 봇을 만든다. `seed`는 무작위성이 있는 봇만 쓴다.
@@ -26,6 +29,16 @@ impl NamedBot {
         match name {
             "random" => Some(NamedBot::Random(RandomBot::new(seed))),
             "greedy" => Some(NamedBot::Greedy(GreedyBot)),
+            _ if name.starts_with("search") => {
+                let spec = &name["search".len()..];
+                let spec = if spec.is_empty() {
+                    spec
+                } else {
+                    spec.strip_prefix(':')?
+                };
+                let cfg = SearchConfig::parse(spec).ok()?;
+                Some(NamedBot::Search(Box::new(SearchBot::new(cfg, seed))))
+            }
             _ => {
                 let spec = name.strip_prefix("expert")?;
                 let spec = if spec.is_empty() {
@@ -46,6 +59,7 @@ impl Bot for NamedBot {
             NamedBot::Random(b) => b.name(),
             NamedBot::Greedy(b) => b.name(),
             NamedBot::Expert(b) => b.name(),
+            NamedBot::Search(b) => b.name(),
         }
     }
 
@@ -54,6 +68,7 @@ impl Bot for NamedBot {
             NamedBot::Random(b) => b.act(obs, legal),
             NamedBot::Greedy(b) => b.act(obs, legal),
             NamedBot::Expert(b) => b.act(obs, legal),
+            NamedBot::Search(b) => b.act(obs, legal),
         }
     }
 }
@@ -256,6 +271,9 @@ mod tests {
         assert!(NamedBot::new("expert:stop=t5:meld=hold", 0).is_some());
         assert!(NamedBot::new("expert:bogus=1", 0).is_none());
         assert!(NamedBot::new("expertx", 0).is_none());
+        assert!(NamedBot::new("search", 0).is_some());
+        assert!(NamedBot::new("search:k=4:rollout=stop=t8;outs=2", 0).is_some());
+        assert!(NamedBot::new("search:k=0", 0).is_none());
     }
 
     #[test]
