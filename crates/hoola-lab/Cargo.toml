@@ -1,0 +1,13 @@
+[package]
+name = "hoola-lab"
+description = "훌라 전략 가설 실험 (P2)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+hoola-core = { path = "../hoola-core" }

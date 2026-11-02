@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::bot::{Bot, GreedyBot, RandomBot, play_out};
+use crate::expert::{ExpertBot, ExpertConfig};
 use crate::game::{Action, EndReason, Game};
 use crate::observation::Observation;
 use crate::rules::{FirstPlayer, Rules};
@@ -12,10 +13,12 @@ use crate::rules::{FirstPlayer, Rules};
 pub enum NamedBot {
     Random(RandomBot),
     Greedy(GreedyBot),
+    Expert(Box<ExpertBot>),
 }
 
-/// 사용 가능한 봇 이름.
-pub const BOT_NAMES: &[&str] = &["random", "greedy"];
+/// 사용 가능한 봇 이름. `expert`는 `expert:stop=c0.6:meld=hold`처럼 설정을 붙일 수 있다
+/// ([`ExpertConfig::parse`]).
+pub const BOT_NAMES: &[&str] = &["random", "greedy", "expert"];
 
 impl NamedBot {
     /// `name`으로 봇을 만든다. `seed`는 무작위성이 있는 봇만 쓴다.
@@ -23,7 +26,16 @@ impl NamedBot {
         match name {
             "random" => Some(NamedBot::Random(RandomBot::new(seed))),
             "greedy" => Some(NamedBot::Greedy(GreedyBot)),
-            _ => None,
+            _ => {
+                let spec = name.strip_prefix("expert")?;
+                let spec = if spec.is_empty() {
+                    spec
+                } else {
+                    spec.strip_prefix(':')?
+                };
+                let cfg = ExpertConfig::parse(spec).ok()?;
+                Some(NamedBot::Expert(Box::new(ExpertBot::new(cfg, seed))))
+            }
         }
     }
 }
@@ -33,6 +45,7 @@ impl Bot for NamedBot {
         match self {
             NamedBot::Random(b) => b.name(),
             NamedBot::Greedy(b) => b.name(),
+            NamedBot::Expert(b) => b.name(),
         }
     }
 
@@ -40,6 +53,7 @@ impl Bot for NamedBot {
         match self {
             NamedBot::Random(b) => b.act(obs, legal),
             NamedBot::Greedy(b) => b.act(obs, legal),
+            NamedBot::Expert(b) => b.act(obs, legal),
         }
     }
 }
@@ -234,6 +248,23 @@ mod tests {
     fn deterministic() {
         let c = cfg(&["random"], 2, false);
         assert_eq!(run_match(&c).unwrap(), run_match(&c).unwrap());
+    }
+
+    #[test]
+    fn expert_specs() {
+        assert!(NamedBot::new("expert", 0).is_some());
+        assert!(NamedBot::new("expert:stop=t5:meld=hold", 0).is_some());
+        assert!(NamedBot::new("expert:bogus=1", 0).is_none());
+        assert!(NamedBot::new("expertx", 0).is_none());
+    }
+
+    #[test]
+    fn expert_beats_greedy() {
+        let mut c = cfg(&["expert", "greedy"], 2, true);
+        c.deals = 300;
+        let r = run_match(&c).unwrap();
+        let e = r.bot("expert").unwrap();
+        assert!(e.mean > 0.5, "expert vs greedy {:.3}", e.mean);
     }
 
     #[test]

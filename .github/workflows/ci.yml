@@ -122,3 +122,25 @@ jobs:
         with:
           name: hoola-wheel
           path: dist/*.whl
+
+  lab:
+    name: Strategy lab (P2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release -p hoola-lab
+
+      - name: Run hypotheses
+        run: ./target/release/hoola-lab --deals 4000 --out lab-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lab-results
+          path: lab-results.md

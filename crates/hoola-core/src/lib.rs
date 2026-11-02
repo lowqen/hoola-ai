@@ -5,6 +5,7 @@
 pub mod arena;
 pub mod bot;
 pub mod card;
+pub mod expert;
 pub mod game;
 pub mod meld;
 pub mod observation;
@@ -15,6 +16,7 @@ pub mod rules;
 
 pub use bot::{Bot, GreedyBot, RandomBot, play_out};
 pub use card::{Card, CardSet, ParseCardError, PointTable, Suit, parse_cards};
+pub use expert::{ExpertBot, ExpertConfig, StopPolicy};
 pub use game::{
     Action, EndReason, Event, Game, IllegalAction, Outcome, ParseActionError, Phase, PlayerState,
 };
