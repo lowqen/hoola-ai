@@ -59,3 +59,26 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+  bench:
+    name: Simulation benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release -p hoola-sim
+
+      - name: 2인 Greedy vs Random (듀플리케이트)
+        run: ./target/release/hoola-sim --players 2 --games 20000 --bots greedy,random | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 3인 Greedy vs Random x2 (듀플리케이트)
+        run: ./target/release/hoola-sim --players 3 --games 10000 --bots greedy,random,random | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 2인 Greedy 셀프플레이 속도
+        run: ./target/release/hoola-sim --players 2 --games 100000 --bots greedy --no-duplicate | tee -a "$GITHUB_STEP_SUMMARY"
