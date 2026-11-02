@@ -11,7 +11,10 @@ use std::collections::BTreeMap;
 use std::process::ExitCode;
 use std::time::Instant;
 
-use hoola_core::{Bot, EndReason, FirstPlayer, Game, GreedyBot, RandomBot, Rules, play_out, preset};
+use hoola_core::{
+    Action, Bot, EndReason, FirstPlayer, Game, GreedyBot, Observation, RandomBot, Rules, play_out,
+    preset,
+};
 
 const USAGE: &str = "\
 usage: hoola-sim [options]
@@ -66,10 +69,32 @@ fn parse_num<T: std::str::FromStr>(s: &str) -> Result<T, String> {
     s.parse().map_err(|_| format!("not a number: {s}"))
 }
 
-fn make_bot(name: &str, seed: u64) -> Option<Box<dyn Bot>> {
+/// CLI에서 고를 수 있는 봇.
+enum AnyBot {
+    Random(RandomBot),
+    Greedy(GreedyBot),
+}
+
+impl Bot for AnyBot {
+    fn name(&self) -> &str {
+        match self {
+            AnyBot::Random(b) => b.name(),
+            AnyBot::Greedy(b) => b.name(),
+        }
+    }
+
+    fn act(&mut self, obs: &Observation<'_>, legal: &[Action]) -> Action {
+        match self {
+            AnyBot::Random(b) => b.act(obs, legal),
+            AnyBot::Greedy(b) => b.act(obs, legal),
+        }
+    }
+}
+
+fn make_bot(name: &str, seed: u64) -> Option<AnyBot> {
     match name {
-        "random" => Some(Box::new(RandomBot::new(seed))),
-        "greedy" => Some(Box::new(GreedyBot)),
+        "random" => Some(AnyBot::Random(RandomBot::new(seed))),
+        "greedy" => Some(AnyBot::Greedy(GreedyBot)),
         _ => None,
     }
 }
@@ -160,12 +185,13 @@ fn main() -> ExitCode {
         let mut deal_sum: BTreeMap<&str, f64> = BTreeMap::new();
         for rot in 0..rotations {
             let seating: Vec<&str> = (0..n).map(|s| lineup[(s + rot) % n]).collect();
-            let mut owned: Vec<Box<dyn Bot>> = seating
+            let mut owned: Vec<AnyBot> = seating
                 .iter()
                 .enumerate()
                 .map(|(s, name)| make_bot(name, seed.wrapping_mul(1000) + s as u64).unwrap())
                 .collect();
-            let mut bots: Vec<&mut dyn Bot> = owned.iter_mut().map(|b| b.as_mut()).collect();
+            let mut bots: Vec<&mut dyn Bot> =
+                owned.iter_mut().map(|b| b as &mut dyn Bot).collect();
             let mut game = Game::new(rules.clone(), n, seed, first).expect("validated");
             let outcome = play_out(&mut game, &mut bots);
 
