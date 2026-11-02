@@ -192,3 +192,60 @@ jobs:
         with:
           name: search-results
           path: search-results.md
+
+  web:
+    name: Web practice app (WASM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build WASM (web)
+        run: wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web/pkg --no-pack
+
+      - name: Build WASM (node) & smoke test
+        run: |
+          wasm-pack build crates/hoola-wasm --release --target nodejs --out-dir ../../target/pkg-node --no-pack
+          node web/test/node-smoke.cjs target/pkg-node
+
+      - name: Browser smoke test (Chromium)
+        working-directory: web/test
+        run: |
+          npm init -y > /dev/null
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+          node browser-smoke.mjs
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp web/index.html web/app.js web/style.css _site/
+          cp -r web/pkg _site/pkg
+          rm -f _site/pkg/.gitignore
+          ls -la _site _site/pkg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hoola-web
+          path: _site
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-screenshots
+          path: web/test/*.png
+          if-no-files-found: ignore

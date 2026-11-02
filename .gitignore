@@ -24,3 +24,9 @@ checkpoints/
 Thumbs.db
 .vscode/
 .idea/
+
+# Web (wasm-pack 결과와 테스트 산출물)
+web/pkg/
+web/test/node_modules/
+web/test/package*.json
+web/test/*.png

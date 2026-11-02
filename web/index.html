@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>훌라 연습장</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>훌라 연습장</h1>
+    <div class="topbar-actions">
+      <button id="btn-new" class="primary">새 판</button>
+      <button id="btn-same">같은 패 다시</button>
+      <button id="btn-undo" title="내 마지막 결정 이전으로">되돌리기</button>
+      <button id="btn-settings" aria-expanded="false">설정</button>
+    </div>
+  </header>
+
+  <section id="settings" class="panel settings" hidden>
+    <div class="settings-grid">
+      <label>인원
+        <select id="set-players">
+          <option value="2">2인</option>
+          <option value="3" selected>3인</option>
+          <option value="4">4인</option>
+          <option value="5">5인</option>
+        </select>
+      </label>
+      <div id="set-opponents" class="opponents"></div>
+      <label class="check"><input type="checkbox" id="set-full-discards"> 지나간 버림패 전부 보기 (끄면 맨 위 1장만)</label>
+      <label class="check"><input type="checkbox" id="set-stop-helper" checked> 스톱 기준표 도우미</label>
+      <label class="check"><input type="checkbox" id="set-show-hint"> 매 결정마다 힌트 자동 표시</label>
+      <label>봇 속도
+        <select id="set-speed">
+          <option value="900">느리게</option>
+          <option value="500" selected>보통</option>
+          <option value="150">빠르게</option>
+        </select>
+      </label>
+      <label>시드 (비우면 무작위)
+        <input id="set-seed" inputmode="numeric" placeholder="예: 12345">
+      </label>
+    </div>
+    <p class="muted small">설정은 다음 판부터 적용된다.</p>
+  </section>
+
+  <main class="layout">
+    <section class="table">
+      <div id="opponents" class="opp-row"></div>
+
+      <div class="center">
+        <div class="piles">
+          <div class="pile">
+            <div class="card back" aria-hidden="true"></div>
+            <div class="pile-label">더미 <b id="stock-count">-</b>장</div>
+          </div>
+          <div class="pile">
+            <div id="discard-top" class="discard-stack"></div>
+            <div class="pile-label">버림패 <b id="discard-count">-</b>장</div>
+          </div>
+        </div>
+        <div id="melds" class="melds"></div>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="me">
+        <div class="me-head">
+          <span id="me-label" class="seat-name">나</span>
+          <span class="points">손패 <b id="my-points">-</b>점</span>
+          <span id="stop-helper" class="helper"></span>
+        </div>
+        <div id="my-hand" class="hand"></div>
+        <div id="actions" class="actions"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>힌트</h2>
+          <button id="btn-hint">L3 분석</button>
+        </div>
+        <div id="hint" class="hint muted small">내 차례에 "L3 분석"을 누르면 수마다 추정 승률을 보여 준다.</div>
+      </section>
+      <section class="panel">
+        <h2>기록</h2>
+        <ol id="log" class="log"></ol>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>전적</h2>
+          <button id="btn-export">기록 내보내기</button>
+        </div>
+        <div id="stats" class="stats small"></div>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="result">
+    <h2 id="result-title"></h2>
+    <p id="result-reason" class="muted"></p>
+    <table class="result-table"><tbody id="result-body"></tbody></table>
+    <div class="dialog-actions">
+      <button id="res-review">판 복기 (L3)</button>
+      <button id="res-same">같은 패 다시</button>
+      <button id="res-new" class="primary">새 판</button>
+    </div>
+    <div id="review" class="review small"></div>
+  </dialog>
+
+  <noscript>이 페이지는 JavaScript와 WebAssembly가 필요합니다.</noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
