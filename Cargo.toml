@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/lowqen/hoola-ai"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# 테스트에서도 시뮬레이션이 느리지 않도록 의존성은 최적화
+[profile.dev.package."*"]
+opt-level = 2

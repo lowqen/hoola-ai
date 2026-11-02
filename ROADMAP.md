@@ -18,6 +18,7 @@
 | 조커 | 사용 안 함 (52장) |
 | 주력 인원 | **2인, 3인** (4~5인은 지원하되 최적화 우선순위 낮음) |
 | 기술 스택 | **Rust**(고속 엔진·탐색) + **Python**(학습·분석, PyO3 바인딩) + **웹 UI**(TypeScript) |
+| 빌드 환경 | 로컬 PC에 Rust를 설치하지 않음. **빌드·테스트·시뮬레이션은 전부 GitHub Actions**에서 실행 → https://github.com/lowqen/hoola-ai |
 
 ---
 

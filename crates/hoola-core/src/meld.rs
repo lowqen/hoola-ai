@@ -1,0 +1,190 @@
+//! 등록(멜드) 판정. RULES.md §5.
+
+use crate::card::{Card, CardSet};
+
+/// 런에서 A를 어떻게 다루는지 (`meld.run_ace_mode`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AceMode {
+    /// A는 1로만: A-2-3 가능, Q-K-A·K-A-2 불가. (`offline_casual` 기본값)
+    Low,
+    /// 양 끝 가능, 순환 불가: A-2-3, Q-K-A 가능, K-A-2 불가.
+    HighLow,
+    /// 순환: K-A-2도 가능.
+    Wrap,
+}
+
+/// 등록 규칙 설정 (`[meld]` 섹션).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MeldRules {
+    pub min_set: usize,
+    pub min_run: usize,
+    pub ace_mode: AceMode,
+    pub single_seven: bool,
+}
+
+impl Default for MeldRules {
+    /// `offline_casual` 프리셋 값.
+    fn default() -> Self {
+        MeldRules {
+            min_set: 3,
+            min_run: 3,
+            ace_mode: AceMode::Low,
+            single_seven: true,
+        }
+    }
+}
+
+/// 손패에서 새로 등록하는 조합의 종류.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MeldKind {
+    /// 같은 랭크 3장 이상.
+    Set,
+    /// 같은 무늬 연속 3장 이상.
+    Run,
+    /// 7 한 장 단독.
+    SingleSeven,
+}
+
+/// 손패에서 새로 등록하려는 카드 묶음이 유효한 조합이면 그 종류를 돌려준다.
+pub fn classify_new_meld(cards: &[Card], rules: &MeldRules) -> Option<MeldKind> {
+    let n = cards.len();
+    if n == 0 {
+        return None;
+    }
+    let distinct: CardSet = cards.iter().copied().collect();
+    if distinct.len() != n {
+        return None;
+    }
+    if n == 1 {
+        return (rules.single_seven && cards[0].rank() == 7).then_some(MeldKind::SingleSeven);
+    }
+    let first = cards[0];
+    if n >= rules.min_set && cards.iter().all(|c| c.rank() == first.rank()) {
+        return Some(MeldKind::Set);
+    }
+    if n >= rules.min_run && cards.iter().all(|c| c.suit() == first.suit()) {
+        let mask = rank_mask(cards);
+        if ranks_form_run(mask, rules.ace_mode) {
+            return Some(MeldKind::Run);
+        }
+    }
+    None
+}
+
+/// 랭크 r을 비트 (r - 1)에 놓은 13비트 마스크.
+pub(crate) fn rank_mask(cards: &[Card]) -> u16 {
+    cards.iter().fold(0u16, |m, c| m | (1u16 << (c.rank() - 1)))
+}
+
+/// 랭크 마스크가 하나의 연속 구간(런)을 이루는지. 길이 조건은 따로 검사한다.
+pub(crate) fn ranks_form_run(rank_mask: u16, ace_mode: AceMode) -> bool {
+    let mask = u32::from(rank_mask) & 0x1FFF;
+    if is_contiguous(mask) {
+        return true;
+    }
+    match ace_mode {
+        AceMode::Low => false,
+        AceMode::HighLow => mask & 1 != 0 && is_contiguous((mask & !1) | (1 << 13)),
+        AceMode::Wrap => (1..13).any(|shift| is_contiguous(rotate13(mask, shift))),
+    }
+}
+
+fn is_contiguous(mask: u32) -> bool {
+    if mask == 0 {
+        return false;
+    }
+    let m = mask >> mask.trailing_zeros();
+    m & (m + 1) == 0
+}
+
+fn rotate13(mask: u32, shift: u32) -> u32 {
+    ((mask << shift) | (mask >> (13 - shift))) & 0x1FFF
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::card::parse_cards;
+
+    use super::*;
+
+    fn classify(s: &str, rules: &MeldRules) -> Option<MeldKind> {
+        classify_new_meld(&parse_cards(s).unwrap(), rules)
+    }
+
+    fn with_ace(ace_mode: AceMode) -> MeldRules {
+        MeldRules {
+            ace_mode,
+            ..MeldRules::default()
+        }
+    }
+
+    #[test]
+    fn sets() {
+        let r = MeldRules::default();
+        assert_eq!(classify("5S 5H 5D", &r), Some(MeldKind::Set));
+        assert_eq!(classify("5S 5H 5D 5C", &r), Some(MeldKind::Set));
+        assert_eq!(classify("7S 7H 7D", &r), Some(MeldKind::Set));
+        assert_eq!(classify("5S 5H", &r), None);
+        assert_eq!(classify("5S 5H 6D", &r), None);
+        assert_eq!(classify("5S 5S 5H", &r), None);
+    }
+
+    #[test]
+    fn runs_basic() {
+        let r = MeldRules::default();
+        assert_eq!(classify("3H 4H 5H", &r), Some(MeldKind::Run));
+        assert_eq!(classify("5H 3H 4H", &r), Some(MeldKind::Run));
+        assert_eq!(classify("TS JS QS KS", &r), Some(MeldKind::Run));
+        assert_eq!(classify("3H 4H", &r), None);
+        assert_eq!(classify("3H 4H 6H", &r), None);
+        assert_eq!(classify("3H 4H 5D", &r), None);
+    }
+
+    #[test]
+    fn single_seven() {
+        let r = MeldRules::default();
+        assert_eq!(classify("7D", &r), Some(MeldKind::SingleSeven));
+        assert_eq!(classify("8D", &r), None);
+        let no_seven = MeldRules {
+            single_seven: false,
+            ..MeldRules::default()
+        };
+        assert_eq!(classify("7D", &no_seven), None);
+        assert_eq!(classify("", &r), None);
+    }
+
+    #[test]
+    fn ace_low_only() {
+        let r = with_ace(AceMode::Low);
+        assert_eq!(classify("AS 2S 3S", &r), Some(MeldKind::Run));
+        assert_eq!(classify("QS KS AS", &r), None);
+        assert_eq!(classify("KS AS 2S", &r), None);
+    }
+
+    #[test]
+    fn ace_high_low() {
+        let r = with_ace(AceMode::HighLow);
+        assert_eq!(classify("AS 2S 3S", &r), Some(MeldKind::Run));
+        assert_eq!(classify("QS KS AS", &r), Some(MeldKind::Run));
+        assert_eq!(classify("JS QS KS AS", &r), Some(MeldKind::Run));
+        assert_eq!(classify("KS AS 2S", &r), None);
+    }
+
+    #[test]
+    fn ace_wrap() {
+        let r = with_ace(AceMode::Wrap);
+        assert_eq!(classify("AS 2S 3S", &r), Some(MeldKind::Run));
+        assert_eq!(classify("QS KS AS", &r), Some(MeldKind::Run));
+        assert_eq!(classify("KS AS 2S", &r), Some(MeldKind::Run));
+        assert_eq!(classify("QS KS AS 2S 3S", &r), Some(MeldKind::Run));
+        assert_eq!(classify("KS AS 3S", &r), None);
+    }
+
+    #[test]
+    fn full_suit_is_a_run_in_every_mode() {
+        let suit = "AH 2H 3H 4H 5H 6H 7H 8H 9H TH JH QH KH";
+        for mode in [AceMode::Low, AceMode::HighLow, AceMode::Wrap] {
+            assert_eq!(classify(suit, &with_ace(mode)), Some(MeldKind::Run));
+        }
+    }
+}
