@@ -3,6 +3,7 @@
 //! 한 턴: `TurnStart`(스톱 또는 받기/땡큐) → `MeldPhase`(등록·붙이기 0회 이상, 버리기) → 다음 사람.
 
 use std::fmt;
+use std::str::FromStr;
 
 use crate::card::{Card, CardSet};
 use crate::meld::{MeldKind, TableMeld, classify_new_meld};
@@ -29,16 +30,65 @@ pub enum Action {
 }
 
 impl fmt::Display for Action {
+    /// 리플레이용 텍스트 형식. [`Action::from_str`]으로 되돌릴 수 있다.
+    ///
+    /// `stop`, `draw`, `thankyou 4H 5H 6H`, `thankyou-attach 2`, `register 3H 4H 5H`,
+    /// `attach 8D 2`, `discard KD`
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Action::Stop => write!(f, "stop"),
             Action::Draw => write!(f, "draw"),
-            Action::ThankYou { meld } => write!(f, "thankyou [{meld}]"),
-            Action::ThankYouAttach { meld } => write!(f, "thankyou-attach #{meld}"),
-            Action::Register { cards } => write!(f, "register [{cards}]"),
-            Action::Attach { card, meld } => write!(f, "attach {card} #{meld}"),
+            Action::ThankYou { meld } => write!(f, "thankyou {meld}"),
+            Action::ThankYouAttach { meld } => write!(f, "thankyou-attach {meld}"),
+            Action::Register { cards } => write!(f, "register {cards}"),
+            Action::Attach { card, meld } => write!(f, "attach {card} {meld}"),
             Action::Discard { card } => write!(f, "discard {card}"),
         }
+    }
+}
+
+/// 행동 텍스트 파싱 오류.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseActionError(pub String);
+
+impl fmt::Display for ParseActionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid action: {:?}", self.0)
+    }
+}
+
+impl std::error::Error for ParseActionError {}
+
+impl FromStr for Action {
+    type Err = ParseActionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let err = || ParseActionError(s.to_string());
+        let mut words = s.split_whitespace();
+        let verb = words.next().ok_or_else(err)?;
+        let rest: Vec<&str> = words.collect();
+        let card = |w: &str| w.parse::<Card>().map_err(|_| err());
+        let cards = |ws: &[&str]| -> Result<CardSet, ParseActionError> {
+            if ws.is_empty() {
+                return Err(err());
+            }
+            ws.iter().map(|w| card(w)).collect()
+        };
+        let index = |w: &str| w.parse::<usize>().map_err(|_| err());
+        let action = match (verb, rest.as_slice()) {
+            ("stop", []) => Action::Stop,
+            ("draw", []) => Action::Draw,
+            ("thankyou", ws) => Action::ThankYou { meld: cards(ws)? },
+            ("thankyou-attach", [m]) => Action::ThankYouAttach { meld: index(m)? },
+            ("register", ws) => Action::Register { cards: cards(ws)? },
+            ("attach", [c, m]) => Action::Attach {
+                card: card(c)?,
+                meld: index(m)?,
+            },
+            ("discard", [c]) => Action::Discard { card: card(c)? },
+            _ => return Err(err()),
+        };
+        Ok(action)
     }
 }
 
@@ -349,6 +399,14 @@ impl Game {
     /// 지금까지의 공개 이벤트.
     pub fn events(&self) -> &[Event] {
         &self.events
+    }
+
+    /// 지금까지 적용된 행동 (리플레이용).
+    pub fn actions(&self) -> impl Iterator<Item = Action> + '_ {
+        self.events.iter().filter_map(|e| match e {
+            Event::Action { action, .. } => Some(*action),
+            Event::Reshuffle { .. } => None,
+        })
     }
 
     fn previous_player(&self) -> usize {
