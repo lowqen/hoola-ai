@@ -250,10 +250,11 @@ pub fn search_probe(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         "| 인원 | 대전 | 설정 | 딜 | L3 승률 | 95% CI | 기준 대비 | 판당 시간 |\n|---|---|---|---|---|---|---|---|"
     );
     let probes: Vec<(usize, &str, u64)> = vec![
-        (2, "search:k=32", deals),
         (2, "search:k=128", deals),
-        (2, "search:k=512", deals),
+        (2, "search:k=128:stop=1", deals),
+        (2, "search:k=128:stop=1:belief=uniform", deals),
         (3, "search:k=128", (deals / 2).max(1)),
+        (3, "search:k=128:stop=1", (deals / 2).max(1)),
     ];
     for (n, search, d) in probes {
         let mut bots = vec![search.to_string()];
