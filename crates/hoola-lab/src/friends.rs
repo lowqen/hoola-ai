@@ -192,7 +192,7 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     let sweep_deals = (deals / 3).max(1);
     let _ = writeln!(
         md,
-        "\n## F2. 친구 저격용 스톱 기준\n\n나머지 설정은 전략서 v1과 같고 스톱 기준만 바꾼다. 딜 {sweep_deals}개 × 3회전\n"
+        "\n## F2. 친구 저격용 설정\n\n나머지 설정은 전략서 v1과 같고 표의 항목 하나만 바꾼다. 딜 {sweep_deals}개 × 자리 회전\n"
     );
     let sweep_tables: Vec<(&str, Vec<&str>)> = vec![
         ("2인 · B", vec!["B"]),
