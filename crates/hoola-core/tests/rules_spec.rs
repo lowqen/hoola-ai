@@ -21,6 +21,13 @@ fn game(list: &[&str], upcard: Option<&str>, stock_top: &[&str]) -> Game {
     game_with(Rules::default(), list, upcard, stock_top)
 }
 
+/// 선이 첫 공개패를 땡큐할 수 있는 변형 (첫 차례 땡큐 시나리오 테스트용).
+fn ty_first() -> Rules {
+    let mut r = Rules::default();
+    r.thank_you.on_initial_upcard = true;
+    r
+}
+
 fn game_with(rules: Rules, list: &[&str], upcard: Option<&str>, stock_top: &[&str]) -> Game {
     let top: Vec<Card> = stock_top.iter().map(|s| c(s)).collect();
     Game::with_hands(rules, &hands(list), upcard.map(c), &top, 0, 7)
@@ -181,15 +188,21 @@ fn e5_e6_tie_with_caller_loses() {
 // ---- 등록 (§5, E7) ----
 
 #[test]
-fn e7_queen_king_ace_is_not_a_run() {
+fn e7_ace_high_and_low_but_no_wrap() {
+    // RULES v1.1: A-2-3, Q-K-A 가능 / K-A-2 불가
     let mut g = game(&["QS KS AS 2D 3D", "KH"], Some("2C"), &["4D"]);
     play(&mut g, Action::Draw);
     let legal = g.legal_actions();
-    assert!(!legal.contains(&Action::Register {
+    assert!(legal.contains(&Action::Register {
         cards: cs("QS KS AS")
     }));
     assert!(legal.contains(&Action::Register {
         cards: cs("2D 3D 4D")
+    }));
+    let mut g = game(&["KD AD 2D 9C", "KH"], Some("2C"), &["5C"]);
+    play(&mut g, Action::Draw);
+    assert!(!g.legal_actions().contains(&Action::Register {
+        cards: cs("KD AD 2D")
     }));
 }
 
@@ -272,25 +285,30 @@ fn e8_seven_fixed_as_set_rejects_neighbors() {
 
 #[test]
 fn thank_you_needs_two_hand_cards() {
-    let g = game(&["5H 9C", "KS"], Some("4H"), &[]);
+    let g = game_with(ty_first(), &["5H 9C", "KS"], Some("4H"), &[]);
     assert!(
         !g.legal_actions()
             .iter()
             .any(|a| matches!(a, Action::ThankYou { .. }))
     );
-    let g = game(&["5H 6H 9C", "KS"], Some("4H"), &[]);
+    let g = game_with(ty_first(), &["5H 6H 9C", "KS"], Some("4H"), &[]);
     assert!(g.legal_actions().contains(&Action::ThankYou {
         meld: cs("4H 5H 6H")
     }));
 }
 
 #[test]
-fn thank_you_on_initial_upcard_switch() {
-    let mut rules = Rules::default();
-    rules.thank_you.on_initial_upcard = false;
-    let g = game_with(rules, &["5H 6H 9C", "KS"], Some("4H"), &[]);
+fn initial_upcard_thank_you_forbidden_by_default() {
+    // RULES v1.1: 선은 첫 공개패를 땡큐할 수 없다
+    let g = game(&["5H 6H 9C", "KS"], Some("4H"), &[]);
     assert!(
         !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::ThankYou { .. }))
+    );
+    let g = game_with(ty_first(), &["5H 6H 9C", "KS"], Some("4H"), &[]);
+    assert!(
+        g.legal_actions()
             .iter()
             .any(|a| matches!(a, Action::ThankYou { .. }))
     );
@@ -299,11 +317,12 @@ fn thank_you_on_initial_upcard_switch() {
 #[test]
 fn e10_single_seven_thank_you_forbidden_by_default() {
     let single = Action::ThankYou { meld: cs("7D") };
-    let g = game(&["9C KS", "KH"], Some("7D"), &[]);
+    let g = game_with(ty_first(), &["9C KS", "KH"], Some("7D"), &[]);
     assert!(!g.legal_actions().contains(&single));
     let rules = Rules {
         thank_you: ThankYouRules {
             allow_single_seven: true,
+            on_initial_upcard: true,
             ..ThankYouRules::default()
         },
         ..Rules::default()
@@ -314,7 +333,7 @@ fn e10_single_seven_thank_you_forbidden_by_default() {
 
 #[test]
 fn thank_you_marks_registered_and_takes_top() {
-    let mut g = game(&["5H 6H 9C JD", "KS"], Some("4H"), &[]);
+    let mut g = game_with(ty_first(), &["5H 6H 9C JD", "KS"], Some("4H"), &[]);
     play(
         &mut g,
         Action::ThankYou {
@@ -340,7 +359,7 @@ fn deck_top_first(cards: &str) -> Vec<Card> {
 fn small_rules(hand_size: usize) -> Rules {
     Rules {
         hand_size,
-        ..Rules::default()
+        ..ty_first()
     }
 }
 

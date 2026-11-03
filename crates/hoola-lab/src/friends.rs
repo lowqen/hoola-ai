@@ -25,6 +25,11 @@ pub const FRIENDS: &[(&str, &str, &str)] = &[
         "늦은 스톱·보류: 2점 이하에서만 스톱, 털기·스톱 가능할 때까지 등록 보류",
         "expert:stop=t2:meld=hold",
     ),
+    (
+        "D",
+        "순수 한방: 스톱·땡큐 안 함, 한 번에 털 수 있을 때만 전부 등록",
+        "expert:stop=never:meld=allin:ty=0",
+    ),
 ];
 
 fn spec(id: &str) -> &'static str {
@@ -89,13 +94,13 @@ fn merged_turns(reports: &[MatchReport]) -> f64 {
         / games as f64
 }
 
-/// F: 3인전 [나, 친구, 친구].
+/// F: [나, 친구...] 2인·3인.
 pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     let started = Instant::now();
-    let _ = writeln!(md, "# 친구 페르소나 실험 (3인)\n");
+    let _ = writeln!(md, "# 친구 페르소나 실험 (2인·3인)\n");
     let _ = writeln!(
         md,
-        "- 친구 봇은 전문가 봇과 같은 버림·땡큐 실력을 갖고, 스톱과 등록 습관만 다르다\n- 듀플리케이트: 같은 딜에서 자리를 3번 돌린다. 기준값(공평한 몫)은 33.3%\n"
+        "- 친구 봇은 전문가 봇과 같은 버림·땡큐 실력을 갖고, 스톱과 등록 습관만 다르다\n- 듀플리케이트: 같은 딜에서 자리를 인원 수만큼 돌린다. 공평한 몫은 2인 50%, 3인 33.3%\n"
     );
     let _ = writeln!(md, "| 친구 | 성향 | 사양 |\n|---|---|---|");
     for (id, desc, s) in FRIENDS {
@@ -105,6 +110,10 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
 
     // F1: 전략서 v1(expert)과 Greedy로 친구 테이블 상대
     let tables: Vec<(&str, Vec<&str>)> = vec![
+        ("2인 · A", vec!["A"]),
+        ("2인 · B", vec!["B"]),
+        ("2인 · C", vec!["C"]),
+        ("2인 · D", vec!["D"]),
         ("A·A", vec!["A", "A"]),
         ("B·B", vec!["B", "B"]),
         ("C·C", vec!["C", "C"]),
@@ -115,12 +124,13 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     let me_bots = [("전략서 v1 (expert)", "expert"), ("Greedy", "greedy")];
     let _ = writeln!(
         md,
-        "## F1. 친구 2명 상대 승률\n\n딜 {deals}개 × 자리 3회전 = 테이블당 {}판\n",
+        "## F1. 친구 상대 승률\n\n딜 {deals}개 × 자리 회전 (2인 테이블당 {}판, 3인 {}판)\n",
+        deals * 2,
         deals * 3
     );
     let _ = writeln!(
         md,
-        "| 나 | 친구 테이블 | 내 승률 | 95% CI | 친구 1 | 친구 2 | 평균 턴 | 털기 | 스톱 성공 | 스톱 실패 |"
+        "| 나 | 친구 테이블 | 내 승률 | 95% CI | 공평한 몫 | 친구 승률 | 평균 턴 | 털기 | 스톱 성공 | 스톱 실패 |"
     );
     let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|");
     for (me_label, me) in me_bots {
@@ -139,11 +149,11 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
                 .collect();
             let _ = writeln!(
                 md,
-                "| {me_label} | {tname} | **{:.1}%** | ±{:.1}%p | {} | {} | {:.1} | {:.1}% | {:.1}% | {:.1}% |",
+                "| {me_label} | {tname} | **{:.1}%** | ±{:.1}%p | {:.0}% | {} | {:.1} | {:.1}% | {:.1}% | {:.1}% |",
                 mean * 100.0,
                 ci * 100.0,
-                friend_rates[0],
-                friend_rates[1],
+                100.0 / (ids.len() + 1) as f64,
+                friend_rates.join(" / "),
                 merged_turns(&reports),
                 merged_rate(&reports, "out") * 100.0,
                 merged_rate(&reports, "stop-success") * 100.0,
@@ -175,16 +185,22 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         "스톱 안 함 (나도 버티기)".into(),
         "expert:stop=never".into(),
     ));
+    stop_specs.push(("(버림) 조각 보존 아웃당 5점".into(), "expert:outs=5".into()));
+    stop_specs.push(("(버림) 조각 보존 아웃당 8점".into(), "expert:outs=8".into()));
+    stop_specs.push(("(버림) 땡큐 위험 회피 1".into(), "expert:danger=1".into()));
+    stop_specs.push(("(버림) 땡큐 위험 회피 3".into(), "expert:danger=3".into()));
     let sweep_deals = (deals / 3).max(1);
     let _ = writeln!(
         md,
         "\n## F2. 친구 저격용 스톱 기준\n\n나머지 설정은 전략서 v1과 같고 스톱 기준만 바꾼다. 딜 {sweep_deals}개 × 3회전\n"
     );
-    for (tname, ids) in [
-        ("A·B", ["A", "B"]),
-        ("B·B", ["B", "B"]),
-        ("C·C", ["C", "C"]),
-    ] {
+    let sweep_tables: Vec<(&str, Vec<&str>)> = vec![
+        ("2인 · B", vec!["B"]),
+        ("2인 · D", vec!["D"]),
+        ("2인 · A", vec!["A"]),
+        ("A·B", vec!["A", "B"]),
+    ];
+    for (tname, ids) in &sweep_tables {
         let configs: Vec<MatchConfig> = stop_specs
             .iter()
             .map(|(_, s)| {

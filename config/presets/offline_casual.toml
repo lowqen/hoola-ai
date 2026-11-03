@@ -1,10 +1,10 @@
 # 오프라인 친구 대전용 캐주얼 룰 — 기본 프리셋
-# 명세: RULES.md v1.0 (각 키 옆 § 번호 참조)
-# [확정] 사용자 확정 / [기본] 관례 기본값 (하우스 룰에 맞게 변경 가능)
+# 명세: RULES.md v1.1 (각 키 옆 § 번호 참조)
+# v1.1부터 모든 규칙 항목이 사용자 확정 (engine 섹션만 시뮬레이션 보호용)
 
 [meta]
 name = "offline_casual"
-rules_version = "1.0"
+rules_version = "1.1"
 description = "단판 승패 · 정통훌라 · 52장 · 정산/박/배율 없음"
 
 [players]                         # §3
@@ -23,50 +23,50 @@ king = 13
 seven = 7
 
 [setup]                           # §3
-initial_upcard = true             # [기본]
-first_player = "seed"             # [기본] "seed" | "rotate" | 좌석 번호
+initial_upcard = true             # [확정]
+first_player = "seed"             # [확정] "seed" | "rotate" | 좌석 번호
 
 [meld]                            # §5, §6
-min_set = 3                       # [기본]
-min_run = 3                       # [기본]
-run_ace_mode = "low"              # [확정] "low" | "high_low" | "wrap"
-single_seven = true               # [기본]
-seven_accepts_neighbors = true    # [기본] 7 단독에 같은 무늬 6/8
-seven_accepts_sevens = true       # [기본] 7 단독에 다른 7
-allow_rearrange = false           # [기본]
+min_set = 3                       # [확정]
+min_run = 3                       # [확정]
+run_ace_mode = "high_low"         # [확정] A-2-3, Q-K-A 가능 / K-A-2 불가. "low" | "high_low" | "wrap"
+single_seven = true               # [확정]
+seven_accepts_neighbors = true    # [확정] 7 단독에 같은 무늬 6/8
+seven_accepts_sevens = true       # [확정] 7 단독에 다른 7
+allow_rearrange = false           # [확정]
 
 [attach]                          # §6
-requires_registration = true      # [기본]
-to_others_melds = true            # [기본]
+requires_registration = true      # [확정]
+to_others_melds = true            # [확정]
 
 [thank_you]                       # §7
 mode = "orthodox"                 # [확정] "orthodox" | "battle"
 source = "previous_player"        # [확정]
-min_hand_cards = 2                # [기본] 땡큐 카드와 합칠 손패 최소 장수
-must_meld_taken_card = true       # [기본]
-allow_single_seven = false        # [기본]
-allow_attach_only = false         # [기본]
-on_initial_upcard = true          # [기본]
+min_hand_cards = 2                # [확정] 땡큐 카드와 합칠 손패 최소 장수
+must_meld_taken_card = true       # [확정]
+allow_single_seven = false        # [확정]
+allow_attach_only = false         # [확정]
+on_initial_upcard = false         # [확정] 선은 첫 공개패를 땡큐할 수 없다
 
 [stop]                            # §8
 timing = "before_acquire"         # [확정]
 limit = 10                        # [확정] 손패 점수 ≤ limit, 인원 무관
 requires_registration = false     # [확정]
-first_turn_allowed = true         # [기본]
+first_turn_allowed = true         # [확정]
 win_rule = "strictly_lowest"      # [확정] 동점 또는 더 낮은 사람 있으면 선언자 패배
 fallback_winner = "lowest_excluding_caller"  # [확정]
 
 [end]                             # §9
 on_stock_empty = "reshuffle"      # [확정] "reshuffle" | "lowest_wins" | "draw"
-reshuffle_keep_top = true         # [기본]
+reshuffle_keep_top = true         # [확정]
 reshuffle_limit = 0               # [확정] 0 = 무제한
 
 [result]                          # §10
 tie_reward = "split"              # [확정] 공동 승리 시 1/k
 
 [visibility]                      # §11
-discard_history = "top_only"      # [기본] "top_only" | "full"
-stock_count = true                # [기본]
+discard_history = "top_only"      # [확정] "top_only" | "full"
+stock_count = true                # [확정]
 
 [engine]                          # 규칙 아님: 시뮬레이션 보호용
 max_turns = 1000                  # 초과 시 무승부로 기록

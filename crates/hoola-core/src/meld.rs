@@ -5,9 +5,9 @@ use crate::card::{Card, CardSet};
 /// 런에서 A를 어떻게 다루는지 (`meld.run_ace_mode`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AceMode {
-    /// A는 1로만: A-2-3 가능, Q-K-A·K-A-2 불가. (`offline_casual` 기본값)
+    /// A는 1로만: A-2-3 가능, Q-K-A·K-A-2 불가.
     Low,
-    /// 양 끝 가능, 순환 불가: A-2-3, Q-K-A 가능, K-A-2 불가.
+    /// 양 끝 가능, 순환 불가: A-2-3, Q-K-A 가능, K-A-2 불가. (`offline_casual` 기본값, RULES v1.1)
     HighLow,
     /// 순환: K-A-2도 가능.
     Wrap,
@@ -32,7 +32,7 @@ impl Default for MeldRules {
         MeldRules {
             min_set: 3,
             min_run: 3,
-            ace_mode: AceMode::Low,
+            ace_mode: AceMode::HighLow,
             single_seven: true,
             seven_accepts_neighbors: true,
             seven_accepts_sevens: true,
@@ -284,7 +284,7 @@ mod tests {
 
     #[test]
     fn attach_run_ace_low_only() {
-        let r = MeldRules::default();
+        let r = with_ace(AceMode::Low);
         let low = meld(MeldKind::Run, "2S 3S 4S");
         assert!(low.can_attach(c("AS"), &r));
         let high = meld(MeldKind::Run, "JS QS KS");

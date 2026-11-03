@@ -375,7 +375,7 @@ mod tests {
             limit = 5
 
             [meld]
-            run_ace_mode = "high_low"
+            run_ace_mode = "wrap"
 
             [card_points]
             seven = 0
@@ -387,7 +387,7 @@ mod tests {
         .unwrap();
         assert_eq!(p.name, "house");
         assert_eq!(p.rules.stop.limit, 5);
-        assert_eq!(p.rules.meld.ace_mode, AceMode::HighLow);
+        assert_eq!(p.rules.meld.ace_mode, AceMode::Wrap);
         assert_eq!(p.rules.points.points("7D".parse().unwrap()), 0);
         assert_eq!(p.rules.points.points("8D".parse().unwrap()), 8);
         assert_eq!(p.rules.first_player, FirstPlayer::Seat(1));
