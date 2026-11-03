@@ -163,7 +163,7 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     }
     eprintln!("F1 done ({:.0}s)", started.elapsed().as_secs_f64());
 
-    // F2: 친구 저격용 스톱 기준 탐색 (A·B 테이블, B·B 테이블)
+    // F2: 친구 저격용 설정 탐색 (스톱 기준·버림 설정)
     let mut stop_specs: Vec<(String, String)> = Vec::new();
     for t in [10, 9, 8, 7, 6, 5, 4, 3] {
         stop_specs.push((

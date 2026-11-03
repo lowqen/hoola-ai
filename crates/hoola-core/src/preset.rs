@@ -355,7 +355,7 @@ mod tests {
     fn built_in_preset_matches_rules_default() {
         let p = offline_casual();
         assert_eq!(p.name, "offline_casual");
-        assert_eq!(p.rules_version, "1.0");
+        assert_eq!(p.rules_version, "1.1");
         assert_eq!(p.rules, Rules::default());
     }
 
