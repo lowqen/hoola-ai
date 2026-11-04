@@ -127,8 +127,11 @@ export const FIXED = {
 	'card-edge': 'rgb(0 0 0 / 0.18)',
 	'card-back-1': '#29457f',
 	'card-back-2': '#35589c',
-	'grade-best': '#0b8a2c',
+	'grade-best': '#0a7d2a',
 	'grade-inaccuracy': '#fab219',
-	'grade-mistake': '#c9622f',
-	'grade-blunder': '#d03b3b'
+	'grade-mistake': '#b4521f',
+	'grade-blunder': '#d03b3b',
+	/** 등급 배지 글자: 부정확(노랑)만 검정, 나머지는 흰색 */
+	'grade-on': '#ffffff',
+	'grade-on-inaccuracy': '#0b0b0b'
 } as const;

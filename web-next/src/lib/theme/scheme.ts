@@ -102,7 +102,11 @@ export const CONTRAST_PAIRS: [string, string, number, string][] = [
 	['on-felt-variant', 'felt-1', 4.5, '테이블 보조 글자'],
 	['felt-highlight', 'felt-2', 3, '테이블 강조 테두리'],
 	['card-ink', 'card-face', 4.5, '카드 숫자(검정)'],
-	['card-red', 'card-face', 4.5, '카드 숫자(빨강)']
+	['card-red', 'card-face', 4.5, '카드 숫자(빨강)'],
+	['grade-on', 'grade-best', 4.5, '등급 배지: 최선'],
+	['grade-on-inaccuracy', 'grade-inaccuracy', 4.5, '등급 배지: 부정확'],
+	['grade-on', 'grade-mistake', 4.5, '등급 배지: 실수'],
+	['grade-on', 'grade-blunder', 4.5, '등급 배지: 블런더']
 ];
 
 export interface ContrastResult {

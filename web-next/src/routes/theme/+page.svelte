@@ -91,7 +91,7 @@
 	<meta name="description" content="훌라 연습장 Material 3 디자인 토큰 미리보기" />
 </svelte:head>
 
-<div class="page" style={overrideStyle}>
+<main class="page" style={overrideStyle}>
 	<header class="top">
 		<a class="back" href={resolve('/')}>← 미리보기 홈</a>
 		<h1 class="md-typescale-headline-medium-emphasized">테마 미리보기</h1>
@@ -314,7 +314,7 @@
 			마우스 올리기 8% · 포커스 10% · 누르기 10% (드래그 16%는 D3 카드에서)
 		</p>
 	</section>
-</div>
+</main>
 
 <style>
 	.page {
@@ -537,7 +537,7 @@
 	.grade {
 		padding: 4px 10px;
 		border-radius: var(--md-sys-shape-corner-full);
-		color: #fff;
+		color: var(--hoola-color-grade-on);
 		font-weight: 700;
 		font-size: var(--md-sys-typescale-label-medium-size);
 	}
@@ -546,7 +546,7 @@
 	}
 	.grade-inaccuracy {
 		background: var(--hoola-color-grade-inaccuracy);
-		color: #0b0b0b;
+		color: var(--hoola-color-grade-on-inaccuracy);
 	}
 	.grade-mistake {
 		background: var(--hoola-color-grade-mistake);

@@ -408,9 +408,9 @@ dialog::backdrop { background: rgba(8, 12, 10, 0.55); backdrop-filter: blur(2px)
 .rv-list li.active { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
 .rv-li-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .grade { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 99px; white-space: nowrap; color: #fff; }
-.grade-best, .grade-good { background: #0b8a2c; }
+.grade-best, .grade-good { background: #0a7d2a; }
 .grade-inaccuracy { background: #fab219; color: #0b0b0b; }
-.grade-mistake { background: #c9622f; }
+.grade-mistake { background: #b4521f; }
 .grade-blunder { background: #d03b3b; }
 .rv-detail { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
 .rv-detail:empty { display: none; }

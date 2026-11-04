@@ -193,10 +193,12 @@
 	--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 	--hoola-color-card-back-1: #29457f;
 	--hoola-color-card-back-2: #35589c;
-	--hoola-color-grade-best: #0b8a2c;
+	--hoola-color-grade-best: #0a7d2a;
 	--hoola-color-grade-inaccuracy: #fab219;
-	--hoola-color-grade-mistake: #c9622f;
+	--hoola-color-grade-mistake: #b4521f;
 	--hoola-color-grade-blunder: #d03b3b;
+	--hoola-color-grade-on: #ffffff;
+	--hoola-color-grade-on-inaccuracy: #0b0b0b;
 	--md-sys-color-shadow-rgb: 0 0 0;
 	color-scheme: light;
 }
@@ -267,10 +269,12 @@
 		--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 		--hoola-color-card-back-1: #29457f;
 		--hoola-color-card-back-2: #35589c;
-		--hoola-color-grade-best: #0b8a2c;
+		--hoola-color-grade-best: #0a7d2a;
 		--hoola-color-grade-inaccuracy: #fab219;
-		--hoola-color-grade-mistake: #c9622f;
+		--hoola-color-grade-mistake: #b4521f;
 		--hoola-color-grade-blunder: #d03b3b;
+		--hoola-color-grade-on: #ffffff;
+		--hoola-color-grade-on-inaccuracy: #0b0b0b;
 		--md-sys-color-shadow-rgb: 0 0 0;
 		color-scheme: dark;
 	}
@@ -341,10 +345,12 @@
 	--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 	--hoola-color-card-back-1: #29457f;
 	--hoola-color-card-back-2: #35589c;
-	--hoola-color-grade-best: #0b8a2c;
+	--hoola-color-grade-best: #0a7d2a;
 	--hoola-color-grade-inaccuracy: #fab219;
-	--hoola-color-grade-mistake: #c9622f;
+	--hoola-color-grade-mistake: #b4521f;
 	--hoola-color-grade-blunder: #d03b3b;
+	--hoola-color-grade-on: #ffffff;
+	--hoola-color-grade-on-inaccuracy: #0b0b0b;
 	--md-sys-color-shadow-rgb: 0 0 0;
 	color-scheme: light;
 }
@@ -414,10 +420,12 @@
 	--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 	--hoola-color-card-back-1: #29457f;
 	--hoola-color-card-back-2: #35589c;
-	--hoola-color-grade-best: #0b8a2c;
+	--hoola-color-grade-best: #0a7d2a;
 	--hoola-color-grade-inaccuracy: #fab219;
-	--hoola-color-grade-mistake: #c9622f;
+	--hoola-color-grade-mistake: #b4521f;
 	--hoola-color-grade-blunder: #d03b3b;
+	--hoola-color-grade-on: #ffffff;
+	--hoola-color-grade-on-inaccuracy: #0b0b0b;
 	--md-sys-color-shadow-rgb: 0 0 0;
 	color-scheme: light;
 }
@@ -487,10 +495,12 @@
 	--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 	--hoola-color-card-back-1: #29457f;
 	--hoola-color-card-back-2: #35589c;
-	--hoola-color-grade-best: #0b8a2c;
+	--hoola-color-grade-best: #0a7d2a;
 	--hoola-color-grade-inaccuracy: #fab219;
-	--hoola-color-grade-mistake: #c9622f;
+	--hoola-color-grade-mistake: #b4521f;
 	--hoola-color-grade-blunder: #d03b3b;
+	--hoola-color-grade-on: #ffffff;
+	--hoola-color-grade-on-inaccuracy: #0b0b0b;
 	--md-sys-color-shadow-rgb: 0 0 0;
 	color-scheme: light;
 }
@@ -560,10 +570,12 @@
 	--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 	--hoola-color-card-back-1: #29457f;
 	--hoola-color-card-back-2: #35589c;
-	--hoola-color-grade-best: #0b8a2c;
+	--hoola-color-grade-best: #0a7d2a;
 	--hoola-color-grade-inaccuracy: #fab219;
-	--hoola-color-grade-mistake: #c9622f;
+	--hoola-color-grade-mistake: #b4521f;
 	--hoola-color-grade-blunder: #d03b3b;
+	--hoola-color-grade-on: #ffffff;
+	--hoola-color-grade-on-inaccuracy: #0b0b0b;
 	--md-sys-color-shadow-rgb: 0 0 0;
 	color-scheme: dark;
 }
@@ -633,10 +645,12 @@
 	--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 	--hoola-color-card-back-1: #29457f;
 	--hoola-color-card-back-2: #35589c;
-	--hoola-color-grade-best: #0b8a2c;
+	--hoola-color-grade-best: #0a7d2a;
 	--hoola-color-grade-inaccuracy: #fab219;
-	--hoola-color-grade-mistake: #c9622f;
+	--hoola-color-grade-mistake: #b4521f;
 	--hoola-color-grade-blunder: #d03b3b;
+	--hoola-color-grade-on: #ffffff;
+	--hoola-color-grade-on-inaccuracy: #0b0b0b;
 	--md-sys-color-shadow-rgb: 0 0 0;
 	color-scheme: dark;
 }
@@ -706,10 +720,12 @@
 	--hoola-color-card-edge: rgb(0 0 0 / 0.18);
 	--hoola-color-card-back-1: #29457f;
 	--hoola-color-card-back-2: #35589c;
-	--hoola-color-grade-best: #0b8a2c;
+	--hoola-color-grade-best: #0a7d2a;
 	--hoola-color-grade-inaccuracy: #fab219;
-	--hoola-color-grade-mistake: #c9622f;
+	--hoola-color-grade-mistake: #b4521f;
 	--hoola-color-grade-blunder: #d03b3b;
+	--hoola-color-grade-on: #ffffff;
+	--hoola-color-grade-on-inaccuracy: #0b0b0b;
 	--md-sys-color-shadow-rgb: 0 0 0;
 	color-scheme: dark;
 }
