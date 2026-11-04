@@ -10,7 +10,7 @@ const BOTS = {
   friendA: { label: "친구 A: 버티기 (스톱 안 함)", short: "버티기", spec: "expert:stop=never" },
   friendB: { label: "친구 B: 한방 (스톱 안 함, 털 때만 등록)", short: "한방", spec: "expert:stop=never:meld=allin" },
   friendC: { label: "친구 C: 늦은 스톱·보류", short: "늦은스톱", spec: "expert:stop=t2:meld=hold" },
-  friendD: { label: "친구 D: 순수 한방 (스톱·땡큐 안 함, 몰아서 한 번에 털기)", short: "순수한방", spec: "expert:stop=never:meld=allin:ty=0" },
+  friendE: { label: "친구 E: 실제 친구 모델 (몰아뒀다 한꺼번에, 땡큐 항상, 3점 이하만 스톱)", short: "실전친구", spec: "expert:stop=t3:meld=dump:outs=1" },
   greedy: { label: "Greedy (10점 이하 즉시 스톱)", short: "Greedy", spec: "greedy" },
   random: { label: "Random", short: "Random", spec: "random" },
 };

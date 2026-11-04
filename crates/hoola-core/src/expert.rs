@@ -37,6 +37,10 @@ pub enum MeldMode {
     Hold,
     /// 한 번에 털 수 있을 때만 등록 ("한 방"). 사양 `meld=allin`.
     AllIn,
+    /// 몰아뒀다가 한꺼번에: 조합(2장 이상)이 2개 이상 모이거나, 등록·붙이기 후 손패가
+    /// 2장 이하로 남을 수 있으면 그 차례에 전부 등록하고 붙인다 (7 단독 포함).
+    /// 그 전에는 등록·붙이기를 하지 않는다 (땡큐는 설정대로). 사양 `meld=dump`.
+    Dump,
 }
 
 /// 전문가 봇 설정.
@@ -119,6 +123,7 @@ impl ExpertConfig {
                         "now" => MeldMode::Now,
                         "hold" => MeldMode::Hold,
                         "allin" => MeldMode::AllIn,
+                        "dump" => MeldMode::Dump,
                         _ => return Err(bad()),
                     }
                 }
@@ -144,6 +149,8 @@ impl ExpertConfig {
 pub struct ExpertBot {
     pub cfg: ExpertConfig,
     rng: Rng,
+    /// `MeldMode::Dump`: 이번 차례에 한꺼번에 내려놓기로 했는지 (차례 시작에 초기화).
+    dumping: bool,
 }
 
 impl ExpertBot {
@@ -151,6 +158,7 @@ impl ExpertBot {
         ExpertBot {
             cfg,
             rng: Rng::seed_from_u64(seed),
+            dumping: false,
         }
     }
 
@@ -356,6 +364,7 @@ impl crate::bot::Bot for ExpertBot {
         let pts = |c: Card| rules.points.points(c);
         match obs.phase {
             Phase::TurnStart => {
+                self.dumping = false;
                 if legal.contains(&Action::Stop) && self.wants_stop(obs) {
                     return Action::Stop;
                 }
@@ -380,27 +389,44 @@ impl crate::bot::Bot for ExpertBot {
                 let full = best_partition(hand, rules, true);
                 let full_cards = full.iter().fold(CardSet::EMPTY, |a, &m| a.union(m));
                 let going_out = full_cards.len() + 1 >= hand.len();
-                let plan = if going_out {
+                let dump = self.cfg.meld == MeldMode::Dump;
+                let plan = if going_out || dump {
                     full
                 } else {
                     best_partition(hand, rules, self.cfg.single_seven)
                 };
                 let plan_cards = plan.iter().fold(CardSet::EMPTY, |a, &m| a.union(m));
                 let after = hand.difference(plan_cards).points(&rules.points);
+                if dump && !self.dumping {
+                    let multi = plan.iter().filter(|m| m.len() > 1).count();
+                    let attachable: CardSet = legal
+                        .iter()
+                        .filter_map(|a| match *a {
+                            Action::Attach { card, .. } if !plan_cards.contains(card) => Some(card),
+                            _ => None,
+                        })
+                        .collect();
+                    let left = hand.len() - plan_cards.len() - attachable.len();
+                    let has_any = !plan.is_empty() || !attachable.is_empty();
+                    self.dumping = going_out || multi >= 2 || (has_any && left <= 2);
+                }
                 let register_now = going_out
                     || match self.cfg.meld {
                         MeldMode::Now => true,
                         MeldMode::Hold => after <= rules.stop.limit,
                         MeldMode::AllIn => false,
+                        MeldMode::Dump => self.dumping,
                     };
                 if register_now
                     && let Some(&m) = plan.iter().max_by_key(|m| m.points(&rules.points))
                 {
                     return Action::Register { cards: m };
                 }
-                // 붙이기: 보류 중인 조합의 카드는 건드리지 않는다
+                // 붙이기: 보류 중인 조합의 카드는 건드리지 않는다. 몰아두기 모드는 내려놓는 차례에만
+                let may_attach = !dump || self.dumping;
                 let attach = legal
                     .iter()
+                    .filter(|_| may_attach)
                     .filter_map(|&a| match a {
                         Action::Attach { card, .. } if !plan_cards.contains(card) => {
                             Some((pts(card), a))
@@ -462,6 +488,7 @@ mod tests {
         let friend = ExpertConfig::parse("stop=never:meld=allin").unwrap();
         assert_eq!(friend.stop, StopPolicy::Never);
         assert_eq!(friend.meld, MeldMode::AllIn);
+        assert_eq!(ExpertConfig::parse("meld=dump").unwrap().meld, MeldMode::Dump);
         assert_eq!(cfg.danger_weight, 0.0);
         assert_eq!(cfg.samples, 8);
         assert_eq!(ExpertConfig::parse("").unwrap(), ExpertConfig::default());
@@ -527,6 +554,26 @@ mod tests {
         assert_eq!(outs(cs("KH AH 9C"), c("KH"), u, AceMode::Wrap), 2);
         assert_eq!(outs(cs("KH AH 9C"), c("AH"), u, AceMode::HighLow), 1);
         assert_eq!(outs(cs("KH AH 9C"), c("KH"), u, AceMode::Low), 0);
+    }
+
+    #[test]
+    fn dump_mode_holds_one_meld_and_dumps_at_two() {
+        use crate::bot::Bot;
+        use crate::game::Game;
+        let cfg = ExpertConfig::parse("meld=dump:stop=never").unwrap();
+        let hands = |a: &str| [cs(a), cs("KC QC JD")];
+        // 조합 1개(5 세트)뿐이고 남는 카드가 많다 → 등록하지 않고 버린다
+        let mut g = Game::with_hands(Rules::default(), &hands("5S 5H 5D 9C KD 2H"), Some(c("JS")), &[c("TH")], 0, 1);
+        g.apply(Action::Draw).unwrap();
+        let mut bot = ExpertBot::new(cfg.clone(), 1);
+        let a = bot.act(&g.observation(0), &g.legal_actions());
+        assert!(matches!(a, Action::Discard { .. }), "{a}");
+        // 조합 2개(5 세트 + 8-9-T 런) → 그 차례에 등록
+        let mut g = Game::with_hands(Rules::default(), &hands("5S 5H 5D 8H 9H KD 2C"), Some(c("JS")), &[c("TH")], 0, 1);
+        g.apply(Action::Draw).unwrap();
+        let mut bot = ExpertBot::new(cfg, 1);
+        let a = bot.act(&g.observation(0), &g.legal_actions());
+        assert!(matches!(a, Action::Register { .. }), "{a}");
     }
 
     #[test]

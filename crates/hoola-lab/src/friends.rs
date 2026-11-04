@@ -26,9 +26,9 @@ pub const FRIENDS: &[(&str, &str, &str)] = &[
         "expert:stop=t2:meld=hold",
     ),
     (
-        "D",
-        "순수 한방: 스톱·땡큐 안 함, 한 번에 털 수 있을 때만 전부 등록",
-        "expert:stop=never:meld=allin:ty=0",
+        "E",
+        "실제 친구 모델: 3점 이하만 스톱, 땡큐는 항상, 조합 2개 이상이거나 2장 이하로 남길 수 있으면 한꺼번에 등록·붙이기, 높은 카드부터 버림",
+        "expert:stop=t3:meld=dump:outs=1",
     ),
 ];
 
@@ -113,7 +113,7 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         ("2인 · A", vec!["A"]),
         ("2인 · B", vec!["B"]),
         ("2인 · C", vec!["C"]),
-        ("2인 · D", vec!["D"]),
+        ("2인 · E", vec!["E"]),
         ("A·A", vec!["A", "A"]),
         ("B·B", vec!["B", "B"]),
         ("C·C", vec!["C", "C"]),
@@ -196,7 +196,7 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     );
     let sweep_tables: Vec<(&str, Vec<&str>)> = vec![
         ("2인 · B", vec!["B"]),
-        ("2인 · D", vec!["D"]),
+        ("2인 · E", vec!["E"]),
         ("2인 · A", vec!["A"]),
         ("A·B", vec!["A", "B"]),
     ];
