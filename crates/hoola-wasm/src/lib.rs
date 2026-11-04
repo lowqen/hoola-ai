@@ -7,8 +7,8 @@ use hoola_core::arena::{NamedBot, end_reason_name};
 use hoola_core::belief::{LEARNED, stop_win_estimate};
 use hoola_core::expert::best_partition;
 use hoola_core::{
-    Action, Bot, CardSet, EndReason, Event, Game, MeldKind, Observation, Phase, Replay, Rng,
-    Rules, SearchBot, SearchConfig, classify_new_meld, parse_cards, preset,
+    Action, Bot, CardSet, EndReason, Event, Game, MeldKind, Observation, Phase, Replay, Rng, Rules,
+    SearchBot, SearchConfig, classify_new_meld, parse_cards, preset,
 };
 use serde_json::{Value, json};
 use wasm_bindgen::prelude::*;
@@ -335,9 +335,9 @@ fn parse_set(cards: &str) -> Result<CardSet, String> {
 
 /// 훈련용: 손패를 서로 겹치지 않는 조합으로 나눠 점수를 가장 많이 덜어내는 방법 (기본 규칙).
 /// `{"melds": [["5S","5H","5D"], ...], "covered": 15, "left": 23}`
-pub fn best_partition_json(cards: &str) -> Result<Value, String> {
+pub fn best_partition_json(hand_text: &str) -> Result<Value, String> {
     let rules = Rules::default();
-    let hand = parse_set(cards)?;
+    let hand = parse_set(hand_text)?;
     let melds = best_partition(hand, &rules, true);
     let covered: u32 = melds.iter().map(|m| m.points(&rules.points)).sum();
     Ok(json!({
