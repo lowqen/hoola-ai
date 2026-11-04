@@ -36,7 +36,7 @@
 		<span class="logo" aria-hidden="true">♠</span>
 		<div>
 			<h1>훌라 연습장</h1>
-			<p class="sub">새 버전 미리보기 · D1 디자인 토큰</p>
+			<p class="sub">새 버전 미리보기 · D2 컴포넌트 키트</p>
 		</div>
 	</header>
 
@@ -60,12 +60,13 @@
 		<ol>
 			<li class="done">D0 · SvelteKit 정적 빌드, WASM 연결, CI</li>
 			<li class="done">D1 · M3 색·글꼴·모양·모션 토큰</li>
-			<li>D2 · 컴포넌트 키트</li>
+			<li class="done">D2 · 컴포넌트 키트</li>
 			<li>D3 · 카드·테이블 컴포넌트와 모션</li>
 			<li>D4 · 대전·훈련·복기·기록 화면</li>
 			<li>D5 · 다듬기·설치형 앱(PWA)</li>
 		</ol>
 		<p class="links">
+			<a href={`${resolve('/gallery')}/`}>컴포넌트 갤러리 →</a>
 			<a href={`${resolve('/theme')}/`}>테마 미리보기 →</a>
 			<a href="../" rel="external">지금 버전 연습장으로 →</a>
 		</p>

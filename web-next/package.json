@@ -18,6 +18,7 @@
 		"tokens:check": "node --import ./scripts/resolve-js.ts scripts/tokens.ts --check"
 	},
 	"devDependencies": {
+		"@material-symbols/svg-500": "^0.48.3",
 		"@material/material-color-utilities": "^0.4.0",
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-static": "^4.0.0",
