@@ -1,0 +1,189 @@
+# 연습장 디자인 개편 계획서 — Material Design 3 (Expressive)
+
+> 작성 2026-11-04 · 대상: `web/` 연습장(대전·훈련·복기·전적) · 현재: 빌드 없는 바닐라 JS + 직접 쓴 CSS
+> 목표: **앱처럼 예쁘고 깔끔한 M3 느낌**, **60fps 애니메이션**, **개발 속도** 세 가지를 같이 잡는다.
+
+---
+
+## 1. 결론 먼저
+
+| 층 | 선택 | 한 줄 이유 |
+|---|---|---|
+| UI 프레임워크 | **Svelte 5 + SvelteKit(정적 빌드)** + TypeScript | 컴파일러라 런타임이 작고 빠르다. 카드가 손패→버림패→바닥으로 움직이는 게임 화면에 맞는 **전환·FLIP 애니메이션이 내장**돼 있다 |
+| M3 컴포넌트 | **직접 만든 M3 컴포넌트 키트** (토큰 기반) + 접근성은 **Bits UI**(헤드리스 프리미티브) | 공식 Material Web은 유지보수 모드라 신규 기능(Expressive)이 없다. 필요한 15개 남짓만 토큰으로 만들면 M3 충실도와 번들 크기를 둘 다 잡는다 |
+| 색·테마 | **@material/material-color-utilities** (시드 색 → 톤 팔레트 → 라이트/다크/고대비) | M3 동적 색 알고리즘의 공식 구현이다. 명암 대비가 톤 단위로 보장된다 |
+| 애니메이션 | ① **Svelte 내장** `transition` · `animate:flip` · `crossfade` · `Spring` ② 화면 전환은 **View Transitions API** ③ 연출이 긴 시퀀스(딜, 결과 연출)만 **Motion(motion.dev) `animate()`** | 대부분은 의존성 없이 내장으로 끝낸다. 무거운 라이브러리는 필요한 곳에만 쓴다 |
+| 아이콘·글꼴 | **Material Symbols Rounded**(가변 폰트, 쓰는 아이콘만 서브셋) · **Pretendard Variable**(한글) | M3 아이콘과 한국어 가독성 |
+| 앱 느낌 | **PWA**(manifest, standalone, 오프라인 캐시) | 홈 화면에 설치해 앱처럼 실행. 엔진은 이미 WASM이라 오프라인으로 돈다 |
+| 품질 게이트 | 기존 Playwright 스모크 + **Lighthouse CI** + 프레임 측정 | 예쁜데 느려지는 것을 CI에서 막는다 |
+
+---
+
+## 2. 후보 비교
+
+평가 기준: **성능**(번들·런타임·애니메이션), **개발 속도**, **M3 충실도**, **게임 화면 적합성**(카드 이동·드래그·동시 애니메이션)
+
+| 조합 | 성능 | 개발 속도 | M3 충실도 | 게임 적합 | 판단 |
+|---|---|---|---|---|---|
+| **A. Svelte 5 + 자체 M3 키트 + Svelte 전환/Spring + View Transitions (+Motion 일부)** | ◎ 런타임 최소 | ◎ 컴포넌트 문법 간결, 전환 내장 | ○ 토큰·스펙을 직접 따라야 함 | ◎ `crossfade`로 컨테이너 간 카드 이동, `flip`으로 손패 정렬 | **채택** |
+| B. 바닐라 유지 + **mdui**(M3 웹 컴포넌트) + Motion | ○ | ○ 프레임워크 교체 없음 | ○ M3 컴포넌트 다수 제공 | △ 상태가 많은 게임 화면은 지금처럼 수동 DOM 갱신 | 빠른 대안. 대규모 개편엔 유지보수 부담 |
+| C. 바닐라 + Material Web(@material/web) | ○ | ○ | ◎ 공식 M3(Expressive 이전) | △ | **비추천**: 유지보수 모드, 신규 기능 중단 |
+| D. React + MUI + Motion(React) | △ 런타임·번들 큼 | ◎ 생태계 최대 | △ MUI는 M3 완전 대응 아님 | ○ `layout`/`layoutId` 강력 | 무게 대비 이득 적음 |
+| E. Vue 3 + Vuetify 3(md3 블루프린트) | △ | ○ | ○ | ○ | 컴포넌트는 많지만 번들 큼 |
+| F. Flutter Web (M3 Expressive 네이티브) | ✕ 초기 로드 수 MB, 캔버스 렌더 | ○ | ◎ | ○ | 웹 성능·텍스트 품질 손해. 비추천 |
+
+**A를 고른 이유를 한 문장으로**: 이 앱의 무게는 엔진(WASM)과 카드 애니메이션에 있다. UI 층은 가장 얇고 빠른 것이 좋고, Svelte는 카드가 컨테이너 사이를 날아다니는 연출(`crossfade` + `flip`)을 코드 몇 줄로 제공한다.
+
+---
+
+## 3. 디자인 시스템 (M3 토큰)
+
+모든 값은 CSS 사용자 속성 `--md-sys-*`로 둔다. 컴포넌트는 토큰만 참조한다.
+
+### 3.1 색
+- **시드 색**: 테이블 펠트 그린(현재 `#1f6f50` 계열) → material-color-utilities `SchemeTonalSpot`(기본) / `SchemeExpressive`(설정에서 선택).
+- **역할 매핑**
+  - `primary`: 주요 행동(받기, 버리기, 새 판)
+  - `secondary`: 보조(같은 패 다시, 되돌리기)
+  - `tertiary`: 금색 계열 강조(내 차례, 선택 카드, 장수 경고)
+  - `error`: 스톱, 블런더, 규칙 위반 안내
+  - `surface-container-*`: 패널·카드 배경(낮음→높음)
+  - 테이블 펠트: `primary-container` 계열을 깊게 쓴 전용 표면
+- **고정 색(테마를 따르지 않음)**: 카드 앞면(크림), 하트·다이아 빨강, 카드 뒷면. 게임 판독성이 우선이다.
+- **다크 모드**: 같은 팔레트에서 다크 스킴을 뽑는다(자동 반전 아님). 고대비 스킴도 함께 제공한다.
+- **복기 등급색**: M3 역할과 분리된 상태 팔레트(최선·좋음 / 부정확 / 실수 / 블런더)를 유지하고, 항상 아이콘과 라벨을 함께 붙인다.
+
+### 3.2 타이포그래피
+- M3 타입 스케일(Display / Headline / Title / Body / Label × L·M·S)을 **Pretendard Variable**에 매핑한다.
+- 점수·장수·승률은 `font-variant-numeric: tabular-nums`로 자릿수를 맞춘다.
+
+### 3.3 모양(Shape)
+- M3 코너 스케일: extra-small 4 · small 8 · medium 12 · large 16 · extra-large 28 · full.
+- 카드 패 = medium(12), 시트·다이얼로그 = extra-large(28), 버튼·칩 = full. 선택 상태에서는 Expressive식 **모양 모핑**(코너가 둥글게 변함)을 쓴다.
+
+### 3.4 높이(Elevation)
+- 그림자보다 **톤(표면 컨테이너 단계)** 으로 층을 나눈다. 그림자는 손에 든 카드와 끌고 있는 카드에만 쓴다.
+
+### 3.5 모션
+- **M3 Expressive 모션 스킴**을 따른다. 위치·크기 이동은 **공간(spatial) 스프링**, 색·투명도는 **효과(effects) 스프링**이다. 수치는 구현할 때 공식 토큰 표로 고정한다.
+- 원칙: `transform`과 `opacity`만 애니메이션한다(레이아웃 재계산 없음). 동시에 움직이는 요소는 12개 이하로 둔다. `prefers-reduced-motion`이면 즉시 전환으로 대체한다.
+- 상태 레이어: hover 8% · focus 10% · pressed 10% · dragged 16% 오버레이, 리플은 pressed에만.
+
+---
+
+## 4. 컴포넌트 키트 (만들 것)
+
+| 컴포넌트 | 쓰는 곳 | 비고 |
+|---|---|---|
+| Button (filled / tonal / outlined / text / elevated) | 전체 | 크기 S·M·L, 아이콘 지원 |
+| FAB / Extended FAB | 대전: "받기", 훈련: "오늘의 훈련" | 내 차례에만 나타나는 모션 |
+| Segmented button | 인원, 봇 속도 | |
+| Navigation bar (모바일) / Navigation rail (태블릿·PC) | 대전 · 훈련 · 기록 | 반응형 자동 전환 |
+| Top app bar (small / medium) | 화면 머리 | 스크롤 시 높이 변화 |
+| Chip (assist / filter / input) | 조합 묶음, 필터, 상대 상태 | 훈련 "조합 찾기" 묶음 칩 |
+| Card (filled / outlined / elevated) | 드릴 카드, 패널 | |
+| Dialog (basic / full-screen) | 결과, 복기 | 복기는 full-screen dialog |
+| Bottom sheet (modal / standard) | 모바일 설정, 행동 메뉴 | |
+| Snackbar | 규칙 위반 안내, 저장 알림 | 지금의 빨간 메시지 상자를 대체 |
+| Switch / Checkbox / Slider | 설정 | |
+| Progress (linear / circular, Expressive wavy) | 복기 분석, 문제 생성 | |
+| Tooltip / Menu | 카드 설명, 더보기 | Bits UI 프리미티브 위에 스타일링 |
+| **PlayingCard** (게임 전용) | 손패·버림패·바닥 | 크기 xs~lg, 앞/뒤, 선택·표시(내 수/추천) 상태 |
+| **Table / Seat / Pile / MeldGroup** (게임 전용) | 대전·훈련·복기 장면 | 하나의 장면 컴포넌트를 세 화면이 공유 |
+
+접근성: 모든 컨트롤의 터치 영역은 48dp 이상, 키보드 포커스 링(M3 focus indicator), 카드 `aria-label`은 "하트 10"처럼 읽힌다.
+
+---
+
+## 5. 화면별 설계
+
+### 5.1 대전 (모바일 기준)
+```
+┌──────────────────────────────┐
+│ Top app bar   훌라   ⋮        │
+├──────────────────────────────┤
+│ [상대 좌석 카드]  7장 · 등록    │  ← surface-container, 차례면 tertiary 테두리 + 펄스
+│  방금 · 버림 K♦                │
+├──────────────────────────────┤
+│   펠트 테이블                   │
+│   [더미] [버림패]  [바닥 조합…] │  ← 조합은 칩처럼 묶임, 붙이기 대상이면 강조
+├──────────────────────────────┤
+│ 내 손패  23점      (기준표 칩)  │
+│ [카드][카드][카드]…  (부채꼴)   │  ← 선택하면 위로 올라오고 코너 모핑
+│ [스톱]  [땡큐]  [등록]  ( 받기 ) │  ← 받기 = Extended FAB, 스톱 = error tonal
+├──────────────────────────────┤
+│  대전 · 훈련 · 기록  (Nav bar) │
+└──────────────────────────────┘
+```
+- **카드 모션**
+  - 받기: 더미에서 손패 자리로 **crossfade 비행** 후 손패 `flip` 재정렬
+  - 버리기: 손패에서 버림패로 비행. 이전 맨 위 카드는 아래로 깔린다
+  - 등록: 고른 카드들이 바닥으로 함께 이동해 조합 그룹으로 모인다
+  - 붙이기: 카드 1장을 고르면 붙일 수 있는 조합이 강조되고, 누르면 그 조합으로 이동
+  - 봇의 행동도 같은 모션을 짧게 재생한다(기록 패널과 연동)
+- **PC/태블릿**: Navigation rail + 오른쪽 보조 패널(기록·힌트·전적)
+
+### 5.2 훈련
+- 홈: Hero 카드(오늘의 훈련 Extended FAB) + 드릴 카드 그리드(정답률 진행 막대) + 오답 노트 배지
+- 문제: 상단 linear progress(정답/오답 점), 장면 컴포넌트 재사용, 하단 고정 행동 바
+- 피드백: **바닥에서 올라오는 standard bottom sheet**(정답 primary-container / 오답 error-container), "다음 문제" FAB. 정답이면 짧은 스프링 바운스로 보상한다
+
+### 5.3 복기
+- full-screen dialog. 상단은 요약 칩 4개, 그다음 승률 흐름 그래프(기존 데이터 시각화 규칙 유지)
+- 목록과 상세는 반응형 2단 / 1단. 상세의 "장면"은 대전과 같은 컴포넌트를 써서 내 수(error)와 추천(primary)을 카드 위에 표시한다
+
+### 5.4 기록(전적·약점)
+- 상대 구성별 승률 카드(공평한 몫 기준선), 약점 유형 막대, 훈련 일별 기록(작은 막대 차트)
+
+---
+
+## 6. 성능 설계
+
+| 항목 | 목표 | 방법 |
+|---|---|---|
+| 첫 화면(LCP, 중급 휴대폰) | 1.5초 이하 | 정적 프리렌더, 글꼴 서브셋·`font-display: swap`, WASM 지연 로드(첫 화면은 WASM 없이 그림) |
+| 입력 반응(INP) | 100ms 이하 | 엔진 계산(L3 분석·문제 생성)은 지금처럼 **Web Worker**. 메인 스레드는 그리기만 |
+| 애니메이션 | 60fps 유지 (저사양 30fps 이상) | transform/opacity만, `will-change`는 움직이는 동안만, 동시 이동 12개 이하, 카드 이미지 대신 CSS |
+| JS 번들(앱, gzip) | 60KB 이하 (WASM 별도 약 430KB) | Svelte 컴파일, 라우트별 코드 분할, Motion은 연출 모듈에서만 동적 import |
+| 오프라인 | 두 번째 방문부터 완전 오프라인 | 서비스 워커가 앱·WASM·글꼴을 미리 캐시 |
+| 측정 | 푸시마다 | Lighthouse CI(성능·접근성 점수 기준선), Playwright 트레이스로 딜 애니메이션 프레임 측정, 번들 크기 예산 초과 시 실패 |
+
+---
+
+## 7. 진행 단계
+
+기존 바닐라 앱을 계속 운영하면서 새 앱을 `web-next/`에 만든다. 기능이 같아지면(아래 체크리스트) 교체한다.
+
+| 단계 | 내용 | 산출물 | 완료 기준 |
+|---|---|---|---|
+| **D0. 기반** | SvelteKit 정적 빌드, GitHub Pages 경로, CI(빌드·Playwright·Lighthouse), WASM 연결 | 빈 앱이 Pages 미리보기 경로에서 엔진 버전 표시 | CI 통과 |
+| **D1. 토큰·테마** | material-color-utilities로 라이트/다크/고대비 스킴 생성, 타입·모양·모션 토큰 | `tokens.css`, 테마 미리보기 페이지 | 대비 검사 통과(본문 4.5:1) |
+| **D2. 컴포넌트 키트** | §4 표의 컴포넌트, 상태 레이어·포커스·리플 | `/gallery` 페이지(모든 상태 나열) | 스크린샷 리뷰, 키보드 조작 |
+| **D3. 게임 컴포넌트·모션** | PlayingCard, Seat, Pile, MeldGroup, 장면. 받기·버리기·등록·붙이기 모션 | 모션 데모 페이지 | 60fps(트레이스), 모션 줄이기 대응 |
+| **D4. 화면 이식** | 대전 → 훈련 → 복기 → 기록 순서. 로직(엔진 호출·저장)은 기존 모듈 재사용 | 기능 동등 | 기존 스모크 테스트 전부 통과 |
+| **D5. 다듬기·PWA** | Expressive 모션 다듬기, 설치형 PWA, 오프라인, 접근성 점검 | 정식 교체 | Lighthouse 성능·접근성 기준선 이상 |
+
+**기능 동등 체크리스트**: 셀프/초보자 모드 · 친구 페르소나 · 버림패 맨 위만 보기 · 되돌리기 · 같은 패 다시 · L3 힌트 · 복기(그래프·장면·이유·다시 두기·약점) · 훈련 5종·오답 노트 · 전적·내보내기 · 저장 데이터 호환(`hoola-practice-v1`).
+
+**저장 데이터**: localStorage 형식은 그대로 둔다. 교체 후에도 전적·오답 노트·훈련 기록이 이어진다.
+
+---
+
+## 8. 위험과 대응
+
+| 위험 | 대응 |
+|---|---|
+| Svelte용 M3 완성 키트가 없음 | 필요한 15개 남짓만 직접 만든다. 접근성이 까다로운 다이얼로그·메뉴·툴팁은 Bits UI 프리미티브 위에 올린다 |
+| M3 Expressive 웹 공식 구현 부재 | 스펙(토큰·모션 스킴)을 직접 구현한다. 수치는 공식 문서 값으로 고정하고, 갤러리 페이지에서 시각 확인 |
+| 애니메이션 때문에 판 진행이 느려짐 | 봇 속도 설정과 모션 길이를 연동한다(빠르게 = 모션 축약). 연습 효율이 우선 |
+| 저사양 휴대폰 성능 | 동시 모션 상한, 그림자 최소화, 모션 줄이기 자동 감지 |
+| 교체 중 회귀 | 기존 Playwright 스모크를 새 앱에도 그대로 돌리고, 통과 전에는 교체하지 않는다 |
+
+---
+
+## 9. 참고
+
+- Material Web 유지보수 모드 공지: https://github.com/material-components/material-web/discussions/5642 · https://material-web.dev
+- View Transitions(동일 문서) 브라우저 지원: https://developer.chrome.com/docs/web-platform/view-transitions · https://web.dev/blog/web-platform-10-2025
+- Motion(바닐라 `animate()`·React 비교, 번들 크기는 진입점마다 다름): https://www.pkgpulse.com/guides/framer-motion-vs-motion-one-vs-autoanimate-2026
+- M3 대안 웹 컴포넌트(mdui) 언급: https://github.com/material-components/material-web/discussions/5642

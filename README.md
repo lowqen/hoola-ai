@@ -7,6 +7,7 @@
 - 계획: [ROADMAP.md](ROADMAP.md)
 - **입문자 실력 향상 계획: [TRAINING.md](TRAINING.md)** (단계별 설정·외울 것·통과 기준)
 - 전략서: [STRATEGY.md](STRATEGY.md) (v1.3, 2인·3인 — 스톱 기준표, 친구 상대 분석)
+- 디자인 개편 계획(M3): [docs/DESIGN_PLAN.md](docs/DESIGN_PLAN.md)
 - 규칙 명세: [RULES.md](RULES.md) · 기본 프리셋 [`config/presets/offline_casual.toml`](config/presets/offline_casual.toml)
 
 ## 연습장 (웹앱)
@@ -25,6 +26,7 @@ powershell -ExecutionPolicy Bypass -File scripts/practice.ps1   # 오프라인: 
 - 상대: 전문가(전략서 v1), 친구 A 버티기 / B 한방 / C 늦은 스톱·보류 / **E 실제 친구 모델**, Greedy, Random
 - 오프라인처럼 버림패는 맨 위 1장만 보인다 (설정에서 전체 보기)
 - 되돌리기, 같은 패 다시
+- **훈련 모드**(상단 "훈련" 탭): 조합 찾기 · 땡큐 찾기 · 스톱 판단 · 버릴 카드 · 오답 노트. 문제와 정답은 엔진이 실제 판 장면에서 만들고, 약한 유형이 더 자주 나온다
 - **판 복기**(두 모드 모두): 결정마다 L3 추정 승률 흐름 그래프, 확실한 실수만 등급(부정확·실수·블런더)으로 지적, 실수 유형별 이유(스톱·땡큐·등록·붙이기·버림), 그 순간의 장면(내 수 빨강·추천 초록), 대안 비교, "이 장면부터 다시 두기", 복기한 판들의 약점 누적. **스톱 기준표대로 둔 스톱 판단은 실수로 세지 않는다**("기준표대로" 등급, 시뮬레이션 의견은 참고)
 - 전적과 모든 판의 리플레이는 브라우저에 저장되고 JSON으로 내보낼 수 있다
 
