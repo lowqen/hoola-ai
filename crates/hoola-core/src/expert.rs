@@ -7,8 +7,9 @@
 //!
 //! 사양 문자열: `expert` 또는 `expert:stop=c0.6:meld=hold:seven=0:ty=1:danger=1:outs=1.5:samples=32`
 
-use crate::card::{Card, CardSet, Suit};
+use crate::card::{Card, CardSet};
 use crate::game::{Action, Phase, new_melds};
+use crate::meld::AceMode;
 use crate::observation::Observation;
 use crate::rng::Rng;
 use crate::rules::Rules;
@@ -228,35 +229,31 @@ fn draw_sample(rng: &mut Rng, pool: &mut [Card], offset: usize, k: usize) -> Car
     set
 }
 
-fn suit_mask(hand: CardSet, suit: Suit) -> u16 {
-    hand.iter()
-        .filter(|c| c.suit() == suit)
-        .fold(0u16, |m, c| m | (1 << (c.rank() - 1)))
-}
-
-/// `hand`(땡큐하는 사람의 손패)로 `card`를 땡큐할 수 있는지 (A는 1로만 근사).
+/// `hand`(땡큐하는 사람의 손패)로 `card`를 땡큐할 수 있는지 (규칙의 A 처리 그대로).
 fn can_thank_you(hand: CardSet, card: Card, rules: &Rules) -> bool {
     let need = rules.thank_you.min_hand_cards;
-    let same_rank = hand.iter().filter(|c| c.rank() == card.rank()).count();
-    if same_rank >= need.max(rules.meld.min_set - 1) {
-        return true;
+    let mut pool = hand;
+    pool.insert(card);
+    new_melds(pool, rules)
+        .into_iter()
+        .any(|m| m.contains(card) && m.len() > need.max(1))
+}
+
+/// 런 기준으로 `raw` 위치의 랭크 (A 처리 반영). `HighLow`에서 14는 A.
+fn rank_at(raw: i32, mode: AceMode) -> Option<u8> {
+    match mode {
+        AceMode::Low => (1..=13).contains(&raw).then_some(raw as u8),
+        AceMode::HighLow => match raw {
+            1..=13 => Some(raw as u8),
+            14 => Some(1),
+            _ => None,
+        },
+        AceMode::Wrap => Some(((raw - 1).rem_euclid(13) + 1) as u8),
     }
-    let mask = suit_mask(hand, card.suit()) | (1 << (card.rank() - 1));
-    let r = (card.rank() - 1) as i32;
-    let mut lo = r;
-    while lo > 0 && mask & (1 << (lo - 1)) != 0 {
-        lo -= 1;
-    }
-    let mut hi = r;
-    while hi < 12 && mask & (1 << (hi + 1)) != 0 {
-        hi += 1;
-    }
-    let len = (hi - lo + 1) as usize;
-    len >= rules.meld.min_run && len > need
 }
 
 /// `card`와 손패의 다른 카드 1장으로 2장 조각을 이룰 때, 그 조각을 완성하는 보이지 않는 카드 수.
-fn outs(hand: CardSet, card: Card, unseen: CardSet) -> usize {
+fn outs(hand: CardSet, card: Card, unseen: CardSet, mode: AceMode) -> usize {
     let mut completing = CardSet::EMPTY;
     let others = {
         let mut h = hand;
@@ -269,29 +266,39 @@ fn outs(hand: CardSet, card: Card, unseen: CardSet) -> usize {
         }
     }
     let suit = card.suit();
-    let r = card.rank() as i32;
-    let has = |rank: i32| (1..=13).contains(&rank) && others.contains(Card::new(suit, rank as u8));
-    let mut add = |rank: i32| {
-        if (1..=13).contains(&rank) {
-            let c = Card::new(suit, rank as u8);
-            if unseen.contains(c) {
+    // A는 양 끝 모드에서 1과 14 두 자리로 본다
+    let reps: &[i32] = if card.rank() == 1 && mode == AceMode::HighLow {
+        &[1, 14]
+    } else if card.rank() == 1 {
+        &[1]
+    } else {
+        &[card.rank() as i32]
+    };
+    for &r in reps {
+        let at = |raw: i32| rank_at(raw, mode).map(|x| Card::new(suit, x));
+        let has = |raw: i32| at(raw).is_some_and(|c| c != card && others.contains(c));
+        let mut add = |raw: i32| {
+            if let Some(c) = at(raw)
+                && c != card
+                && unseen.contains(c)
+            {
                 completing.insert(c);
             }
+        };
+        if has(r + 1) {
+            add(r - 1);
+            add(r + 2);
         }
-    };
-    if has(r + 1) {
-        add(r - 1);
-        add(r + 2);
-    }
-    if has(r - 1) {
-        add(r + 1);
-        add(r - 2);
-    }
-    if has(r + 2) {
-        add(r + 1);
-    }
-    if has(r - 2) {
-        add(r - 1);
+        if has(r - 1) {
+            add(r + 1);
+            add(r - 2);
+        }
+        if has(r + 2) {
+            add(r + 1);
+        }
+        if has(r - 2) {
+            add(r - 1);
+        }
     }
     completing.len()
 }
@@ -415,7 +422,7 @@ impl crate::bot::Bot for ExpertBot {
                 let mut best: Option<(f64, Card)> = None;
                 for card in candidates {
                     let mut score = f64::from(pts(card))
-                        - self.cfg.outs_weight * outs(hand, card, unseen) as f64;
+                        - self.cfg.outs_weight * outs(hand, card, unseen, rules.meld.ace_mode) as f64;
                     if self.cfg.danger_weight > 0.0 {
                         score -=
                             self.cfg.danger_weight * 10.0 * self.danger(obs, card, &unseen_vec);
@@ -493,17 +500,33 @@ mod tests {
         assert!(can_thank_you(cs("4H 6H"), c("5H"), &r));
         assert!(can_thank_you(cs("6H 7H"), c("5H"), &r));
         assert!(!can_thank_you(cs("6H 8H"), c("5H"), &r));
-        assert!(!can_thank_you(cs("QH KH"), c("AH"), &r));
+        // 순환 규칙(기본): Q-K-A, K-A-2 땡큐 가능 / A는 1로만이면 불가
+        assert!(can_thank_you(cs("QH KH"), c("AH"), &r));
+        assert!(can_thank_you(cs("KH 2H"), c("AH"), &r));
+        let low = Rules {
+            meld: crate::meld::MeldRules {
+                ace_mode: AceMode::Low,
+                ..crate::meld::MeldRules::default()
+            },
+            ..Rules::default()
+        };
+        assert!(!can_thank_you(cs("QH KH"), c("AH"), &low));
     }
 
     #[test]
     fn outs_count() {
         let unseen = CardSet::FULL.difference(cs("5S 5H 9C 6D 7D"));
         // 5 페어: 남은 5D 5C
-        assert_eq!(outs(cs("5S 5H 9C"), c("5S"), unseen), 2);
-        assert_eq!(outs(cs("5S 5H 9C"), c("9C"), unseen), 0);
+        let low = AceMode::Low;
+        assert_eq!(outs(cs("5S 5H 9C"), c("5S"), unseen, low), 2);
+        assert_eq!(outs(cs("5S 5H 9C"), c("9C"), unseen, low), 0);
         // 6D-7D: 5D, 8D
-        assert_eq!(outs(cs("6D 7D KS"), c("6D"), unseen), 2);
+        assert_eq!(outs(cs("6D 7D KS"), c("6D"), unseen, low), 2);
+        // K-A 조각: 순환이면 Q, 2 / 양 끝이면 Q만 / 1로만이면 조각 아님
+        let u = CardSet::FULL.difference(cs("KH AH 9C"));
+        assert_eq!(outs(cs("KH AH 9C"), c("KH"), u, AceMode::Wrap), 2);
+        assert_eq!(outs(cs("KH AH 9C"), c("AH"), u, AceMode::HighLow), 1);
+        assert_eq!(outs(cs("KH AH 9C"), c("KH"), u, AceMode::Low), 0);
     }
 
     #[test]

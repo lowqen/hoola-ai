@@ -7,9 +7,9 @@ use crate::card::{Card, CardSet};
 pub enum AceMode {
     /// A는 1로만: A-2-3 가능, Q-K-A·K-A-2 불가.
     Low,
-    /// 양 끝 가능, 순환 불가: A-2-3, Q-K-A 가능, K-A-2 불가. (`offline_casual` 기본값, RULES v1.1)
+    /// 양 끝 가능, 순환 불가: A-2-3, Q-K-A 가능, K-A-2 불가.
     HighLow,
-    /// 순환: K-A-2도 가능.
+    /// 순환: K-A-2도 가능. (`offline_casual` 기본값, RULES v1.2)
     Wrap,
 }
 
@@ -32,7 +32,7 @@ impl Default for MeldRules {
         MeldRules {
             min_set: 3,
             min_run: 3,
-            ace_mode: AceMode::HighLow,
+            ace_mode: AceMode::Wrap,
             single_seven: true,
             seven_accepts_neighbors: true,
             seven_accepts_sevens: true,

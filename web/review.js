@@ -65,7 +65,9 @@ function unseenOf(obs) {
   return new Set(all.filter((c) => !seen.has(c)));
 }
 
-const cardOf = (rank, suit) => (rank >= 1 && rank <= 13 ? RANK_ORDER[rank - 1] + suit : null);
+// 순환 런 규칙(RULES v1.2): K 다음은 A, A 다음은 2
+const wrapRank = (x) => ((((x - 1) % 13) + 13) % 13) + 1;
+const cardOf = (rank, suit) => RANK_ORDER[wrapRank(rank) - 1] + suit;
 
 /** card가 손패의 다른 카드와 2장 조각을 이루면 {kind, partner, outs[]} (아웃이 가장 많은 것). */
 function fragmentOf(card, hand, unseen) {
@@ -78,12 +80,12 @@ function fragmentOf(card, hand, unseen) {
     cands.push({ kind: "페어를", partner: same[0], outs: [...unseen].filter((c) => rankNum(c) === r) });
   }
   for (const d of [1, -1, 2, -2]) {
-    const partner = others.find((c) => suitOf(c) === s && rankNum(c) === r + d);
+    const partner = others.find((c) => suitOf(c) === s && rankNum(c) === wrapRank(r + d));
     if (!partner) continue;
     const lo = Math.min(r, r + d);
     const hi = Math.max(r, r + d);
     const need = Math.abs(d) === 1 ? [lo - 1, hi + 1] : [lo + 1];
-    const outs = need.map((x) => cardOf(x, s)).filter((c) => c && unseen.has(c));
+    const outs = need.map((x) => cardOf(x, s)).filter((c) => c !== card && unseen.has(c));
     cands.push({ kind: Math.abs(d) === 1 ? "연속을" : "한 칸 건너뛴 연속을", partner, outs });
   }
   cands.sort((a, b) => b.outs.length - a.outs.length);

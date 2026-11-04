@@ -355,7 +355,7 @@ mod tests {
     fn built_in_preset_matches_rules_default() {
         let p = offline_casual();
         assert_eq!(p.name, "offline_casual");
-        assert_eq!(p.rules_version, "1.1");
+        assert_eq!(p.rules_version, "1.2");
         assert_eq!(p.rules, Rules::default());
     }
 
@@ -375,7 +375,7 @@ mod tests {
             limit = 5
 
             [meld]
-            run_ace_mode = "wrap"
+            run_ace_mode = "low"
 
             [card_points]
             seven = 0
@@ -387,7 +387,7 @@ mod tests {
         .unwrap();
         assert_eq!(p.name, "house");
         assert_eq!(p.rules.stop.limit, 5);
-        assert_eq!(p.rules.meld.ace_mode, AceMode::Wrap);
+        assert_eq!(p.rules.meld.ace_mode, AceMode::Low);
         assert_eq!(p.rules.points.points("7D".parse().unwrap()), 0);
         assert_eq!(p.rules.points.points("8D".parse().unwrap()), 8);
         assert_eq!(p.rules.first_player, FirstPlayer::Seat(1));

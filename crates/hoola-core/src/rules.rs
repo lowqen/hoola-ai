@@ -22,7 +22,7 @@ impl Default for ThankYouRules {
             min_hand_cards: 2,
             allow_single_seven: false,
             allow_attach_only: false,
-            on_initial_upcard: false,
+            on_initial_upcard: true,
         }
     }
 }

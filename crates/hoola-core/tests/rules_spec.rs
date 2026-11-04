@@ -188,8 +188,8 @@ fn e5_e6_tie_with_caller_loses() {
 // ---- 등록 (§5, E7) ----
 
 #[test]
-fn e7_ace_high_and_low_but_no_wrap() {
-    // RULES v1.1: A-2-3, Q-K-A 가능 / K-A-2 불가
+fn e7_ace_runs_wrap_around() {
+    // RULES v1.2: A-2-3, Q-K-A, K-A-2 모두 가능
     let mut g = game(&["QS KS AS 2D 3D", "KH"], Some("2C"), &["4D"]);
     play(&mut g, Action::Draw);
     let legal = g.legal_actions();
@@ -201,9 +201,20 @@ fn e7_ace_high_and_low_but_no_wrap() {
     }));
     let mut g = game(&["KD AD 2D 9C", "KH"], Some("2C"), &["5C"]);
     play(&mut g, Action::Draw);
-    assert!(!g.legal_actions().contains(&Action::Register {
+    assert!(g.legal_actions().contains(&Action::Register {
         cards: cs("KD AD 2D")
     }));
+}
+
+#[test]
+fn wrap_run_accepts_attach_on_both_ends() {
+    let r = Rules::default();
+    let mut m = hoola_core::TableMeld::new(0, hoola_core::MeldKind::Run, cs("KD AD 2D"));
+    assert!(m.can_attach(c("QD"), &r.meld));
+    assert!(m.can_attach(c("3D"), &r.meld));
+    assert!(!m.can_attach(c("4D"), &r.meld));
+    assert!(m.attach(c("3D"), &r.meld));
+    assert!(m.can_attach(c("4D"), &r.meld));
 }
 
 #[test]
@@ -298,17 +309,19 @@ fn thank_you_needs_two_hand_cards() {
 }
 
 #[test]
-fn initial_upcard_thank_you_forbidden_by_default() {
-    // RULES v1.1: 선은 첫 공개패를 땡큐할 수 없다
+fn initial_upcard_thank_you_allowed_by_default() {
+    // RULES v1.2: 선은 첫 공개패를 땡큐할 수 있다
     let g = game(&["5H 6H 9C", "KS"], Some("4H"), &[]);
     assert!(
-        !g.legal_actions()
+        g.legal_actions()
             .iter()
             .any(|a| matches!(a, Action::ThankYou { .. }))
     );
-    let g = game_with(ty_first(), &["5H 6H 9C", "KS"], Some("4H"), &[]);
+    let mut rules = Rules::default();
+    rules.thank_you.on_initial_upcard = false;
+    let g = game_with(rules, &["5H 6H 9C", "KS"], Some("4H"), &[]);
     assert!(
-        g.legal_actions()
+        !g.legal_actions()
             .iter()
             .any(|a| matches!(a, Action::ThankYou { .. }))
     );

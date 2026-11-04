@@ -1,10 +1,10 @@
 # 오프라인 친구 대전용 캐주얼 룰 — 기본 프리셋
-# 명세: RULES.md v1.1 (각 키 옆 § 번호 참조)
+# 명세: RULES.md v1.2 (각 키 옆 § 번호 참조)
 # v1.1부터 모든 규칙 항목이 사용자 확정 (engine 섹션만 시뮬레이션 보호용)
 
 [meta]
 name = "offline_casual"
-rules_version = "1.1"
+rules_version = "1.2"
 description = "단판 승패 · 정통훌라 · 52장 · 정산/박/배율 없음"
 
 [players]                         # §3
@@ -29,7 +29,7 @@ first_player = "seed"             # [확정] "seed" | "rotate" | 좌석 번호
 [meld]                            # §5, §6
 min_set = 3                       # [확정]
 min_run = 3                       # [확정]
-run_ace_mode = "high_low"         # [확정] A-2-3, Q-K-A 가능 / K-A-2 불가. "low" | "high_low" | "wrap"
+run_ace_mode = "wrap"             # [확정] A-2-3, Q-K-A, 순환 K-A-2 모두 가능. "low" | "high_low" | "wrap"
 single_seven = true               # [확정]
 seven_accepts_neighbors = true    # [확정] 7 단독에 같은 무늬 6/8
 seven_accepts_sevens = true       # [확정] 7 단독에 다른 7
@@ -46,7 +46,7 @@ min_hand_cards = 2                # [확정] 땡큐 카드와 합칠 손패 최�
 must_meld_taken_card = true       # [확정]
 allow_single_seven = false        # [확정]
 allow_attach_only = false         # [확정]
-on_initial_upcard = false         # [확정] 선은 첫 공개패를 땡큐할 수 없다
+on_initial_upcard = true          # [확정] 선은 첫 차례에 첫 공개패를 땡큐할 수 있다
 
 [stop]                            # §8
 timing = "before_acquire"         # [확정]
