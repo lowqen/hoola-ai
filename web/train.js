@@ -342,7 +342,7 @@ function renderDiscard(stage, P, done) {
     const unseen = unseenOf(obs);
     const ruleRows = sortCards(obs.hand)
       .map((c) => ({ c, s: discardScore(c, obs.hand, unseen), f: fragmentOf(c, obs.hand, unseen) }))
-      .sort((a, b) => b.s - a.s);
+      .sort((a, b) => b.s - a.s || points(b.c) - points(a.c)); // 동점이면 무거운 카드부터
     const ruleBest = ruleRows[0].c;
     const lines = [];
     if (ok) lines.push(pick === best ? `${cardText(pick)} — 최선이다.` : `${cardText(pick)} — 최선(${cardText(best)})과 확실한 차이가 없다.`);
@@ -350,7 +350,7 @@ function renderDiscard(stage, P, done) {
     const mf = fragmentOf(pick, obs.hand, unseen);
     if (!ok && mf) lines.push(`${cardText(pick)}는 ${cardText(mf.partner)}와 ${mf.kind} 이루는 조합 직전 카드였다 (살릴 카드 ${mf.outs.length}장 남음).`);
     if (!ok && points(best) > points(pick)) lines.push(`${cardText(best)}(${points(best)}점)가 더 무겁다. 무거운 카드부터 버린다.`);
-    lines.push(ruleBest === best ? `규칙(점수 − 살릴 카드 수×3)으로도 ${cardText(ruleBest)}가 1위다.` : `규칙 1위는 ${cardText(ruleBest)}지만, 이 장면은 시뮬레이션이 ${cardText(best)}를 더 높게 본다.`);
+    lines.push(ruleBest === best ? `규칙(점수 − 살릴 카드 수×3, 동점이면 무거운 카드)으로도 ${cardText(ruleBest)}가 1위다.` : `규칙 1위는 ${cardText(ruleBest)}지만, 이 장면은 시뮬레이션이 ${cardText(best)}를 더 높게 본다 (남은 패와의 연결·상대 땡큐 가능성 차이).`);
     const extra = el("div");
     extra.appendChild(el("div", "t-label", "규칙 점수 (점수 − 살릴 카드 수 × 3)"));
     const table = el("div", "t-rule");
