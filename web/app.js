@@ -47,6 +47,10 @@ const defaults = {
   seed: "",
 };
 const settings = Object.assign({}, defaults, store.settings || {});
+// 없어진 봇(예: 친구 D)은 가장 가까운 봇으로 바꾼다
+const RENAMED = { friendD: "friendE" };
+settings.opponents = (settings.opponents || defaults.opponents).map((o) => (BOTS[o] ? o : BOTS[RENAMED[o]] ? RENAMED[o] : "expert"));
+while (settings.opponents.length < 4) settings.opponents.push("expert");
 let game = null;
 let config = null; // 이번 판 설정 스냅숏
 let humanDecisions = []; // [{index, action}]
