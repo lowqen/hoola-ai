@@ -18,7 +18,11 @@
         <div class="sub" id="engine-ver">엔진 불러오는 중…</div>
       </div>
     </div>
-    <div class="topbar-actions">
+    <nav class="tabs" role="tablist" aria-label="화면">
+      <button id="tab-play" role="tab" aria-selected="true" class="tab active">대전</button>
+      <button id="tab-train" role="tab" aria-selected="false" class="tab">훈련</button>
+    </nav>
+    <div class="topbar-actions play-only">
       <label class="switch" title="가능한 등록·붙이기·땡큐·스톱을 버튼으로 보여 주고, 스톱 기준표와 L3 힌트를 켠다">
         <input type="checkbox" id="set-beginner">
         <span class="track" aria-hidden="true"><span class="thumb"></span></span>
@@ -56,6 +60,28 @@
       <label class="check"><input type="checkbox" id="set-show-hint"> 초보자 모드에서 매 결정마다 힌트 자동 표시</label>
     </div>
     <p class="muted xsmall">인원·상대·버림패 공개는 다음 판부터 적용된다.</p>
+  </section>
+
+  <section id="train-view" class="train-view" hidden aria-label="훈련">
+    <div id="t-home" class="t-home">
+      <div class="t-hero">
+        <div>
+          <h2>훈련</h2>
+          <p class="muted">실전에서 자주 놓치는 판단만 골라 짧은 문제로 반복한다. 문제와 정답은 엔진이 실제 판에서 만든다.</p>
+          <p class="t-today-line"><span id="t-today"></span> · <span id="t-reco"></span></p>
+        </div>
+        <button id="t-start" class="primary big">오늘의 훈련 10문제</button>
+      </div>
+      <div id="t-drills" class="t-drills"></div>
+      <p class="muted xsmall">약한 유형이 더 자주 나온다. 틀린 문제는 같은 훈련 안에서 3문제 뒤에 다시 나오고, 오답 노트에도 쌓인다. Enter = 제출·다음, 숫자 = 보기 선택, Esc = 그만두기.</p>
+    </div>
+    <div id="t-session" class="t-session" hidden>
+      <div class="t-bar">
+        <button id="t-exit" class="ghost small">✕ 그만두기</button>
+        <div id="t-progress" class="t-progress"></div>
+      </div>
+      <div id="t-stage" class="t-stage"></div>
+    </div>
   </section>
 
   <main class="layout">

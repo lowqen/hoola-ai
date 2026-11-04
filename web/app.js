@@ -4,6 +4,7 @@ import {
   STOP_TABLE, actionText, cardBack, cardEl, cardText, cardsText, el, parseAction, sortCards,
 } from "./common.js";
 import { CATEGORY, openReview } from "./review.js";
+import { initTraining, showHome } from "./train.js";
 
 const BOTS = {
   expert: { label: "전문가 (전략서 v1)", short: "전문가", spec: "expert" },
@@ -504,6 +505,14 @@ function startReview() {
     outcome: JSON.parse(game.outcome()),
     finalEvents: obsNow().events,
     onReplayFrom: replayFrom,
+    replayKey: `${config.seed}`,
+    onMistakes: (list) => {
+      store.notebook ||= [];
+      const have = new Set(store.notebook.map((m) => m.key));
+      for (const m of list) if (!have.has(m.key)) store.notebook.push({ ...m, at: new Date().toISOString(), solved: 0 });
+      if (store.notebook.length > 200) store.notebook.splice(0, store.notebook.length - 200);
+      saveStore();
+    },
     onSummary: (summary) => {
       if (!record) return;
       record.review = summary;
@@ -653,6 +662,20 @@ async function main() {
   $("res-new").addEventListener("click", newGame);
   $("res-same").addEventListener("click", sameGame);
   $("res-review").addEventListener("click", startReview);
+  initTraining({ store, saveStore });
+  const setTab = (train) => {
+    $("tab-play").classList.toggle("active", !train);
+    $("tab-train").classList.toggle("active", train);
+    $("tab-play").setAttribute("aria-selected", String(!train));
+    $("tab-train").setAttribute("aria-selected", String(train));
+    $("train-view").hidden = !train;
+    document.querySelector("main.layout").hidden = train;
+    $("settings").hidden = true;
+    document.body.classList.toggle("mode-train", train);
+    if (train) showHome();
+  };
+  $("tab-play").addEventListener("click", () => setTab(false));
+  $("tab-train").addEventListener("click", () => setTab(true));
   newGame();
 }
 

@@ -75,3 +75,46 @@ export function el(tag, cls = "", text = "") {
   if (text) e.textContent = text;
   return e;
 }
+
+// ---------- 조각(조합 직전 카드) 분석: 복기·훈련 공용 ----------
+
+/** 관측 좌석이 위치를 모르는 카드 (손패·바닥·버림패 기억 제외). */
+export function unseenOf(obs) {
+  const seen = new Set([...obs.hand, ...obs.known_discards, ...obs.melds.flatMap((m) => m.cards)]);
+  const all = [];
+  for (const s of "SHDC") for (const r of RANK_ORDER) all.push(r + s);
+  return new Set(all.filter((c) => !seen.has(c)));
+}
+
+// 순환 런 규칙(RULES v1.2): K 다음은 A, A 다음은 2
+export const wrapRank = (x) => ((((x - 1) % 13) + 13) % 13) + 1;
+export const cardOf = (rank, suit) => RANK_ORDER[wrapRank(rank) - 1] + suit;
+
+/** card가 손패의 다른 카드와 2장 조각을 이루면 {kind, partner, outs[]} (아웃이 가장 많은 것). */
+export function fragmentOf(card, hand, unseen) {
+  const others = hand.filter((c) => c !== card);
+  const r = rankNum(card);
+  const s = suitOf(card);
+  const cands = [];
+  const same = others.filter((c) => rankNum(c) === r);
+  if (same.length) {
+    cands.push({ kind: "페어를", partner: same[0], outs: [...unseen].filter((c) => rankNum(c) === r) });
+  }
+  for (const d of [1, -1, 2, -2]) {
+    const partner = others.find((c) => suitOf(c) === s && rankNum(c) === wrapRank(r + d));
+    if (!partner) continue;
+    const lo = Math.min(r, r + d);
+    const hi = Math.max(r, r + d);
+    const need = Math.abs(d) === 1 ? [lo - 1, hi + 1] : [lo + 1];
+    const outs = need.map((x) => cardOf(x, s)).filter((c) => c !== card && unseen.has(c));
+    cands.push({ kind: Math.abs(d) === 1 ? "연속을" : "한 칸 건너뛴 연속을", partner, outs });
+  }
+  cands.sort((a, b) => b.outs.length - a.outs.length);
+  return cands.length && cands[0].outs.length > 0 ? cands[0] : null;
+}
+
+/** 버림 규칙 점수: 카드 점수 − 살려 줄 카드 수 × w (높을수록 먼저 버린다). */
+export function discardScore(card, hand, unseen, w = 3) {
+  const f = fragmentOf(card, hand, unseen);
+  return points(card) - (f ? f.outs.length : 0) * w;
+}

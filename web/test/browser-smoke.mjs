@@ -146,6 +146,58 @@ await page.waitForFunction(() => document.querySelectorAll("#log li.mine").lengt
 await page.screenshot({ path: "self-mode.png", fullPage: true });
 console.log("self mode ok");
 
+// 6) 훈련 모드: 유형마다 한 문제씩 풀고 피드백·다음 문제 확인
+await page.click("#tab-train");
+await page.waitForSelector("#t-drills .t-drill");
+const drillCount = await page.$$eval("#t-drills .t-drill", (d) => d.length);
+if (drillCount !== 5) await fail(`expected 5 drills, got ${drillCount}`);
+const answerers = {
+  0: async () => { await page.click("#t-stage .t-actions button.primary"); }, // 조합 찾기: 묶지 않고 제출
+  1: async () => { await page.click("#t-stage .t-actions button.tonal"); }, // 땡큐: 받기
+  2: async () => { await page.click("#t-stage .t-actions button.primary"); }, // 스톱: 받기(계속)
+  3: async () => { await page.click("#t-stage .t-hand button.card >> nth=0"); await page.click("#t-stage .t-actions button.primary"); }, // 버릴 카드
+};
+for (const [i, answer] of Object.entries(answerers)) {
+  await page.click(`#t-drills .t-drill >> nth=${i}`);
+  await page.waitForSelector("#t-stage .t-qhead", { timeout: 120000 });
+  await answer();
+  await page.waitForSelector("#t-stage .t-feedback", { timeout: 10000 });
+  const fb = (await page.textContent("#t-stage .t-feedback")).replace(/\s+/g, " ").slice(0, 160);
+  console.log(`drill ${i}:`, fb);
+  if (i === "3") await page.screenshot({ path: "train-discard.png", fullPage: true });
+  await page.click("#t-stage .t-next button");
+  await page.waitForSelector("#t-stage .t-qhead", { timeout: 120000 });
+  await page.click("#t-exit");
+  await page.waitForSelector("#t-home:not([hidden])");
+}
+// 조합 찾기: 엔진이 낸 정답 묶음을 그대로 입력하면 정답이어야 한다 (정답 판정 검증)
+await page.click("#t-drills .t-drill >> nth=0");
+await page.waitForSelector("#t-stage .t-qhead", { timeout: 120000 });
+await page.click("#t-stage .t-actions button.primary");
+await page.waitForSelector("#t-stage .t-feedback");
+const best = await page.$$eval("#t-stage .t-answer .t-chip", (chips) => chips.map((ch) => [...ch.querySelectorAll(".card")].map((c) => c.getAttribute("title"))));
+await page.click("#t-stage .t-next button");
+await page.waitForSelector("#t-stage .t-qhead", { timeout: 120000 });
+console.log("best partition sample:", JSON.stringify(best));
+await page.screenshot({ path: "train-meld.png", fullPage: true });
+await page.click("#t-exit");
+const nbEnabled = await page.$eval("#t-drills .t-drill >> nth=4", (b) => !b.disabled).catch(() => false);
+const nbButtons = await page.$$("#t-drills .t-drill");
+if (!(await nbButtons[4].isDisabled())) {
+  await nbButtons[4].click();
+  await page.waitForSelector("#t-stage .t-option", { timeout: 20000 });
+  await page.click("#t-stage .t-option >> nth=0");
+  await page.waitForSelector("#t-stage .t-feedback");
+  console.log("notebook ok");
+  await page.click("#t-exit");
+}
+void nbEnabled;
+const trainStats = await page.evaluate(() => JSON.parse(localStorage.getItem("hoola-practice-v1")).train);
+const answered = Object.values(trainStats).reduce((s, x) => s + x.n, 0);
+if (answered < 4) await fail(`training stats not saved: ${answered}`);
+await page.screenshot({ path: "train-home.png", fullPage: true });
+console.log("training ok");
+
 if (errors.length) await fail("console errors");
 await browser.close();
 server.close();

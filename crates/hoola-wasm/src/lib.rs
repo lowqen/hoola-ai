@@ -4,9 +4,11 @@
 //! 사람 좌석의 화면은 반드시 `observation(seat)`만으로 그린다 (숨은 정보 차단).
 
 use hoola_core::arena::{NamedBot, end_reason_name};
+use hoola_core::belief::{LEARNED, stop_win_estimate};
+use hoola_core::expert::best_partition;
 use hoola_core::{
-    Action, Bot, CardSet, EndReason, Event, Game, MeldKind, Observation, Phase, Replay, SearchBot,
-    SearchConfig, preset,
+    Action, Bot, CardSet, EndReason, Event, Game, MeldKind, Observation, Phase, Replay, Rng,
+    Rules, SearchBot, SearchConfig, classify_new_meld, parse_cards, preset,
 };
 use serde_json::{Value, json};
 use wasm_bindgen::prelude::*;
@@ -282,6 +284,29 @@ impl WasmGame {
     }
 
     /// 마지막으로 적용한 행동 (정규화된 텍스트, 없으면 `undefined`).
+    /// 훈련용: `seat`가 지금 스톱하면 실제로 이기는가 (숨은 정보 포함, 판 종료 뒤 공개용).
+    #[wasm_bindgen(js_name = stopTruth)]
+    pub fn stop_truth(&self, seat: usize) -> bool {
+        let mine = self.inner.hand_points(seat);
+        (0..self.inner.num_players()).all(|s| s == seat || self.inner.hand_points(s) > mine)
+    }
+
+    /// 훈련용: `seat` 관측만으로 추정한 지금 스톱의 승리 확률 (학습된 상대 손패 추정).
+    #[wasm_bindgen(js_name = stopEstimate)]
+    pub fn stop_estimate(&self, seat: usize, samples: usize, seed: u32) -> f64 {
+        let obs = self.inner.observation(seat);
+        let mut rng = Rng::seed_from_u64(u64::from(seed));
+        stop_win_estimate(&obs, &mut rng, &LEARNED, samples.max(1))
+    }
+
+    /// 훈련용: 좌석별 손패 점수 (판 종료 화면·정답 공개용).
+    #[wasm_bindgen(js_name = handPoints)]
+    pub fn hand_points_all(&self) -> Vec<u32> {
+        (0..self.inner.num_players())
+            .map(|s| self.inner.hand_points(s))
+            .collect()
+    }
+
     #[wasm_bindgen(js_name = lastAction)]
     pub fn last_action(&self) -> Option<String> {
         self.replay.actions.last().cloned()
@@ -297,6 +322,43 @@ impl WasmGame {
     pub fn clone_game(&self) -> WasmGame {
         self.clone()
     }
+}
+
+fn parse_set(cards: &str) -> Result<CardSet, String> {
+    let list = parse_cards(cards).map_err(|e| e.to_string())?;
+    let set: CardSet = list.iter().copied().collect();
+    if set.len() != list.len() {
+        return Err("duplicate cards".into());
+    }
+    Ok(set)
+}
+
+/// 훈련용: 손패를 서로 겹치지 않는 조합으로 나눠 점수를 가장 많이 덜어내는 방법 (기본 규칙).
+/// `{"melds": [["5S","5H","5D"], ...], "covered": 15, "left": 23}`
+pub fn best_partition_json(cards: &str) -> Result<Value, String> {
+    let rules = Rules::default();
+    let hand = parse_set(cards)?;
+    let melds = best_partition(hand, &rules, true);
+    let covered: u32 = melds.iter().map(|m| m.points(&rules.points)).sum();
+    Ok(json!({
+        "melds": melds.iter().map(|&m| cards(m)).collect::<Vec<_>>(),
+        "covered": covered,
+        "left": hand.points(&rules.points) - covered,
+    }))
+}
+
+#[wasm_bindgen(js_name = bestPartition)]
+pub fn best_partition_js(cards: &str) -> Result<String, JsError> {
+    best_partition_json(cards)
+        .map(|v| v.to_string())
+        .map_err(|e| JsError::new(&e))
+}
+
+/// 훈련용: 카드 묶음이 새 조합이면 종류(`set`/`run`/`seven`), 아니면 `undefined` (기본 규칙).
+#[wasm_bindgen(js_name = meldKind)]
+pub fn meld_kind(cards: &str) -> Option<String> {
+    let list = parse_cards(cards).ok()?;
+    classify_new_meld(&list, &Rules::default().meld).map(|k| meld_kind_name(k).to_string())
 }
 
 /// 엔진 버전.
@@ -352,6 +414,22 @@ mod tests {
         let g = WasmGame::create(2, 5, 0, "").unwrap();
         let v = g.try_evaluate(2, 1).unwrap();
         assert_eq!(v.as_array().unwrap().len(), g.inner.legal_actions().len());
+    }
+
+    #[test]
+    fn training_helpers() {
+        let v = best_partition_json("5S 5H 5D 6S 7S 8S KC").unwrap();
+        assert_eq!(v["covered"], 36);
+        assert_eq!(v["left"], 13);
+        assert_eq!(meld_kind("KD AD 2D").as_deref(), Some("run"));
+        assert_eq!(meld_kind("7H").as_deref(), Some("seven"));
+        assert_eq!(meld_kind("5S 5H"), None);
+        assert!(best_partition_json("5S 5S").is_err());
+        let g = WasmGame::create(2, 3, 0, "").unwrap();
+        let est = g.stop_estimate(0, 64, 1);
+        assert!((0.0..=1.0).contains(&est));
+        assert_eq!(g.hand_points_all().len(), 2);
+        let _ = g.stop_truth(0);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 // 판 복기: 결정마다 L3 평가 → 등급 · 장면 · 이유 · 대안 · 승률 흐름.
 import {
-  STOP_TABLE, RANK_ORDER, actionText, cardEl, cardBack, cardText, cardsText, el, parseAction,
-  points, rankNum, sortCards, suitOf,
+  STOP_TABLE, actionText, cardEl, cardBack, cardText, cardsText, el, fragmentOf, parseAction,
+  points, sortCards, unseenOf,
 } from "./common.js";
 
 const REVIEW_K = 160;
@@ -56,40 +56,6 @@ function gradeOf(item) {
 function lossOf(item) {
   const m = item.mine;
   return m && m.gap > 2 * m.gap_se ? m.gap : 0;
-}
-
-function unseenOf(obs) {
-  const seen = new Set([...obs.hand, ...obs.known_discards, ...obs.melds.flatMap((m) => m.cards)]);
-  const all = [];
-  for (const s of "SHDC") for (const r of RANK_ORDER) all.push(r + s);
-  return new Set(all.filter((c) => !seen.has(c)));
-}
-
-// 순환 런 규칙(RULES v1.2): K 다음은 A, A 다음은 2
-const wrapRank = (x) => ((((x - 1) % 13) + 13) % 13) + 1;
-const cardOf = (rank, suit) => RANK_ORDER[wrapRank(rank) - 1] + suit;
-
-/** card가 손패의 다른 카드와 2장 조각을 이루면 {kind, partner, outs[]} (아웃이 가장 많은 것). */
-function fragmentOf(card, hand, unseen) {
-  const others = hand.filter((c) => c !== card);
-  const r = rankNum(card);
-  const s = suitOf(card);
-  const cands = [];
-  const same = others.filter((c) => rankNum(c) === r);
-  if (same.length) {
-    cands.push({ kind: "페어를", partner: same[0], outs: [...unseen].filter((c) => rankNum(c) === r) });
-  }
-  for (const d of [1, -1, 2, -2]) {
-    const partner = others.find((c) => suitOf(c) === s && rankNum(c) === wrapRank(r + d));
-    if (!partner) continue;
-    const lo = Math.min(r, r + d);
-    const hi = Math.max(r, r + d);
-    const need = Math.abs(d) === 1 ? [lo - 1, hi + 1] : [lo + 1];
-    const outs = need.map((x) => cardOf(x, s)).filter((c) => c !== card && unseen.has(c));
-    cands.push({ kind: Math.abs(d) === 1 ? "연속을" : "한 칸 건너뛴 연속을", partner, outs });
-  }
-  cands.sort((a, b) => b.outs.length - a.outs.length);
-  return cands.length && cands[0].outs.length > 0 ? cands[0] : null;
 }
 
 function fewestOpp(obs, seat) {
@@ -515,6 +481,24 @@ export function openReview(ctx) {
     const cats = {};
     state.items.filter((it) => it.loss > 0).forEach((it) => (cats[it.category] = (cats[it.category] || 0) + 1));
     ctx.onSummary?.({ ...summary, categories: cats });
+    // 오답 노트: 확실한 실수 장면 (기준표대로 둔 스톱 판단은 제외)
+    const mistakes = state.items
+      .filter((it) => it.loss > 0)
+      .map((it) => {
+        const top = it.scored.slice(0, 5);
+        if (!top.some((v) => v.action === it.mine.action)) top.push(it.mine);
+        return {
+          obs: it.obs,
+          scored: top,
+          mine: it.mine.action,
+          best: it.best.action,
+          lines: it.lines,
+          category: it.category,
+          loss: it.loss,
+          key: `${ctx.replayKey || ""}#${it.decision.index}`,
+        };
+      });
+    if (mistakes.length) ctx.onMistakes?.(mistakes);
   };
   w.postMessage({ jobId, replay: ctx.replayJson, decisions, k: REVIEW_K, seat: ctx.seat });
 }

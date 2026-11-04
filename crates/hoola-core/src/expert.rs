@@ -311,8 +311,8 @@ fn outs(hand: CardSet, card: Card, unseen: CardSet, mode: AceMode) -> usize {
     completing.len()
 }
 
-/// 서로 겹치지 않는 조합 묶음 중 점수 합이 가장 큰 것.
-fn best_partition(hand: CardSet, rules: &Rules, allow_seven: bool) -> Vec<CardSet> {
+/// 서로 겹치지 않는 조합 묶음 중 점수 합이 가장 큰 것 (`allow_seven`이 거짓이면 7 단독 제외).
+pub fn best_partition(hand: CardSet, rules: &Rules, allow_seven: bool) -> Vec<CardSet> {
     let melds: Vec<CardSet> = new_melds(hand, rules)
         .into_iter()
         .filter(|m| allow_seven || m.len() > 1)
