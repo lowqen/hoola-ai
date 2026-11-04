@@ -1,0 +1,34 @@
+/* 문서 기본 스타일: 토큰만 쓴다 (tokens.css 다음에 불러온다). */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+html {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+body {
+	margin: 0;
+	background: var(--md-sys-color-surface);
+	color: var(--md-sys-color-on-surface);
+	font-family: var(--md-ref-typeface-plain);
+	font-size: var(--md-sys-typescale-body-large-size);
+	line-height: var(--md-sys-typescale-body-large-line-height);
+	-webkit-font-smoothing: antialiased;
+}
+a {
+	color: var(--md-sys-color-primary);
+}
+:focus-visible {
+	outline: 3px solid var(--md-sys-color-tertiary);
+	outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
+}

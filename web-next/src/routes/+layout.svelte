@@ -1,4 +1,7 @@
 <script lang="ts">
+	import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+	import '#lib/theme/tokens.css';
+	import '#lib/theme/base.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutProps } from './$types';
 

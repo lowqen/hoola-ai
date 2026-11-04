@@ -12,3 +12,6 @@ bun.lockb
 /.lighthouseci
 /playwright-report
 /test-results
+
+# 생성 파일 (npm run tokens)
+/src/lib/theme/tokens.css

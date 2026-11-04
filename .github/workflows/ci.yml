@@ -258,7 +258,7 @@ jobs:
           if-no-files-found: ignore
 
   web-next:
-    name: Web next (SvelteKit, D0)
+    name: Web next (SvelteKit)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -293,6 +293,9 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Design tokens (최신 여부 + 6개 테마 명암 대비)
+        run: npm run tokens:check
 
       - name: Type check & format
         run: |

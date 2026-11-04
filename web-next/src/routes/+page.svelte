@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import { selfTest, type SelfTest } from '#lib/engine.ts';
 
 	const REASONS: Record<string, string> = {
@@ -35,7 +36,7 @@
 		<span class="logo" aria-hidden="true">♠</span>
 		<div>
 			<h1>훌라 연습장</h1>
-			<p class="sub">새 버전 미리보기 · D0 기반</p>
+			<p class="sub">새 버전 미리보기 · D1 디자인 토큰</p>
 		</div>
 	</header>
 
@@ -58,45 +59,20 @@
 		<h2>진행 상황</h2>
 		<ol>
 			<li class="done">D0 · SvelteKit 정적 빌드, WASM 연결, CI</li>
-			<li>D1 · M3 색·글꼴·모양·모션 토큰</li>
+			<li class="done">D1 · M3 색·글꼴·모양·모션 토큰</li>
 			<li>D2 · 컴포넌트 키트</li>
 			<li>D3 · 카드·테이블 컴포넌트와 모션</li>
 			<li>D4 · 대전·훈련·복기·기록 화면</li>
 			<li>D5 · 다듬기·설치형 앱(PWA)</li>
 		</ol>
-		<p><a href="../" rel="external">지금 버전 연습장으로 →</a></p>
+		<p class="links">
+			<a href={`${resolve('/theme')}/`}>테마 미리보기 →</a>
+			<a href="../" rel="external">지금 버전 연습장으로 →</a>
+		</p>
 	</section>
 </main>
 
 <style>
-	:global(:root) {
-		--bg: #f4f1ea;
-		--surface: #fffdf8;
-		--ink: #1c1c1a;
-		--muted: #6a685f;
-		--accent: #1f6f50;
-		color-scheme: light dark;
-	}
-	@media (prefers-color-scheme: dark) {
-		:global(:root) {
-			--bg: #121412;
-			--surface: #1d201e;
-			--ink: #ecece8;
-			--muted: #a3a39b;
-			--accent: #6cc79f;
-		}
-	}
-	:global(body) {
-		margin: 0;
-		background: var(--bg);
-		color: var(--ink);
-		font:
-			16px/1.5 system-ui,
-			-apple-system,
-			'Apple SD Gothic Neo',
-			'Malgun Gothic',
-			sans-serif;
-	}
 	main {
 		max-width: 640px;
 		margin: 0 auto;
@@ -113,42 +89,55 @@
 	.logo {
 		display: grid;
 		place-items: center;
-		width: 44px;
-		height: 44px;
-		border-radius: 14px;
-		background: var(--accent);
-		color: var(--surface);
-		font-size: 24px;
+		width: 48px;
+		height: 48px;
+		border-radius: var(--md-sys-shape-corner-large);
+		background: radial-gradient(
+			120% 90% at 50% 40%,
+			var(--hoola-color-felt-1),
+			var(--hoola-color-felt-2)
+		);
+		color: var(--hoola-color-on-felt);
+		font-size: 26px;
 	}
 	h1 {
 		margin: 0;
-		font-size: 22px;
+		font-size: var(--md-sys-typescale-headline-small-size);
+		line-height: var(--md-sys-typescale-headline-small-line-height);
+		font-weight: 700;
 	}
 	h2 {
 		margin: 0 0 8px;
-		font-size: 16px;
+		font-size: var(--md-sys-typescale-title-medium-size);
+		line-height: var(--md-sys-typescale-title-medium-line-height);
+		font-weight: var(--md-sys-typescale-title-medium-weight);
 	}
 	.sub {
 		margin: 0;
-		color: var(--muted);
-		font-size: 14px;
+		color: var(--md-sys-color-on-surface-variant);
+		font-size: var(--md-sys-typescale-body-medium-size);
 	}
 	.panel {
-		background: var(--surface);
-		border-radius: 20px;
+		background: var(--md-sys-color-surface-container);
+		border-radius: var(--md-sys-shape-corner-extra-large);
 		padding: 16px 20px;
 	}
 	ol {
 		margin: 0 0 12px;
 		padding-left: 20px;
-		color: var(--muted);
+		color: var(--md-sys-color-on-surface-variant);
 	}
 	li.done {
-		color: var(--ink);
+		color: var(--md-sys-color-on-surface);
 		font-weight: 600;
 	}
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 16px;
+		margin: 0;
+	}
 	a {
-		color: var(--accent);
 		font-weight: 600;
 	}
 </style>

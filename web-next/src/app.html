@@ -6,6 +6,29 @@
 		<meta name="text-scale" content="scale" />
 		<meta name="theme-color" content="#1f6f50" />
 		<meta name="color-scheme" content="light dark" />
+		<script>
+			// 첫 그리기 전에 테마 적용 (src/lib/theme/apply.ts와 같은 규칙)
+			(function () {
+				var p = {};
+				try {
+					p = JSON.parse(localStorage.getItem('hoola-theme') || '{}');
+				} catch (e) {}
+				var t =
+					p.theme === 'light' || p.theme === 'dark'
+						? p.theme
+						: matchMedia('(prefers-color-scheme: dark)').matches
+							? 'dark'
+							: 'light';
+				var c =
+					p.contrast === 'standard' || p.contrast === 'medium' || p.contrast === 'high'
+						? p.contrast
+						: matchMedia('(prefers-contrast: more)').matches
+							? 'high'
+							: 'standard';
+				document.documentElement.dataset.theme = t;
+				document.documentElement.dataset.contrast = c;
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

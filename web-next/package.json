@@ -13,9 +13,12 @@
 		"lint": "prettier --check .",
 		"format": "prettier --write .",
 		"test:e2e": "playwright install && playwright test",
-		"test": "npm run test:e2e"
+		"test": "npm run test:e2e",
+		"tokens": "node --import ./scripts/resolve-js.ts scripts/tokens.ts",
+		"tokens:check": "node --import ./scripts/resolve-js.ts scripts/tokens.ts --check"
 	},
 	"devDependencies": {
+		"@material/material-color-utilities": "^0.4.0",
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-static": "^4.0.0",
 		"@sveltejs/kit": "^3.0.0",
@@ -31,5 +34,8 @@
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"pretendard": "^1.3.9"
 	}
 }
