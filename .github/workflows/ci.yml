@@ -249,9 +249,6 @@ jobs:
           name: hoola-web
           path: _site
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -260,9 +257,76 @@ jobs:
           path: web/test/*.png
           if-no-files-found: ignore
 
+  web-next:
+    name: Web next (SvelteKit, D0)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE_PATH: /hoola-ai/next
+    defaults:
+      run:
+        working-directory: web-next
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web-next/package-lock.json
+
+      - name: Build WASM → static/pkg
+        working-directory: .
+        run: |
+          wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web-next/static/pkg --no-pack
+          rm -f web-next/static/pkg/.gitignore
+
+      - name: Install
+        run: npm ci
+
+      - name: Type check & format
+        run: |
+          npm run check
+          npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: E2E (Chromium)
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+      - name: Lighthouse (모바일, 중앙값)
+        run: npx -y @lhci/cli@0.16.0 autorun
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hoola-web-next
+          path: web-next/build
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-next-reports
+          path: |
+            web-next/.lighthouseci
+            web-next/playwright-report
+          if-no-files-found: ignore
+
   pages:
     name: Deploy GitHub Pages
-    needs: web
+    needs: [web, web-next]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -273,28 +337,21 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hoola-web
+          path: site
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: hoola-web-next
+          path: site/next
+
+      - run: ls -la site site/next
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
       - id: deployment
         uses: actions/deploy-pages@v4
-
-  lab-belief:
-    name: Belief calibration lab
-    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'belief')
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Build release
-        run: cargo build --release -p hoola-lab
-
-      - name: Learn opponent-hand weights & calibrate
-        run: ./target/release/hoola-lab --only BELIEF --deals 8000 --out belief-results.md | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: belief-results
-          path: belief-results.md

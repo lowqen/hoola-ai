@@ -1,0 +1,79 @@
+// WASM 엔진(hoola-wasm) 로더. 엔진 산출물은 빌드 때 static/pkg/로 복사된다 (CI: wasm-pack).
+//
+// - 가벼운 호출(합법 수, 관측)은 메인 스레드의 `loadEngine()`으로 한다.
+// - 무거운 계산(봇 대전, L3 분석, 문제 생성)은 워커에서 한다 (`engine.worker.ts`).
+import { asset } from '$app/paths';
+import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
+
+/** 엔진의 한 판 (hoola-wasm `WasmGame`) 중 이 앱이 쓰는 부분. JSON은 문자열로 주고받는다. */
+export interface WasmGame {
+	readonly numPlayers: number;
+	readonly currentPlayer: number;
+	readonly phase: 'turn_start' | 'meld' | 'over';
+	readonly isOver: boolean;
+	readonly actionCount: number;
+	legalActions(): string;
+	apply(action: string): void;
+	observation(seat: number): string;
+	outcome(): string;
+	botAction(spec: string, seed: number): string;
+	free(): void;
+}
+
+export interface Engine {
+	version(): string;
+	WasmGame: new (players: number, seed: number, firstPlayer: number, rulesToml: string) => WasmGame;
+}
+
+interface EngineModule extends Engine {
+	default: (input?: unknown) => Promise<unknown>;
+}
+
+/** 런타임에 정해지는 정적 파일 경로 (타입 생성 시점에는 static/pkg가 없을 수 있다). */
+const staticUrl = (file: string) => asset(file as Parameters<typeof asset>[0]);
+
+/** 엔진 JS의 절대 URL (워커는 페이지와 기준 경로가 달라서 절대 URL로 넘긴다). */
+export const enginePkgUrl = () => new URL(staticUrl('/pkg/hoola_wasm.js'), location.href).href;
+
+let loading: Promise<Engine> | null = null;
+
+/** 메인 스레드용 엔진을 한 번만 불러온다. 첫 화면은 엔진 없이 그리고, 필요할 때 기다린다. */
+export function loadEngine(): Promise<Engine> {
+	loading ??= (async () => {
+		const mod = (await import(/* @vite-ignore */ enginePkgUrl())) as EngineModule;
+		await mod.default();
+		return mod;
+	})();
+	return loading;
+}
+
+let worker: Worker | null = null;
+let nextId = 0;
+const pending = new Map<number, (r: WorkerResponse) => void>();
+
+function engineWorker(): Worker {
+	if (worker) return worker;
+	worker = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' });
+	worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
+		pending.get(e.data.id)?.(e.data);
+		pending.delete(e.data.id);
+	};
+	return worker;
+}
+
+export interface SelfTest {
+	version: string;
+	moves: number;
+	reason: string;
+	ms: number;
+}
+
+/** 엔진 동작 확인 (워커): 전문가 봇 2명이 한 판을 끝까지 둔다. */
+export function selfTest(seed = 2026): Promise<SelfTest> {
+	const id = ++nextId;
+	return new Promise((resolve, reject) => {
+		pending.set(id, (r) => (r.ok ? resolve(r) : reject(new Error(r.error))));
+		const req: WorkerRequest = { id, kind: 'selfTest', pkgUrl: enginePkgUrl(), seed };
+		engineWorker().postMessage(req);
+	});
+}
