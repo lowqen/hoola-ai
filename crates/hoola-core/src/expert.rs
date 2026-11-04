@@ -448,7 +448,8 @@ impl crate::bot::Bot for ExpertBot {
                 let mut best: Option<(f64, Card)> = None;
                 for card in candidates {
                     let mut score = f64::from(pts(card))
-                        - self.cfg.outs_weight * outs(hand, card, unseen, rules.meld.ace_mode) as f64;
+                        - self.cfg.outs_weight
+                            * outs(hand, card, unseen, rules.meld.ace_mode) as f64;
                     if self.cfg.danger_weight > 0.0 {
                         score -=
                             self.cfg.danger_weight * 10.0 * self.danger(obs, card, &unseen_vec);
@@ -488,7 +489,10 @@ mod tests {
         let friend = ExpertConfig::parse("stop=never:meld=allin").unwrap();
         assert_eq!(friend.stop, StopPolicy::Never);
         assert_eq!(friend.meld, MeldMode::AllIn);
-        assert_eq!(ExpertConfig::parse("meld=dump").unwrap().meld, MeldMode::Dump);
+        assert_eq!(
+            ExpertConfig::parse("meld=dump").unwrap().meld,
+            MeldMode::Dump
+        );
         assert_eq!(cfg.danger_weight, 0.0);
         assert_eq!(cfg.samples, 8);
         assert_eq!(ExpertConfig::parse("").unwrap(), ExpertConfig::default());
@@ -563,13 +567,27 @@ mod tests {
         let cfg = ExpertConfig::parse("meld=dump:stop=never").unwrap();
         let hands = |a: &str| [cs(a), cs("KC QC JD")];
         // 조합 1개(5 세트)뿐이고 남는 카드가 많다 → 등록하지 않고 버린다
-        let mut g = Game::with_hands(Rules::default(), &hands("5S 5H 5D 9C KD 2H"), Some(c("JS")), &[c("TH")], 0, 1);
+        let mut g = Game::with_hands(
+            Rules::default(),
+            &hands("5S 5H 5D 9C KD 2H"),
+            Some(c("JS")),
+            &[c("TH")],
+            0,
+            1,
+        );
         g.apply(Action::Draw).unwrap();
         let mut bot = ExpertBot::new(cfg.clone(), 1);
         let a = bot.act(&g.observation(0), &g.legal_actions());
         assert!(matches!(a, Action::Discard { .. }), "{a}");
         // 조합 2개(5 세트 + 8-9-T 런) → 그 차례에 등록
-        let mut g = Game::with_hands(Rules::default(), &hands("5S 5H 5D 8H 9H KD 2C"), Some(c("JS")), &[c("TH")], 0, 1);
+        let mut g = Game::with_hands(
+            Rules::default(),
+            &hands("5S 5H 5D 8H 9H KD 2C"),
+            Some(c("JS")),
+            &[c("TH")],
+            0,
+            1,
+        );
         g.apply(Action::Draw).unwrap();
         let mut bot = ExpertBot::new(cfg, 1);
         let a = bot.act(&g.observation(0), &g.legal_actions());
