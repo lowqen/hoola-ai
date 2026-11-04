@@ -322,6 +322,7 @@ jobs:
           path: |
             web-next/.lighthouseci
             web-next/playwright-report
+          include-hidden-files: true
           if-no-files-found: ignore
 
   pages:
