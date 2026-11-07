@@ -10,6 +10,8 @@
 	interface Props {
 		cards: CardId[];
 		selected: CardId[];
+		/** 복기: 내 수와 추천을 카드 위에 표시한다. */
+		marks?: Partial<Record<CardId, 'mine' | 'best'>>;
 		size?: CardSize;
 		ontoggle: (card: CardId) => void;
 		ondoubletap?: (card: CardId) => void;
@@ -22,6 +24,7 @@
 	let {
 		cards,
 		selected,
+		marks,
 		size = 'lg',
 		ontoggle,
 		ondoubletap,
@@ -126,6 +129,7 @@
 						{card}
 						size={cardSize}
 						raised
+						mark={marks?.[card]}
 						selected={selected.includes(card)}
 						tabindex={card === tabCard ? 0 : -1}
 						onclick={(e) => tap(card, e)}

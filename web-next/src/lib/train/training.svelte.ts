@@ -84,6 +84,8 @@ class Training {
 		notebook: emptyStats()
 	});
 	notebookCount = $state(0);
+	/** 오답 노트 중 복기에서 온 문제 수. */
+	fromReviewCount = $state(0);
 	todayDone = $state.raw({ n: 0, correct: 0 });
 
 	/** 세션 중이면 true. 끝나면 summary를 보여 준다. */
@@ -271,6 +273,7 @@ class Training {
 		for (const type of [...PUZZLE_KINDS, 'notebook'] as DrillId[]) train[type] ??= emptyStats();
 		this.stats = { ...train };
 		this.notebookCount = store.notebook?.length ?? 0;
+		this.fromReviewCount = store.notebook?.filter((n) => n.key.includes('#')).length ?? 0;
 		this.todayDone = { ...(store.trainDays?.[today()] ?? { n: 0, correct: 0 }) };
 	}
 

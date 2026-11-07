@@ -18,6 +18,15 @@ export interface Settings {
 	coached?: boolean;
 }
 
+/** 판 복기 요약. 기록 화면의 약점 집계가 쓴다. */
+export interface ReviewSummary {
+	decisions: number;
+	accurate: number;
+	loss: number;
+	counts: Record<string, number>;
+	categories: Record<string, number>;
+}
+
 export interface GameRecord {
 	at: string;
 	players: number;
@@ -29,7 +38,7 @@ export interface GameRecord {
 	beginner: boolean;
 	replay: unknown;
 	human_seat: number;
-	review?: unknown;
+	review?: ReviewSummary;
 }
 
 export interface Store {

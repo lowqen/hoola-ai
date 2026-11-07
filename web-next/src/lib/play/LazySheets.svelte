@@ -9,7 +9,8 @@
 		rules: () => import('./RulesSheet.svelte'),
 		hint: () => import('./HintSheet.svelte'),
 		choice: () => import('./ChoiceSheet.svelte'),
-		coach: () => import('./CoachMarks.svelte')
+		coach: () => import('./CoachMarks.svelte'),
+		review: () => import('#lib/review/ReviewDialog.svelte')
 	};
 	type Name = keyof typeof LOADERS;
 
@@ -31,6 +32,7 @@
 		if (session.result) load('result');
 		if (session.choice) load('choice');
 		if (session.coachStep > 0) load('coach');
+		if (session.reviewOpen) load('review');
 	});
 </script>
 

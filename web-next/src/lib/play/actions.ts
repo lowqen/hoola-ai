@@ -16,6 +16,7 @@ export interface Observation {
 	num_players: number;
 	current_player: number;
 	phase: 'turn_start' | 'meld' | 'over';
+	turn?: number;
 	hand: CardId[];
 	hand_points: number;
 	hand_counts: number[];

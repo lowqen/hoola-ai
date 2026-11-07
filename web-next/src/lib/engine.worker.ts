@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 // 엔진 계산 전용 워커: 무거운 계산(봇 대전, 분석, 문제 생성)은 메인 스레드를 막지 않도록 여기서 한다.
+import type { Observation } from './play/actions.ts';
 import type { Puzzle, PuzzleKind } from './train/drills.ts';
 import { generatePuzzle, type PuzzleEngine } from './train/generate.ts';
 
@@ -10,6 +11,9 @@ interface WorkerGame {
 	apply(action: string): void;
 	botAction(spec: string, seed: number): string;
 	evaluate(k: number, seed: number): string;
+	legalActions(): string;
+	observation(seat: number): string;
+	rewind(n: number): WorkerGame;
 	outcome(): string;
 	free(): void;
 }
@@ -35,7 +39,18 @@ export interface HintMove {
 export type WorkerRequest =
 	| { id: number; kind: 'selfTest'; pkgUrl: string; seed: number }
 	| { id: number; kind: 'hint'; pkgUrl: string; replay: string; k: number; seed: number }
-	| { id: number; kind: 'puzzle'; pkgUrl: string; puzzle: PuzzleKind; seed?: undefined };
+	| { id: number; kind: 'puzzle'; pkgUrl: string; puzzle: PuzzleKind; seed?: undefined }
+	| {
+			id: number;
+			kind: 'review';
+			pkgUrl: string;
+			replay: string;
+			decisions: { index: number; action: string }[];
+			k: number;
+			seat: number;
+			seed?: undefined;
+	  }
+	| { id: number; kind: 'cancel'; target: number; pkgUrl?: undefined; seed?: undefined };
 export type WorkerResponse =
 	| {
 			id: number;
@@ -48,9 +63,12 @@ export type WorkerResponse =
 	  }
 	| { id: number; ok: true; kind: 'hint'; scored: HintMove[]; expert: string }
 	| { id: number; ok: true; kind: 'puzzle'; puzzle: Puzzle }
+	| { id: number; ok: true; kind: 'reviewItem'; i: number; obs: Observation; scored?: HintMove[] }
+	| { id: number; ok: true; kind: 'reviewDone' }
 	| { id: number; ok: false; error: string };
 
 let engine: Promise<WorkerEngine> | null = null;
+const cancelled = new Set<number>();
 
 function load(pkgUrl: string): Promise<WorkerEngine> {
 	engine ??= (async () => {
@@ -63,12 +81,50 @@ function load(pkgUrl: string): Promise<WorkerEngine> {
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 	const req = e.data;
+	if (req.kind === 'cancel') {
+		cancelled.add(req.target);
+		return;
+	}
 	const { id, pkgUrl, seed } = req;
 	try {
 		const mod = await load(pkgUrl);
 		if (req.kind === 'puzzle') {
 			const puzzle = generatePuzzle(mod as unknown as PuzzleEngine, req.puzzle);
 			self.postMessage({ id, ok: true, kind: 'puzzle', puzzle } satisfies WorkerResponse);
+			return;
+		}
+		if (req.kind === 'review') {
+			const game = mod.WasmGame.fromReplay(req.replay);
+			try {
+				for (let i = 0; i < req.decisions.length; i++) {
+					// 사이사이 다른 요청(힌트·문제 생성·취소)을 받는다
+					await new Promise((next) => setTimeout(next));
+					if (cancelled.delete(id)) return;
+					const { index } = req.decisions[i];
+					const at = game.rewind(index);
+					try {
+						const legal = JSON.parse(at.legalActions()) as string[];
+						const obs = JSON.parse(at.observation(req.seat)) as Observation;
+						const scored =
+							legal.length < 2
+								? undefined
+								: (JSON.parse(at.evaluate(req.k, index * 7 + 11)) as HintMove[]);
+						self.postMessage({
+							id,
+							ok: true,
+							kind: 'reviewItem',
+							i,
+							obs,
+							scored
+						} satisfies WorkerResponse);
+					} finally {
+						at.free();
+					}
+				}
+				self.postMessage({ id, ok: true, kind: 'reviewDone' } satisfies WorkerResponse);
+			} finally {
+				game.free();
+			}
 			return;
 		}
 		if (req.kind === 'hint') {

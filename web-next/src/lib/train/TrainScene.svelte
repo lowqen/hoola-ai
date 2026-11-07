@@ -10,11 +10,15 @@
 		/** 손패 대신 보여 줄 카드 (이미 묶은 카드를 뺄 때). */
 		hand?: CardId[];
 		selected?: CardId[];
+		/** 복기: 내 수와 추천 표시. */
+		marks?: Partial<Record<CardId, 'mine' | 'best'>>;
 		ontoggle?: (card: CardId) => void;
+		/** 좌석 이름. 없으면 '상대', 'N번 상대'로 부른다. */
+		name?: (seat: number) => string;
 	}
-	let { obs, hand, selected = [], ontoggle }: Props = $props();
+	let { obs, hand, selected = [], marks, ontoggle, name: seatName }: Props = $props();
 
-	const name = $derived(seatLabel(obs.num_players));
+	const name = $derived(seatName ?? seatLabel(obs.num_players));
 	const seats = $derived(
 		obs.hand_counts.slice(1).map((count, i) => ({
 			id: i + 1,
@@ -41,6 +45,7 @@
 	{melds}
 	hand={sortCards(hand ?? obs.hand)}
 	{selected}
+	{marks}
 	turnLabel={obs.phase === 'turn_start' ? '받기 전' : '받은 뒤'}
 	ontoggle={(card) => ontoggle?.(card)}
 />

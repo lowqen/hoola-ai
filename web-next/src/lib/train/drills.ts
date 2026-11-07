@@ -71,6 +71,9 @@ export interface NotebookItem {
 	best: string;
 	lines?: string[];
 	category?: string;
+	/** 복기에서 온 항목: 실제로 둔 수와 손실. */
+	mine?: string;
+	loss?: number;
 	at: string;
 	solved?: number;
 }

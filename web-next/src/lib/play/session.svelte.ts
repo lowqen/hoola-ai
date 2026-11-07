@@ -11,8 +11,16 @@ import {
 	type HintMove,
 	type WasmGame
 } from '#lib/engine.ts';
-import { loadStore, saveStore, type GameRecord, type Settings, type Store } from '#lib/store.ts';
-import type { PuzzleKind } from '#lib/train/drills.ts';
+import {
+	loadStore,
+	saveStore,
+	type GameRecord,
+	type ReviewSummary,
+	type Settings,
+	type Store
+} from '#lib/store.ts';
+import type { ReviewContext } from '#lib/review/analysis.ts';
+import type { NotebookItem, PuzzleKind } from '#lib/train/drills.ts';
 import { snackbar } from '#lib/ui/snackbar.svelte.ts';
 import { actionText, meldOrder, parseAction, type Observation, type Outcome } from './actions.ts';
 import { BOTS, DEFAULT_SETTINGS, normalizeSettings } from './bots.ts';
@@ -20,6 +28,7 @@ import { BOTS, DEFAULT_SETTINGS, normalizeSettings } from './bots.ts';
 const HUMAN = 0;
 const HINT_K = 96;
 const MAX_GAMES = 500;
+const MAX_NOTEBOOK = 200;
 const STOCK = '[data-zone="stock"]';
 const seatZone = (seat: number) => `[data-zone="seat-${seat}"]`;
 
@@ -87,6 +96,7 @@ class PlaySession {
 	engineError = $state('');
 
 	resultOpen = $state(false);
+	reviewOpen = $state(false);
 	newGameOpen = $state(false);
 	rulesOpen = $state(false);
 	hintOpen = $state(false);
@@ -101,6 +111,7 @@ class PlaySession {
 	private usedBeginner = false;
 	private usedUndo = false;
 	private recorded = false;
+	private lastRecord: GameRecord | null = null;
 	private timer: ReturnType<typeof setTimeout> | undefined;
 	/** 지난 판·되돌리기 이전의 지연 작업을 끊는 표식. */
 	private generation = 0;
@@ -228,6 +239,7 @@ class PlaySession {
 		this.usedBeginner = false;
 		this.usedUndo = false;
 		this.recorded = false;
+		this.lastRecord = null;
 		this.resetLog(`판 시작 · 시드 ${seed} · 선: ${this.seatName(first)}`);
 		this.resetTurnState();
 		this.newGameOpen = false;
@@ -620,12 +632,63 @@ class PlaySession {
 			replay: JSON.parse(this.game!.replayJson()),
 			human_seat: HUMAN
 		};
+		this.lastRecord = record;
 		this.store.games.push(record);
 		if (this.store.games.length > MAX_GAMES) {
 			this.store.games.splice(0, this.store.games.length - MAX_GAMES);
 		}
 		saveStore(this.store);
 		this.gamesPlayed = this.store.games.length;
+	}
+
+	// ---------- 복기 ----------
+
+	get reviewPlayers() {
+		return this.config?.players ?? 2;
+	}
+
+	openReview() {
+		this.resultOpen = false;
+		this.reviewOpen = true;
+	}
+
+	/** 닫으면 결과 시트로 돌아간다. */
+	closeReview() {
+		this.reviewOpen = false;
+		if (this.result) this.resultOpen = true;
+	}
+
+	reviewContext(): ReviewContext | null {
+		const { game, config } = this;
+		if (!game || !config) return null;
+		return {
+			replay: game.replayJson(),
+			decisions: [...this.decisions],
+			seat: HUMAN,
+			players: config.players,
+			seatName: this.seatName,
+			outcome: JSON.parse(game.outcome()) as Outcome,
+			events: (JSON.parse(game.observation(HUMAN)) as Observation).events,
+			key: `${config.seed}`
+		};
+	}
+
+	/** 복기 요약은 전적에, 확실한 실수는 오답 노트에 쌓는다. */
+	saveReview(summary: ReviewSummary, mistakes: NotebookItem[]) {
+		if (this.lastRecord) this.lastRecord.review = summary;
+		const notebook = (this.store.notebook ??= []);
+		const have = new Set(notebook.map((m) => m.key));
+		for (const m of mistakes) if (!have.has(m.key)) notebook.push(m);
+		if (notebook.length > MAX_NOTEBOOK) notebook.splice(0, notebook.length - MAX_NOTEBOOK);
+		saveStore(this.store);
+	}
+
+	/** 복기에서 고른 장면부터 다시 두는 연습판. 전적에 다시 기록하지 않는다. */
+	replayFrom(index: number) {
+		this.reviewOpen = false;
+		this.recorded = true;
+		this.lastRecord = null;
+		this.rewindTo(index, `복기한 장면부터 다시 두기 · 시드 ${this.config!.seed}`);
 	}
 
 	finishCoach() {

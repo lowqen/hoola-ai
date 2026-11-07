@@ -7,6 +7,7 @@
 	import Button from '#lib/ui/Button.svelte';
 	import Icon from '#lib/ui/Icon.svelte';
 	import Dock from './Dock.svelte';
+	import MoveBars from './MoveBars.svelte';
 	import { training, type Feedback } from './training.svelte.ts';
 
 	let { feedback }: { feedback: Feedback } = $props();
@@ -59,21 +60,7 @@
 
 			{#if feedback.bars}
 				<h3>시뮬레이션 추정 승률</h3>
-				<ul class="bars" data-testid="bars">
-					{#each feedback.bars as bar (bar.text)}
-						<li class={[bar.mine && 'mine', bar.best && 'best']}>
-							<span class="label">
-								{bar.text}
-								{#if bar.mine}<b>내 답</b>{/if}
-								{#if bar.best}<b>최선</b>{/if}
-							</span>
-							<span class="track"
-								><span class="fill" style={`width:${Math.max(1, bar.percent)}%`}></span></span
-							>
-							<span class="value">{bar.percent.toFixed(1)}%</span>
-						</li>
-					{/each}
-				</ul>
+				<MoveBars bars={feedback.bars} />
 			{/if}
 		</div>
 		<div class="foot" bind:this={next}>
@@ -146,8 +133,7 @@
 	.meld span {
 		margin-left: 4px;
 	}
-	.rule,
-	.bars {
+	.rule {
 		display: grid;
 		gap: 4px;
 		margin: 0;
@@ -164,40 +150,12 @@
 		min-width: 36px;
 		font-weight: 700;
 	}
-	.rule b,
-	.bars b {
+	.rule b {
 		padding: 0 6px;
 		border-radius: var(--md-sys-shape-corner-full);
 		background: var(--md-sys-color-surface);
 		color: var(--md-sys-color-on-surface);
 		font-size: var(--md-sys-typescale-label-small-size);
-	}
-	.bars li {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) 48px;
-		align-items: center;
-		column-gap: 8px;
-	}
-	.label {
-		grid-column: 1 / -1;
-	}
-	.track {
-		overflow: hidden;
-		height: 8px;
-		border-radius: var(--md-sys-shape-corner-full);
-		background: var(--md-sys-color-surface);
-	}
-	.fill {
-		display: block;
-		height: 100%;
-		background: var(--md-sys-color-on-surface-variant);
-	}
-	.best .fill {
-		background: var(--md-sys-color-primary);
-	}
-	.value {
-		text-align: right;
-		font-variant-numeric: tabular-nums;
 	}
 	.foot {
 		display: flex;

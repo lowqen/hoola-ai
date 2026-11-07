@@ -4,6 +4,7 @@
 // - 무거운 계산(봇 대전, L3 분석, 문제 생성)은 워커에서 한다 (`engine.worker.ts`).
 import { asset } from '$app/paths';
 import type { HintMove, WorkerRequest, WorkerResponse } from './engine.worker.ts';
+import type { Observation } from './play/actions.ts';
 import type { Puzzle, PuzzleKind } from './train/drills.ts';
 
 export type { HintMove };
@@ -64,7 +65,8 @@ function engineWorker(): Worker {
 	worker = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' });
 	worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
 		pending.get(e.data.id)?.(e.data);
-		pending.delete(e.data.id);
+		// 복기는 결정마다 한 번씩 응답한다
+		if (!(e.data.ok && e.data.kind === 'reviewItem')) pending.delete(e.data.id);
 	};
 	return worker;
 }
@@ -104,6 +106,41 @@ export function hint(
 		const req: WorkerRequest = { id, kind: 'hint', pkgUrl: enginePkgUrl(), replay, k, seed };
 		engineWorker().postMessage(req);
 	});
+}
+
+/** 판 복기 (워커): 결정마다 평가 결과를 보낸다. 돌려준 함수를 부르면 멈춘다. */
+export function reviewGame(
+	replay: string,
+	decisions: { index: number; action: string }[],
+	k: number,
+	seat: number,
+	on: {
+		onItem: (i: number, item: { obs: Observation; scored?: HintMove[] }) => void;
+		onDone: () => void;
+		onError: (message: string) => void;
+	}
+): () => void {
+	const id = ++nextId;
+	pending.set(id, (r) => {
+		if (!r.ok) on.onError(r.error);
+		else if (r.kind === 'reviewItem') on.onItem(r.i, r);
+		else on.onDone();
+	});
+	const req: WorkerRequest = {
+		id,
+		kind: 'review',
+		pkgUrl: enginePkgUrl(),
+		replay,
+		decisions,
+		k,
+		seat
+	};
+	engineWorker().postMessage(req);
+	return () => {
+		pending.delete(id);
+		const cancel: WorkerRequest = { id: ++nextId, kind: 'cancel', target: id };
+		engineWorker().postMessage(cancel);
+	};
 }
 
 /** 훈련 문제 하나를 만든다 (워커). */

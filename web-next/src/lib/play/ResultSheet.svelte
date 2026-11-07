@@ -52,7 +52,9 @@
 			{/each}
 		</ul>
 		<div class="actions">
-			<Button wide icon="history" disabled data-testid="review">복기하기 (이식 예정)</Button>
+			<Button wide icon="history" data-testid="review" onclick={() => session.openReview()}
+				>복기하기</Button
+			>
 			<div class="row">
 				<Button
 					wide

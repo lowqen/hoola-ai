@@ -16,19 +16,21 @@ export default defineConfig({
 						{
 							name: 'kit',
 							test: /(preload-helper|__sveltekit|esm-env|devalue|@sveltejs\/kit\/src\/(?!runtime\/client\/))/,
-							priority: 5
+							priority: 6
 						},
-						{ name: 'runtime', test: /node_modules\/svelte\//, priority: 4 },
+						{ name: 'runtime', test: /node_modules\/svelte\//, priority: 5 },
 						{
 							name: 'shell',
 							test: /src\/lib\/(game\/(cards|motion\.svelte)|ui\/(ActionBar|Button|IconButton|Icon|icons|ripple|Chip|TopAppBar|AppNav|SnackbarHost|snackbar\.svelte))/,
-							priority: 3
+							priority: 4
 						},
 						{
 							name: 'play',
-							test: /src\/lib\/(store\.ts|engine\.ts|play\/(session\.svelte|actions|bots|LazySheets))/,
+							test: /src\/lib\/play\/(session\.svelte|actions|bots|LazySheets)/,
 							priority: 2
 						},
+						// 훈련·기록은 대전 세션 없이 저장소와 엔진 호출만 쓴다
+						{ name: 'data', test: /src\/lib\/(store|engine)\.ts/, priority: 3 },
 						{ name: 'table', test: /src\/lib\/game\//, priority: 1 }
 					]
 				}

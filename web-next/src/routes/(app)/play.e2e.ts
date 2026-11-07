@@ -508,11 +508,10 @@ test.describe('과업 시나리오: 목표 탭 수', () => {
 	});
 });
 
-test('진 판의 결과 시트에서 원인에 맞는 훈련으로 바로 간다', async ({ page }) => {
-	test.setTimeout(120_000);
+/** 등록하지 않고 큰 카드만 버려 봇에게 진다. */
+async function loseGame(page: Page) {
 	await seedStore(page, { seed: SEED.register, speed: 900 });
 	await start(page);
-	// 등록하지 않고 큰 카드만 버리면 봇이 먼저 끝낸다
 	for (let i = 0; i < 300; i++) {
 		await waitTurnOrOver(page);
 		if ((await page.getByTestId('turn').textContent())?.includes('판 종료')) break;
@@ -527,6 +526,13 @@ test('진 판의 결과 시트에서 원인에 맞는 훈련으로 바로 간다
 		await page.waitForTimeout(20);
 	}
 	await expect(page.getByTestId('result-cause')).toContainText('훈련:', { timeout: 30_000 });
+}
+
+const REVIEW_TIMEOUT = { timeout: 90_000 };
+
+test('진 판의 결과 시트에서 원인에 맞는 훈련으로 바로 간다', async ({ page }) => {
+	test.setTimeout(120_000);
+	await loseGame(page);
 	const cause = (await page.getByTestId('result-cause').textContent()) ?? '';
 	await page.getByTestId('result-train').click();
 	await expect(page).toHaveURL(/\/train\/\?drill=(stop|meld|discard)/);
@@ -535,5 +541,110 @@ test('진 판의 결과 시트에서 원인에 맞는 훈련으로 바로 간다
 	expect(cause).toContain(title);
 	await expect(page.getByTestId('t-question')).toHaveAttribute('data-drill', drill!, {
 		timeout: 30_000
+	});
+});
+
+test('8·9. 복기: 가장 큰 실수를 바로 보고, 기록과 오답 노트에 쌓고, 그 유형을 훈련한다', async ({
+	page
+}) => {
+	test.setTimeout(240_000);
+	const errors: string[] = [];
+	page.on('pageerror', (e) => errors.push(String(e)));
+	await loseGame(page);
+
+	// 8. 판 종료(시트가 자동으로 뜬다) → 복기 → 가장 큰 실수 = 2탭 이내
+	const t = tapCounter();
+	await t.tap(page.getByTestId('review'));
+	const view = page.getByTestId('review-view');
+	await expect(view.getByTestId('review-progress')).toBeVisible();
+	await expect(view.getByTestId('review-why')).toBeVisible(REVIEW_TIMEOUT);
+	expect(t.count).toBeLessThanOrEqual(2);
+	await expect(view.getByTestId('win-chart')).toBeVisible();
+	await expect(view.getByTestId('review-summary')).toContainText('정확도');
+	await expect(view.getByTestId('bars')).toBeVisible();
+
+	// 처음 보이는 실수가 가장 크다
+	const lossOf = async (locator: Locator) =>
+		parseFloat(((await locator.textContent()) ?? '').replace(/[^0-9.]/g, ''));
+	const first = await lossOf(view.getByTestId('review-loss'));
+	const losses = await Promise.all(
+		(await view.getByTestId('review-list').locator('.loss').all()).map(lossOf)
+	);
+	expect(first).toBe(Math.max(...losses));
+
+	// 저장: 전적의 복기 요약과 오답 노트 (기존 앱과 같은 형식)
+	const saved = await stored(page);
+	const summary = saved.games[0].review;
+	expect(summary.decisions).toBeGreaterThan(0);
+	expect(summary.accurate).toBeLessThan(summary.decisions);
+	expect(saved.notebook.length).toBe(losses.length);
+	expect(saved.notebook[0].key).toContain('#');
+	expect(saved.notebook[0].solved).toBe(0);
+
+	// 목록을 누르면 그 결정으로
+	const rows = view.getByTestId('review-list').locator('button');
+	await rows.first().click();
+	await expect(rows.first()).toHaveAttribute('aria-current', 'true');
+
+	// 닫으면 결과 시트로 돌아가고, 다시 열 때 다시 계산하지 않는다
+	await page.keyboard.press('Escape');
+	await expect(page.getByTestId('review')).toBeVisible();
+	await page.getByTestId('review').click();
+	await expect(view.getByTestId('review-progress')).toHaveCount(0);
+	await expect(view.getByTestId('review-summary')).toBeVisible();
+
+	// 9. 복기의 실수를 훈련으로 = 1탭
+	await rows.nth(0).click();
+	await expect(view.getByTestId('review-detail')).toBeVisible();
+	const mistake = view.getByTestId('review-next');
+	if (await view.getByTestId('review-train').isHidden()) await mistake.click();
+	const t9 = tapCounter();
+	await t9.tap(view.getByTestId('review-train'));
+	expect(t9.count).toBe(1);
+	await expect(page).toHaveURL(/\/train\/\?drill=/);
+	await expect(page.getByTestId('t-question')).toBeVisible({ timeout: 30_000 });
+
+	// 훈련 홈에 복기에서 온 문제가 보인다
+	await page.keyboard.press('Escape');
+	await expect(page.getByTestId('t-from-review')).toContainText(`${losses.length}개`);
+	expect(errors).toEqual([]);
+});
+
+test('복기: 이 장면부터 다시 두면 그 차례로 돌아가고 전적은 늘지 않는다', async ({ page }) => {
+	test.setTimeout(240_000);
+	await loseGame(page);
+	await page.getByTestId('review').click();
+	const view = page.getByTestId('review-view');
+	await expect(view.getByTestId('review-replay')).toBeVisible(REVIEW_TIMEOUT);
+	await view.getByTestId('review-replay').click();
+	await expect(page.getByTestId('review-view')).toBeHidden();
+	await expect(page.getByTestId('turn')).toHaveText('내 차례');
+	await expect(page.getByTestId('log')).toContainText('복기한 장면부터 다시 두기');
+	expect((await stored(page)).games).toHaveLength(1);
+});
+
+test.describe('복기 360×640', () => {
+	test.use({ viewport: { width: 360, height: 640 }, hasTouch: true });
+
+	test('한 단으로 쌓이고 가로로 넘치지 않는다', async ({ page }) => {
+		test.setTimeout(240_000);
+		await loseGame(page);
+		await page.getByTestId('review').tap();
+		const view = page.getByTestId('review-view');
+		await expect(view.getByTestId('review-why')).toBeVisible(REVIEW_TIMEOUT);
+		await page.waitForTimeout(300);
+		await page.screenshot({ path: 'test-results/review-360.png' });
+		await view.getByTestId('review-replay').scrollIntoViewIfNeeded();
+		await page.waitForTimeout(100);
+		await page.screenshot({ path: 'test-results/review-360-2.png' });
+		const [scroll, client] = await view.evaluate((el) => [el.scrollWidth, el.clientWidth]);
+		expect(scroll).toBeLessThanOrEqual(client);
+		// 목록을 누르면 상세가 위로 올라온다
+		const rows = view.getByTestId('review-list').locator('button');
+		await rows.last().scrollIntoViewIfNeeded();
+		await rows.last().tap();
+		await page.waitForTimeout(100);
+		const box = await view.getByTestId('review-detail').boundingBox();
+		expect(box!.y).toBeLessThan(120);
 	});
 });

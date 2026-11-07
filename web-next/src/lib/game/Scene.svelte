@@ -20,6 +20,8 @@
 		melds: MeldInfo[];
 		hand: CardId[];
 		selected: CardId[];
+		/** 복기: 내 수와 추천을 손패 위에 표시한다. */
+		marks?: Partial<Record<CardId, 'mine' | 'best'>>;
 		/** 카드 한 장을 낼 수 있는 구역 ('discard', 'meld-3'). */
 		dropTargets?: (card: CardId) => string[];
 		ontoggle: (card: CardId) => void;
@@ -45,6 +47,7 @@
 		melds,
 		hand,
 		selected,
+		marks,
 		dropTargets = () => [],
 		ontoggle,
 		onplay,
@@ -121,6 +124,7 @@
 		<Hand
 			cards={hand}
 			{selected}
+			{marks}
 			{ontoggle}
 			canDrag={myTurn && !!onplay}
 			canDrop={(card, zone) => dropTargets(card).includes(zone)}

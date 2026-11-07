@@ -136,6 +136,11 @@
 							</span>
 							<span class="rule">{DRILLS.notebook.rule}</span>
 							<span class="meta">{training.notebookCount}개 대기 · 두 번 맞히면 빠진다</span>
+							{#if training.fromReviewCount}
+								<span class="meta" data-testid="t-from-review"
+									>복기에서 온 문제 {training.fromReviewCount}개</span
+								>
+							{/if}
 						</span>
 					</Card>
 				{:else}
