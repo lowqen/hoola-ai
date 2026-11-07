@@ -79,7 +79,8 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		height: calc(80px + env(safe-area-inset-bottom));
+		/* M3 Expressive 짧은 내비게이션 바: 게임 화면의 세로 공간을 아낀다 */
+		height: calc(64px + env(safe-area-inset-bottom));
 		padding-bottom: env(safe-area-inset-bottom);
 		justify-content: space-around;
 	}
@@ -91,7 +92,7 @@
 		justify-content: center;
 		gap: 4px;
 		min-width: 48px;
-		padding: 12px 0 16px;
+		padding: 6px 0;
 		border: 0;
 		background: transparent;
 		color: var(--md-sys-color-on-surface-variant);

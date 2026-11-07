@@ -3,7 +3,7 @@
 	import { snackbar } from './snackbar.svelte.ts';
 </script>
 
-<div class="host" aria-live="polite" aria-atomic="true">
+<div class={`host ${snackbar.placement}`} aria-live="polite" aria-atomic="true">
 	{#if snackbar.current}
 		{@const s = snackbar.current}
 		{#key s.id}
@@ -32,6 +32,15 @@
 		z-index: 100;
 		width: min(560px, calc(100vw - 32px));
 		pointer-events: none;
+	}
+	@media (max-width: 839px) {
+		.nav {
+			bottom: calc(80px + env(safe-area-inset-bottom));
+		}
+		.top {
+			top: 60px;
+			bottom: auto;
+		}
 	}
 	.snack {
 		display: flex;

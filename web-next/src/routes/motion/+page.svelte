@@ -326,7 +326,7 @@
 
 <TopAppBar title="모션 데모">
 	{#snippet navigation()}
-		<IconButton icon="arrow_back" label="처음으로" onclick={() => goto(resolve('/'))} />
+		<IconButton icon="arrow_back" label="처음으로" onclick={() => goto(resolve('/(app)'))} />
 	{/snippet}
 	{#snippet actions()}
 		<IconButton icon="replay" label="새 판" data-testid="restart" onclick={restart} />

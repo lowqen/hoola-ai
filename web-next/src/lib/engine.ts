@@ -3,7 +3,9 @@
 // - 가벼운 호출(합법 수, 관측)은 메인 스레드의 `loadEngine()`으로 한다.
 // - 무거운 계산(봇 대전, L3 분석, 문제 생성)은 워커에서 한다 (`engine.worker.ts`).
 import { asset } from '$app/paths';
-import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
+import type { HintMove, WorkerRequest, WorkerResponse } from './engine.worker.ts';
+
+export type { HintMove };
 
 /** 엔진의 한 판 (hoola-wasm `WasmGame`) 중 이 앱이 쓰는 부분. JSON은 문자열로 주고받는다. */
 export interface WasmGame {
@@ -17,6 +19,9 @@ export interface WasmGame {
 	observation(seat: number): string;
 	outcome(): string;
 	botAction(spec: string, seed: number): string;
+	lastAction(): string | undefined;
+	replayJson(): string;
+	rewind(n: number): WasmGame;
 	free(): void;
 }
 
@@ -72,8 +77,28 @@ export interface SelfTest {
 export function selfTest(seed = 2026): Promise<SelfTest> {
 	const id = ++nextId;
 	return new Promise((resolve, reject) => {
-		pending.set(id, (r) => (r.ok ? resolve(r) : reject(new Error(r.error))));
+		pending.set(id, (r) => {
+			if (r.ok && r.kind === 'selfTest') resolve(r);
+			else reject(new Error(r.ok ? '응답 종류가 다르다' : r.error));
+		});
 		const req: WorkerRequest = { id, kind: 'selfTest', pkgUrl: enginePkgUrl(), seed };
+		engineWorker().postMessage(req);
+	});
+}
+
+/** L3 힌트 (워커): 지금까지의 기보로 판을 복원해 수마다 추정 승률을 낸다. */
+export function hint(
+	replay: string,
+	k: number,
+	seed: number
+): Promise<{ scored: HintMove[]; expert: string }> {
+	const id = ++nextId;
+	return new Promise((resolve, reject) => {
+		pending.set(id, (r) => {
+			if (r.ok && r.kind === 'hint') resolve(r);
+			else reject(new Error(r.ok ? '응답 종류가 다르다' : r.error));
+		});
+		const req: WorkerRequest = { id, kind: 'hint', pkgUrl: enginePkgUrl(), replay, k, seed };
 		engineWorker().postMessage(req);
 	});
 }

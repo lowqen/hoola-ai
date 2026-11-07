@@ -98,7 +98,7 @@
 
 <main class="page" style={overrideStyle}>
 	<header class="top">
-		<a class="back" href={resolve('/')}>← 미리보기 홈</a>
+		<a class="back" href={resolve('/(app)')}>← 미리보기 홈</a>
 		<h1 class="md-typescale-headline-medium-emphasized">테마 미리보기</h1>
 		<p class="md-typescale-body-medium muted">
 			D1 · 시드 <code>{seed}</code> · M3 TonalSpot(2025 스펙) · 제3색 금색 · {applied.theme ===

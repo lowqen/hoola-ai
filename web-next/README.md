@@ -20,4 +20,7 @@
 - `src/lib/engine.worker.ts` — 무거운 계산 전용 워커
 - `src/lib/ui/` — M3 컴포넌트 키트
 - `src/lib/game/` — 게임 컴포넌트(카드·좌석·더미·조합·손패·장면), 카드 모션, 끌기
-- `src/routes/` — 화면 (모두 프리렌더). `/motion` 모션 데모, `/gallery` 컴포넌트, `/theme` 테마
+- `src/lib/play/` — 대전 진행(`session.svelte.ts`), 판 화면(`Board.svelte`), 시트
+- `src/lib/store.ts` — 설정과 전적 저장 (기존 앱과 같은 `hoola-practice-v1`)
+- `src/routes/(app)/` — 앱 화면과 하단 탐색. `/` 대전, `/train` 훈련, `/records` 기록
+- `src/routes/` — 그 밖의 화면 (모두 프리렌더). `/about` 개발 정보, `/motion` 모션 데모, `/gallery` 컴포넌트, `/theme` 테마

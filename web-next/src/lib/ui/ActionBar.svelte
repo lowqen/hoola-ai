@@ -32,11 +32,13 @@
 		preview?: string;
 		/** 안내 한 줄 (미리보기가 없을 때). */
 		hint?: string;
+		/** 비활성 슬롯을 눌렀을 때 (규칙 안내, DESIGN_PLAN §6.1-3). */
+		onblocked?: (slot: ActionSlot) => void;
 	}
-	let { slots, primary, preview, hint }: Props = $props();
+	let { slots, primary, preview, hint, onblocked }: Props = $props();
 </script>
 
-<div class="action-bar" role="toolbar" aria-label="행동">
+<div class="action-bar" role="toolbar" aria-label="행동" data-coach="actions">
 	<div class="preview" aria-live="polite" data-testid="action-preview">
 		{#if preview}<span class="chip">{preview}</span>{:else if hint}<span class="hint">{hint}</span
 			>{/if}
@@ -51,7 +53,7 @@
 					aria-disabled={!s.enabled}
 					aria-describedby={!s.enabled && s.reason ? `why-${s.id}` : undefined}
 					title={!s.enabled && s.reason ? s.reason : s.label}
-					onclick={() => s.enabled && s.onclick?.()}
+					onclick={() => (s.enabled ? s.onclick?.() : onblocked?.(s))}
 					use:ripple
 				>
 					<span class="md-layer" aria-hidden="true"></span>
@@ -213,6 +215,15 @@
 		background: color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent);
 		color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
 		box-shadow: none;
+	}
+	@media (max-width: 600px) {
+		.action-bar {
+			gap: 4px;
+			padding: 6px 12px calc(8px + env(safe-area-inset-bottom));
+		}
+		.preview {
+			height: 24px;
+		}
 	}
 	@media (max-width: 400px) {
 		.primary {

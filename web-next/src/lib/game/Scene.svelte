@@ -3,11 +3,12 @@
 	// 위쪽은 보는 정보, 아래 1/3은 조작이다 (DESIGN_PLAN §6.1-2).
 	// 비행 카드가 다른 영역 위로 지나가도록 이 안의 영역들은 쌓임 맥락을 만들지 않는다.
 	import type { Snippet } from 'svelte';
-	import { handPoints, type CardId } from './cards.ts';
+	import { handPoints, type CardId, type CardSize } from './cards.ts';
 	import GhostLayer from './GhostLayer.svelte';
 	import Hand from './Hand.svelte';
 	import MeldGroup, { type MeldInfo } from './MeldGroup.svelte';
 	import Pile from './Pile.svelte';
+	import PlayingCard from './PlayingCard.svelte';
 	import Seat, { type SeatInfo } from './Seat.svelte';
 
 	interface Props {
@@ -28,6 +29,12 @@
 		ondraw?: () => void;
 		/** 라이브 영역 알림 ("상대가 다이아 K를 버렸다"). */
 		announcement?: string;
+		/** 차례 표시를 바꾼다 (예: "판 종료"). */
+		turnLabel?: string;
+		/** 지나간 버림패 전체를 보여 준다 (아래 → 위). */
+		discardHistory?: CardId[];
+		/** 점수 옆 보조 조작 (정렬 등). */
+		tools?: Snippet;
 		actions?: Snippet;
 	}
 	let {
@@ -43,9 +50,15 @@
 		onplay,
 		ondraw,
 		announcement = '',
+		turnLabel,
+		discardHistory,
+		tools,
 		actions
 	}: Props = $props();
 
+	let feltWidth = $state(0);
+	/** 휴대폰에서는 바닥 조합을 작게 그려, 조합이 늘어도 행동 바가 밀리지 않게 한다. */
+	const meldSize = $derived<CardSize>(feltWidth > 0 && feltWidth < 480 ? 'xs' : 'sm');
 	let dragging = $state<CardId | null>(null);
 	const playing = $derived(dragging ?? (selected.length === 1 ? selected[0] : null));
 	const targets = $derived(playing ? dropTargets(playing) : []);
@@ -58,13 +71,13 @@
 </script>
 
 <section class="scene" aria-label="게임 장면">
-	<div class="seats">
+	<div class="seats" data-coach="seats">
 		{#each seats as seat (seat.id)}
-			<Seat {seat} active={turn === seat.id} />
+			<Seat {seat} active={turn === seat.id} compact={seats.length >= 4} />
 		{/each}
 	</div>
 
-	<div class="felt">
+	<div class="felt" bind:clientWidth={feltWidth}>
 		<div class="piles">
 			<Pile kind="stock" count={stockCount} active={!!ondraw} onclick={ondraw} />
 			<Pile
@@ -78,6 +91,7 @@
 			{#each melds as meld (meld.id)}
 				<MeldGroup
 					{meld}
+					size={meldSize}
 					target={targets.includes(`meld-${meld.id}`)}
 					onattach={() => play(`meld-${meld.id}`)}
 				/>
@@ -85,13 +99,21 @@
 				<p class="no-melds">아직 등록한 조합이 없다</p>
 			{/each}
 		</div>
+		{#if discardHistory?.length}
+			<div class="history" role="group" aria-label="지나간 버림패" data-testid="discard-history">
+				{#each discardHistory as card (card)}
+					<PlayingCard {card} size="xs" />
+				{/each}
+			</div>
+		{/if}
 	</div>
 
-	<div class="mine">
+	<div class="mine" data-coach="mine">
 		<div class="status">
 			<span class={['turn', myTurn && 'on']} data-testid="turn">
-				{myTurn ? '내 차례' : '상대 차례'}
+				{turnLabel ?? (myTurn ? '내 차례' : '상대 차례')}
 			</span>
+			{#if tools}<span class="tools">{@render tools()}</span>{/if}
 			<span class="score"
 				><span class="value" data-testid="score">{score}</span><span class="unit">점</span></span
 			>
@@ -145,7 +167,7 @@
 	}
 	.melds {
 		display: flex;
-		flex: 1 1 200px;
+		flex: 1 1 140px;
 		flex-wrap: wrap;
 		align-items: flex-start;
 		gap: 12px;
@@ -155,6 +177,16 @@
 		margin: 0;
 		font-size: var(--md-sys-typescale-body-small-size);
 		color: var(--hoola-color-on-felt-variant);
+	}
+	.history {
+		display: flex;
+		flex: 1 0 100%;
+		gap: 2px;
+		min-width: 0;
+		overflow-x: auto;
+	}
+	.tools {
+		margin-left: auto;
 	}
 	.mine {
 		padding: 8px 12px 0;
@@ -177,6 +209,23 @@
 	.turn.on {
 		background: var(--md-sys-color-tertiary-container);
 		color: var(--md-sys-color-on-tertiary-container);
+	}
+	/* 휴대폰: 360×640에서도 행동 바까지 한 화면에 들어오게 한다 */
+	@media (max-width: 600px) {
+		.scene {
+			gap: 6px;
+		}
+		.felt {
+			gap: 12px;
+			min-height: 0;
+			padding: 8px 12px;
+		}
+		.melds {
+			gap: 6px;
+		}
+		.mine {
+			padding: 4px 12px 0;
+		}
 	}
 	.value {
 		font-size: var(--md-sys-typescale-headline-large-size);

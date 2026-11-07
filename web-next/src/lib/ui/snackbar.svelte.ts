@@ -19,6 +19,11 @@ let nextId = 0;
 
 class SnackbarQueue {
 	current = $state<SnackbarItem | null>(null);
+	/**
+	 * 'nav': 하단 내비게이션 위. 'top': 휴대폰에서 앱 바 아래.
+	 * 대전 화면은 아래 1/3이 전부 조작이라 스낵바가 손패와 행동 바를 가리지 않도록 위로 올린다.
+	 */
+	placement = $state<'default' | 'nav' | 'top'>('default');
 	private waiting: SnackbarItem[] = [];
 	private timer: ReturnType<typeof setTimeout> | null = null;
 

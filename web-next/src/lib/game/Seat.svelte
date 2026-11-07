@@ -14,15 +14,17 @@
 	interface Props {
 		seat: SeatInfo;
 		active?: boolean;
+		/** 좌석이 많아 휴대폰에서 폭이 좁을 때. */
+		compact?: boolean;
 	}
-	let { seat, active = false }: Props = $props();
+	let { seat, active = false, compact = false }: Props = $props();
 
 	/** 3장 이하면 스톱을 생각할 때다. */
 	const warn = $derived(seat.count <= 3);
 </script>
 
 <article
-	class={['seat', active && 'active', warn && 'warn']}
+	class={['seat', active && 'active', warn && 'warn', compact && 'compact']}
 	data-zone={`seat-${seat.id}`}
 	aria-label={`${seat.name}, 손패 ${seat.count}장${seat.registered ? ', 등록함' : ''}${active ? ', 차례' : ''}`}
 >
@@ -120,6 +122,50 @@
 		color: var(--md-sys-color-on-surface-variant);
 		white-space: nowrap;
 		text-overflow: ellipsis;
+	}
+	/* 휴대폰: 세로 공간을 아낀다. 장수는 오른쪽에 크게 둔다 */
+	@media (max-width: 600px) {
+		.seat {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			align-items: center;
+			column-gap: 4px;
+			padding: 6px 10px;
+		}
+		.count {
+			grid-column: 2;
+			grid-row: 1 / span 2;
+			gap: 2px;
+			margin: 0;
+		}
+		.count :global(.card) {
+			display: none;
+		}
+		.last {
+			grid-column: 1;
+			margin: 0;
+		}
+		/* 좌석이 4개면 폭이 좁아 이름이 잘린다: 이름과 장수를 위아래로 놓고, 방금 한 행동은 기록에 맡긴다 */
+		.compact {
+			grid-template-columns: minmax(0, 1fr);
+			padding: 6px;
+		}
+		.compact .name {
+			font-size: var(--md-sys-typescale-label-medium-size);
+		}
+		.compact .count {
+			grid-column: 1;
+			grid-row: 2;
+		}
+		.compact .num {
+			font-size: var(--md-sys-typescale-title-large-size);
+		}
+		.compact .reg {
+			font-size: 0;
+		}
+		.compact .last {
+			display: none;
+		}
 	}
 	@keyframes pulse {
 		from {

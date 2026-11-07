@@ -7,6 +7,7 @@ interface WorkerGame {
 	readonly actionCount: number;
 	apply(action: string): void;
 	botAction(spec: string, seed: number): string;
+	evaluate(k: number, seed: number): string;
 	outcome(): string;
 	free(): void;
 }
@@ -14,17 +15,34 @@ interface WorkerGame {
 interface WorkerEngine {
 	default: (input?: unknown) => Promise<unknown>;
 	version(): string;
-	WasmGame: new (
-		players: number,
-		seed: number,
-		firstPlayer: number,
-		rulesToml: string
-	) => WorkerGame;
+	WasmGame: {
+		new (players: number, seed: number, firstPlayer: number, rulesToml: string): WorkerGame;
+		fromReplay(json: string): WorkerGame;
+	};
 }
 
-export type WorkerRequest = { id: number; kind: 'selfTest'; pkgUrl: string; seed: number };
+/** L3 평가 한 수. gap은 1위와의 차이, gap_se는 그 표준오차다. */
+export interface HintMove {
+	action: string;
+	value: number;
+	gap: number;
+	gap_se: number;
+}
+
+export type WorkerRequest =
+	| { id: number; kind: 'selfTest'; pkgUrl: string; seed: number }
+	| { id: number; kind: 'hint'; pkgUrl: string; replay: string; k: number; seed: number };
 export type WorkerResponse =
-	| { id: number; ok: true; version: string; moves: number; reason: string; ms: number }
+	| {
+			id: number;
+			ok: true;
+			kind: 'selfTest';
+			version: string;
+			moves: number;
+			reason: string;
+			ms: number;
+	  }
+	| { id: number; ok: true; kind: 'hint'; scored: HintMove[]; expert: string }
 	| { id: number; ok: false; error: string };
 
 let engine: Promise<WorkerEngine> | null = null;
@@ -39,9 +57,26 @@ function load(pkgUrl: string): Promise<WorkerEngine> {
 }
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
-	const { id, pkgUrl, seed } = e.data;
+	const req = e.data;
+	const { id, pkgUrl, seed } = req;
 	try {
 		const mod = await load(pkgUrl);
+		if (req.kind === 'hint') {
+			const game = mod.WasmGame.fromReplay(req.replay);
+			try {
+				const res: WorkerResponse = {
+					id,
+					ok: true,
+					kind: 'hint',
+					scored: JSON.parse(game.evaluate(req.k, seed)) as HintMove[],
+					expert: game.botAction('expert', 0)
+				};
+				self.postMessage(res);
+			} finally {
+				game.free();
+			}
+			return;
+		}
 		const started = performance.now();
 		const game = new mod.WasmGame(2, seed, seed % 2, '');
 		try {
@@ -50,6 +85,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 			const res: WorkerResponse = {
 				id,
 				ok: true,
+				kind: 'selfTest',
 				version: mod.version(),
 				moves: game.actionCount,
 				reason: outcome.reason,

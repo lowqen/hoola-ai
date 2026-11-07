@@ -45,6 +45,12 @@
 		transition: background-color var(--md-sys-motion-spring-standard-effects-default-duration)
 			var(--md-sys-motion-spring-standard-effects-default);
 	}
+	@media (max-width: 600px) {
+		.bar {
+			min-height: 56px;
+			padding-block: 4px;
+		}
+	}
 	.sticky {
 		position: sticky;
 		top: 0;

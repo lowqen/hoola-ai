@@ -146,7 +146,7 @@
 </svelte:head>
 
 <main class="page">
-	<a class="back" href={resolve('/')}>← 미리보기 홈</a>
+	<a class="back" href={resolve('/(app)')}>← 미리보기 홈</a>
 	<h1 class="md-typescale-headline-medium-emphasized">컴포넌트 갤러리</h1>
 	<p class="md-typescale-body-medium muted">
 		D2 · 모든 컴포넌트와 상태. 마우스 올리기·포커스(Tab)·누르기를 직접 해 보세요. 테마는 <a

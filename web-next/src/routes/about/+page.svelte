@@ -27,16 +27,19 @@
 </script>
 
 <svelte:head>
-	<title>훌라 연습장 · 새 버전 미리보기</title>
-	<meta name="description" content="Material 3로 다시 만드는 훌라 연습장의 미리보기" />
+	<title>개발 정보 · 훌라 연습장</title>
+	<meta
+		name="description"
+		content="Material 3로 다시 만드는 훌라 연습장의 개발 진행 상황과 미리보기 페이지"
+	/>
 </svelte:head>
 
 <main>
 	<header>
 		<span class="logo" aria-hidden="true">♠</span>
 		<div>
-			<h1>훌라 연습장</h1>
-			<p class="sub">새 버전 미리보기 · D2 컴포넌트 키트</p>
+			<h1>개발 정보</h1>
+			<p class="sub">새 버전 미리보기 · D4 화면 이식 중</p>
 		</div>
 	</header>
 
@@ -61,15 +64,16 @@
 			<li class="done">D0 · SvelteKit 정적 빌드, WASM 연결, CI</li>
 			<li class="done">D1 · M3 색·글꼴·모양·모션 토큰</li>
 			<li class="done">D2 · 컴포넌트 키트</li>
-			<li>D3 · 카드·테이블 컴포넌트와 모션</li>
-			<li>D4 · 대전·훈련·복기·기록 화면</li>
+			<li class="done">D3 · 카드·테이블 컴포넌트와 모션</li>
+			<li>D4 · 대전(이식 완료)·훈련·복기·기록 화면</li>
 			<li>D5 · 다듬기·설치형 앱(PWA)</li>
 		</ol>
 		<p class="links">
+			<a href={resolve('/(app)')}>대전 →</a>
 			<a href={`${resolve('/motion')}/`}>모션 데모 →</a>
 			<a href={`${resolve('/gallery')}/`}>컴포넌트 갤러리 →</a>
 			<a href={`${resolve('/theme')}/`}>테마 미리보기 →</a>
-			<a href="../" rel="external">지금 버전 연습장으로 →</a>
+			<a href="../../" rel="external">지금 버전 연습장으로 →</a>
 		</p>
 	</section>
 </main>
