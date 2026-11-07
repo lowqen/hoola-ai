@@ -232,7 +232,8 @@ test.describe('판 복원', () => {
 		await handCard(page, pick).click();
 		await slot(page, 'primary').click();
 		await expect(page.getByTestId('turn')).not.toHaveText('내 차례');
-		const hand = (await handIds(page)).sort();
+		// 버린 카드는 퇴장 모션 동안 DOM에 남으므로 기대값을 화면에서 읽지 않는다
+		const hand = ids.filter((c) => c !== pick).sort();
 
 		await page.reload();
 		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
