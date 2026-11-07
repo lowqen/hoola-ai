@@ -6,7 +6,7 @@ const BUDGET_KB = 60;
 // 판을 시작하면 판 화면을 더 받는다. 60KB를 넘는 값이므로 DESIGN_PLAN D4에 초과분을 기록해 둔다. 늘지 않게 막는 상한이다.
 const PLAY_BUDGET_KB = 65;
 // /theme은 개발용 미리보기다. 색 계산 라이브러리를 첫 그리기 뒤에 불러오므로 그 묶음은 첫 로드 예산에서 뺀다.
-const ROUTES = ['./', './gallery/', './motion/'];
+const ROUTES = ['./', './train/', './gallery/', './motion/'];
 
 for (const route of [...ROUTES, 'play']) {
 	test(`JS 예산: ${route}`, async ({ page }) => {

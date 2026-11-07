@@ -25,6 +25,8 @@ export interface Observation {
 	visible_discards: CardId[];
 	stock_len: number | null;
 	discard_count: number;
+	/** 이 좌석이 기억하는 버림패. */
+	known_discards?: CardId[];
 	thank_you_target: CardId | null;
 	stop_limit: number;
 	events: GameEvent[];

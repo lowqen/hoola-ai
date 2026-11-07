@@ -1,5 +1,6 @@
 // 연습장 저장소. 기존 앱과 같은 localStorage 키·형식을 쓴다 (DESIGN_PLAN §8 저장 데이터).
-// 모르는 필드(오답 노트, 훈련 기록)도 그대로 보존한다. 저장 실패는 무시한다(비공개 창 등).
+// 모르는 필드도 그대로 보존한다. 저장 실패는 무시한다(비공개 창 등).
+import type { DrillId, DrillStats, NotebookItem } from './train/drills.ts';
 
 export const STORE_KEY = 'hoola-practice-v1';
 
@@ -34,10 +35,15 @@ export interface GameRecord {
 export interface Store {
 	settings: Partial<Settings> | null;
 	games: GameRecord[];
+	train?: Record<DrillId, DrillStats>;
+	trainDays?: Record<string, { n: number; correct: number }>;
+	notebook?: NotebookItem[];
 	[key: string]: unknown;
 }
 
-export function loadStore(): Store {
+let shared: Store | null = null;
+
+function readStore(): Store {
 	try {
 		const raw = localStorage.getItem(STORE_KEY);
 		if (raw) {
@@ -49,6 +55,11 @@ export function loadStore(): Store {
 		// 저장소를 못 읽으면 빈 상태로 시작한다
 	}
 	return { settings: null, games: [] };
+}
+
+/** 페이지당 하나의 객체를 돌려준다. 화면마다 따로 읽으면 나중에 저장한 쪽이 다른 화면의 기록을 덮어쓴다. */
+export function loadStore(): Store {
+	return (shared ??= readStore());
 }
 
 export function saveStore(store: Store) {

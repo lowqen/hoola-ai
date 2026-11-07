@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
-// 엔진 계산 전용 워커: 무거운 계산(봇 대전, 분석)은 메인 스레드를 막지 않도록 여기서 한다.
+// 엔진 계산 전용 워커: 무거운 계산(봇 대전, 분석, 문제 생성)은 메인 스레드를 막지 않도록 여기서 한다.
+import type { Puzzle, PuzzleKind } from './train/drills.ts';
+import { generatePuzzle, type PuzzleEngine } from './train/generate.ts';
 
 interface WorkerGame {
 	readonly isOver: boolean;
@@ -13,6 +15,7 @@ interface WorkerGame {
 }
 
 interface WorkerEngine {
+	bestPartition(cards: string): string;
 	default: (input?: unknown) => Promise<unknown>;
 	version(): string;
 	WasmGame: {
@@ -31,7 +34,8 @@ export interface HintMove {
 
 export type WorkerRequest =
 	| { id: number; kind: 'selfTest'; pkgUrl: string; seed: number }
-	| { id: number; kind: 'hint'; pkgUrl: string; replay: string; k: number; seed: number };
+	| { id: number; kind: 'hint'; pkgUrl: string; replay: string; k: number; seed: number }
+	| { id: number; kind: 'puzzle'; pkgUrl: string; puzzle: PuzzleKind; seed?: undefined };
 export type WorkerResponse =
 	| {
 			id: number;
@@ -43,6 +47,7 @@ export type WorkerResponse =
 			ms: number;
 	  }
 	| { id: number; ok: true; kind: 'hint'; scored: HintMove[]; expert: string }
+	| { id: number; ok: true; kind: 'puzzle'; puzzle: Puzzle }
 	| { id: number; ok: false; error: string };
 
 let engine: Promise<WorkerEngine> | null = null;
@@ -61,6 +66,11 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 	const { id, pkgUrl, seed } = req;
 	try {
 		const mod = await load(pkgUrl);
+		if (req.kind === 'puzzle') {
+			const puzzle = generatePuzzle(mod as unknown as PuzzleEngine, req.puzzle);
+			self.postMessage({ id, ok: true, kind: 'puzzle', puzzle } satisfies WorkerResponse);
+			return;
+		}
 		if (req.kind === 'hint') {
 			const game = mod.WasmGame.fromReplay(req.replay);
 			try {
@@ -68,7 +78,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 					id,
 					ok: true,
 					kind: 'hint',
-					scored: JSON.parse(game.evaluate(req.k, seed)) as HintMove[],
+					scored: JSON.parse(game.evaluate(req.k, req.seed)) as HintMove[],
 					expert: game.botAction('expert', 0)
 				};
 				self.postMessage(res);
@@ -78,7 +88,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 			return;
 		}
 		const started = performance.now();
-		const game = new mod.WasmGame(2, seed, seed % 2, '');
+		const game = new mod.WasmGame(2, seed!, seed! % 2, '');
 		try {
 			while (!game.isOver) game.apply(game.botAction('expert', game.currentPlayer));
 			const outcome = JSON.parse(game.outcome()) as { reason: string };

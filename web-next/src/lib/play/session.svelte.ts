@@ -12,6 +12,7 @@ import {
 	type WasmGame
 } from '#lib/engine.ts';
 import { loadStore, saveStore, type GameRecord, type Settings, type Store } from '#lib/store.ts';
+import type { PuzzleKind } from '#lib/train/drills.ts';
 import { snackbar } from '#lib/ui/snackbar.svelte.ts';
 import { actionText, meldOrder, parseAction, type Observation, type Outcome } from './actions.ts';
 import { BOTS, DEFAULT_SETTINGS, normalizeSettings } from './bots.ts';
@@ -48,6 +49,8 @@ export interface GameResult {
 	tone: 'win' | 'lose' | 'draw';
 	reason: string;
 	cause: string | null;
+	/** 원인에 맞는 훈련 유형. */
+	drill: PuzzleKind | null;
 	hands: ResultHand[];
 }
 
@@ -550,7 +553,7 @@ class PlaySession {
 						: '패배',
 			tone: won ? 'win' : out.winners.length === 0 ? 'draw' : 'lose',
 			reason: `${reasons[out.reason] ?? out.reason} · 내 손패 ${myPoints}점`,
-			cause: won ? null : this.lossCause(out, myPoints, obs.stop_limit),
+			...(won ? { cause: null, drill: null } : this.lossCause(out, myPoints, obs.stop_limit)),
 			hands: (obs.revealed_hands ?? []).map((cards, seat) => ({
 				seat,
 				name: name(seat),
@@ -569,20 +572,36 @@ class PlaySession {
 	}
 
 	/** 졌을 때 한 줄 원인 추정과 다음 훈련 (DESIGN_PLAN §6.3). */
-	private lossCause(out: Outcome, points: number, limit: number) {
+	private lossCause(
+		out: Outcome,
+		points: number,
+		limit: number
+	): { cause: string | null; drill: PuzzleKind | null } {
 		const name = this.seatName;
 		if (out.reason === 'stop-fail' && out.caller === HUMAN) {
-			return '스톱했지만 나보다 낮거나 같은 손패가 있었다 → 훈련: 스톱 판단';
+			return {
+				cause: '스톱했지만 나보다 낮거나 같은 손패가 있었다 → 훈련: 스톱 판단',
+				drill: 'stop'
+			};
 		}
 		if (out.reason === 'out') {
 			return points > limit
-				? `${limit}점 이하가 되기 전에 ${name(out.player ?? 0)}가 털었다 → 훈련: 조합 찾기`
-				: `스톱할 수 있는 점수였는데 ${name(out.player ?? 0)}가 먼저 털었다 → 훈련: 스톱 판단`;
+				? {
+						cause: `${limit}점 이하가 되기 전에 ${name(out.player ?? 0)}가 털었다 → 훈련: 조합 찾기`,
+						drill: 'meld'
+					}
+				: {
+						cause: `스톱할 수 있는 점수였는데 ${name(out.player ?? 0)}가 먼저 털었다 → 훈련: 스톱 판단`,
+						drill: 'stop'
+					};
 		}
 		if (out.reason === 'stop-success') {
-			return `${name(out.caller ?? 0)}의 스톱에 점수로 졌다 → 훈련: 버릴 카드`;
+			return {
+				cause: `${name(out.caller ?? 0)}의 스톱에 점수로 졌다 → 훈련: 버릴 카드`,
+				drill: 'discard'
+			};
 		}
-		return null;
+		return { cause: null, drill: null };
 	}
 
 	private record(out: Outcome) {

@@ -4,6 +4,7 @@
 // - 무거운 계산(봇 대전, L3 분석, 문제 생성)은 워커에서 한다 (`engine.worker.ts`).
 import { asset } from '$app/paths';
 import type { HintMove, WorkerRequest, WorkerResponse } from './engine.worker.ts';
+import type { Puzzle, PuzzleKind } from './train/drills.ts';
 
 export type { HintMove };
 
@@ -27,6 +28,8 @@ export interface WasmGame {
 
 export interface Engine {
 	version(): string;
+	/** 카드들이 조합이면 종류, 아니면 없음. */
+	meldKind(cards: string): string | undefined;
 	WasmGame: new (players: number, seed: number, firstPlayer: number, rulesToml: string) => WasmGame;
 }
 
@@ -99,6 +102,19 @@ export function hint(
 			else reject(new Error(r.ok ? '응답 종류가 다르다' : r.error));
 		});
 		const req: WorkerRequest = { id, kind: 'hint', pkgUrl: enginePkgUrl(), replay, k, seed };
+		engineWorker().postMessage(req);
+	});
+}
+
+/** 훈련 문제 하나를 만든다 (워커). */
+export function puzzle(type: PuzzleKind): Promise<Puzzle> {
+	const id = ++nextId;
+	return new Promise((resolve, reject) => {
+		pending.set(id, (r) => {
+			if (r.ok && r.kind === 'puzzle') resolve(r.puzzle);
+			else reject(new Error(r.ok ? '응답 종류가 다르다' : r.error));
+		});
+		const req: WorkerRequest = { id, kind: 'puzzle', pkgUrl: enginePkgUrl(), puzzle: type };
 		engineWorker().postMessage(req);
 	});
 }

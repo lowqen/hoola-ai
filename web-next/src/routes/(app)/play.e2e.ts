@@ -507,3 +507,33 @@ test.describe('과업 시나리오: 목표 탭 수', () => {
 		expect((await stored(page)).settings.opponents[0]).toBe('friendE');
 	});
 });
+
+test('진 판의 결과 시트에서 원인에 맞는 훈련으로 바로 간다', async ({ page }) => {
+	test.setTimeout(120_000);
+	await seedStore(page, { seed: SEED.register, speed: 900 });
+	await start(page);
+	// 등록하지 않고 큰 카드만 버리면 봇이 먼저 끝낸다
+	for (let i = 0; i < 300; i++) {
+		await waitTurnOrOver(page);
+		if ((await page.getByTestId('turn').textContent())?.includes('판 종료')) break;
+		const primary = slot(page, 'primary');
+		if ((await primary.textContent())?.includes('받기')) {
+			await primary.click();
+		} else {
+			const ids = await handIds(page);
+			await handCard(page, ids.sort((a, b) => pts(b) - pts(a))[0]).click();
+			await primary.click();
+		}
+		await page.waitForTimeout(20);
+	}
+	await expect(page.getByTestId('result-cause')).toContainText('훈련:', { timeout: 30_000 });
+	const cause = (await page.getByTestId('result-cause').textContent()) ?? '';
+	await page.getByTestId('result-train').click();
+	await expect(page).toHaveURL(/\/train\/\?drill=(stop|meld|discard)/);
+	const drill = new URL(page.url()).searchParams.get('drill');
+	const title = { stop: '스톱 판단', meld: '조합 찾기', discard: '버릴 카드' }[drill!];
+	expect(cause).toContain(title);
+	await expect(page.getByTestId('t-question')).toHaveAttribute('data-drill', drill!, {
+		timeout: 30_000
+	});
+});

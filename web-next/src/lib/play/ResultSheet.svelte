@@ -1,5 +1,7 @@
 <script lang="ts">
 	// 판 종료 시트 (DESIGN_PLAN §6.3): 승패 → 끝난 이유 → 전원 손패 → 다음 행동.
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import PlayingCard from '#lib/game/PlayingCard.svelte';
 	import BottomSheet from '#lib/ui/BottomSheet.svelte';
 	import Button from '#lib/ui/Button.svelte';
@@ -7,13 +9,30 @@
 	import { session } from './session.svelte.ts';
 
 	const result = $derived(session.result);
+
+	function practice(drill: string) {
+		session.resultOpen = false;
+		void goto(`${resolve('/(app)/train')}/?drill=${drill}`);
+	}
 </script>
 
 <BottomSheet bind:open={session.resultOpen} label="판 결과">
 	{#if result}
 		<h2 class={result.tone} data-testid="result-title">{result.title}</h2>
 		<p class="reason" data-testid="result-reason">{result.reason}</p>
-		{#if result.cause}<p class="cause" data-testid="result-cause">{result.cause}</p>{/if}
+		{#if result.cause}
+			<p class="cause" data-testid="result-cause">{result.cause}</p>
+			{#if result.drill}
+				{@const drill = result.drill}
+				<Button
+					variant="text"
+					size="sm"
+					icon="school"
+					data-testid="result-train"
+					onclick={() => practice(drill)}>이 유형 훈련하기</Button
+				>
+			{/if}
+		{/if}
 		<ul class="hands" data-testid="result-hands">
 			{#each result.hands as hand (hand.seat)}
 				<li class={[hand.winner && 'winner']}>
