@@ -318,6 +318,7 @@
 
 <svelte:head>
 	<title>모션 데모 · 훌라 연습장</title>
+	<meta name="robots" content="noindex" />
 	<meta
 		name="description"
 		content="훌라 연습장의 카드 받기·버리기·등록·붙이기 모션과 끌기 조작을 고정된 판으로 확인한다."

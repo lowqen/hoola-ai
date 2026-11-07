@@ -142,6 +142,7 @@
 
 <svelte:head>
 	<title>컴포넌트 갤러리 · 훌라 연습장</title>
+	<meta name="robots" content="noindex" />
 	<meta name="description" content="훌라 연습장 Material 3 컴포넌트 키트의 모든 상태" />
 </svelte:head>
 

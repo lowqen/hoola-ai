@@ -46,7 +46,7 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter(),
-			// GitHub Pages 미리보기: /hoola-ai/next (로컬 개발은 빈 값)
+			// GitHub Pages: /hoola-ai (로컬 개발은 빈 값)
 			paths: { base: (process.env.BASE_PATH ?? '') as '' | `/${string}` }
 		})
 	]

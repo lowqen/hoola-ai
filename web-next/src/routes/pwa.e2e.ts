@@ -141,3 +141,50 @@ test('새 버전이 활성화되면 옛 캐시를 지운다', async ({ page }) =
 	);
 	expect(fontUrls.filter((u) => u.endsWith('retired.woff2'))).toEqual([]);
 });
+
+// 옛 미리보기 워커를 흉내 낸다: 모든 화면 요청을 자기 캐시의 옛 앱으로 답한다
+const OLD_WORKER = `
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', (e) => {
+	if (e.request.mode === 'navigate')
+		e.respondWith(new Response('<p data-testid="old-app">옛 앱</p>', { headers: { 'content-type': 'text/html' } }));
+});`;
+
+test('옛 미리보기 주소: 남은 워커가 바뀌면 등록을 지우고 안내를 보인다', async ({
+	page,
+	context
+}) => {
+	await context.route('**/next/service-worker.js', (r) =>
+		r.fulfill({ contentType: 'text/javascript', body: OLD_WORKER })
+	);
+	await page.goto('next/');
+	await page.evaluate(() => navigator.serviceWorker.register('service-worker.js'));
+	await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+	await page.reload();
+	await expect(page.getByTestId('old-app')).toBeVisible();
+
+	// 배포 뒤 브라우저가 업데이트를 확인하면 정리용 워커(static/next/service-worker.js)를 받는다
+	await context.unroute('**/next/service-worker.js');
+	await page.evaluate(async () => (await navigator.serviceWorker.ready).update());
+	await expect(page.getByTestId('moved')).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByRole('link', { name: '새 주소로 가기' })).toHaveAttribute('href', '../');
+	await expect
+		.poll(() =>
+			page.evaluate(async () =>
+				(await navigator.serviceWorker.getRegistrations()).map((r) => r.scope)
+			)
+		)
+		.toEqual([]);
+
+	// 정식 앱 워커는 안내 페이지를 미리 캐시하지 않는다
+	await page.goto('./');
+	await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+		timeout: 60_000
+	});
+	const cached = await page.evaluate(async () => {
+		const name = (await caches.keys()).find((n) => n.startsWith('hoola-shell-'))!;
+		return (await (await caches.open(name)).keys()).map((r) => new URL(r.url).pathname);
+	});
+	expect(cached.some((p) => p.includes('/next/'))).toBe(false);
+});

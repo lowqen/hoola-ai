@@ -93,6 +93,7 @@
 
 <svelte:head>
 	<title>테마 미리보기 · 훌라 연습장</title>
+	<meta name="robots" content="noindex" />
 	<meta name="description" content="훌라 연습장 Material 3 디자인 토큰 미리보기" />
 </svelte:head>
 

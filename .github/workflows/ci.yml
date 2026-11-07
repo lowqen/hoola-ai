@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      BASE_PATH: /hoola-ai/next
+      BASE_PATH: /hoola-ai
     defaults:
       run:
         working-directory: web-next
@@ -344,15 +344,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: hoola-web
-          path: site
-
+      # 정식 앱(web-next)을 루트에 둔다. /next/는 옛 미리보기를 정리하는 안내 페이지다 (static/next/)
       - uses: actions/download-artifact@v4
         with:
           name: hoola-web-next
-          path: site/next
+          path: site
 
       - run: ls -la site site/next
 

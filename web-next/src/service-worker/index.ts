@@ -18,10 +18,10 @@ const isFont = (pathname: string) => pathname.endsWith('.woff2');
 
 const built = immutable.map((f) => toPathname(f.path));
 const FONT_PATHS = built.filter(isFont);
-// 타입 선언과 robots.txt는 앱 실행에 필요 없다
+// 타입 선언과 robots.txt는 앱 실행에 필요 없다. next/는 옛 미리보기 주소를 정리하는 안내 페이지다 (static/next/)
 const staticFiles = assets
 	.map((f) => f.path as string)
-	.filter((p) => !/(\.d\.ts|robots\.txt)$/.test(p));
+	.filter((p) => !/(\.d\.ts|robots\.txt)$/.test(p) && !/^\/?next\//.test(p));
 const SHELL_PATHS = new Set([
 	...built.filter((p) => !isFont(p)),
 	...staticFiles.map(toPathname),
