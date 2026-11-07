@@ -84,9 +84,7 @@
 	<main class="home">
 		<section class="hero" aria-labelledby="train-title">
 			<h2 id="train-title">오늘의 훈련</h2>
-			<p>
-				자주 놓치는 판단을 짧은 문제로 반복한다. 문제는 엔진이 실제 판에서 만든다.
-			</p>
+			<p>자주 놓치는 판단을 짧은 문제로 반복한다. 문제는 엔진이 실제 판에서 만든다.</p>
 			<p class="today" data-testid="t-today">
 				{today.n
 					? `오늘 ${today.n}문제 · 정답률 ${Math.round((today.correct / today.n) * 100)}%`
