@@ -15,10 +15,14 @@
 		store = loadStore();
 	});
 
-	const stats = $derived(store ? groupStats(store.games) : null);
-	const weak = $derived(store ? weakness(store.games) : null);
+	// 프리렌더 HTML은 빈 상태다. 저장 데이터가 있으면 불러오기 전까지 "기록 없음" 문구를 숨긴다.
+	const guard = `<script>try{if(localStorage.getItem('hoola-practice-v1'))document.documentElement.dataset.saved=''}catch(e){}<\/script>`;
+	const loading = $derived(store === null);
+
+	const stats = $derived(groupStats(store?.games ?? []));
+	const weak = $derived(weakness(store?.games ?? []));
 	const maxWeak = $derived(Math.max(1, ...(weak?.rows.map((r) => r.count) ?? [])));
-	const days = $derived(store ? trainingDays(store.trainDays) : []);
+	const days = $derived(trainingDays(store?.trainDays));
 	const maxDay = $derived(Math.max(1, ...days.map((d) => d.n)));
 	const totalSolved = $derived(days.reduce((sum, d) => sum + d.n, 0));
 	const totalCorrect = $derived(days.reduce((sum, d) => sum + d.correct, 0));
@@ -47,6 +51,7 @@
 <svelte:head>
 	<title>기록 · 훌라 연습장</title>
 	<meta name="description" content="훌라 전적과 복기로 본 약점, 훈련 기록" />
+	{@html guard}
 </svelte:head>
 
 <TopAppBar title="기록">
@@ -63,145 +68,148 @@
 </TopAppBar>
 
 <main>
-	{#if store && stats}
-		<section aria-labelledby="rec-games">
-			<h2 id="rec-games">상대 구성별 승률</h2>
-			{#if stats.groups.length}
-				<ul class="groups" data-testid="rec-groups">
-					{#each stats.groups as group (group.label)}
+	<section aria-labelledby="rec-games">
+		<h2 id="rec-games">상대 구성별 승률</h2>
+		{#if stats.groups.length}
+			<ul class="groups" data-testid="rec-groups">
+				{#each stats.groups as group (group.label)}
+					<li>
+						<div class="row">
+							<span class="name">{group.label}</span>
+							<span class="value"><b>{percent(group.rate)}</b> {group.games}판</span>
+						</div>
+						<div
+							class="track"
+							role="img"
+							aria-label={`승률 ${percent(group.rate)}, 공평한 몫 ${percent(group.fair)}`}
+						>
+							<span class="fill" style={`width:${Math.min(100, group.rate * 100)}%`}></span>
+							<span class="fair" style={`left:${group.fair * 100}%`}></span>
+						</div>
+						<span class="meta">세로 눈금 = 공평한 몫 {percent(group.fair)}</span>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<div class={['empty', loading && 'loading']} data-testid="rec-empty">
+				<p>
+					{stats.practice
+						? `되돌리기를 쓴 연습판 ${stats.practice}판만 있다 (전적 제외). 끝까지 둔 판이 쌓이면 승률이 보인다.`
+						: '아직 끝낸 판이 없다. 한 판을 끝내면 상대 구성별 승률이 쌓인다.'}
+				</p>
+				<Button
+					icon="playing_cards"
+					disabled={loading}
+					data-testid="rec-first-game"
+					onclick={() => goto(resolve('/(app)'))}>첫 판 시작</Button
+				>
+			</div>
+		{/if}
+		{#if stats.groups.length && stats.practice}
+			<p class="meta" data-testid="rec-practice">
+				되돌리기·다시 두기를 쓴 연습판 {stats.practice}판은 승률에서 뺐다.
+			</p>
+		{/if}
+	</section>
+
+	<section aria-labelledby="rec-weak">
+		<h2 id="rec-weak">복기로 본 약점</h2>
+		{#if weak}
+			<p class="summary" data-testid="rec-weak-summary">
+				복기 {weak.reviewed}판 · 정확도 {percent(weak.accuracy)} · 판당 손실 {(
+					weak.lossPerGame * 100
+				).toFixed(1)}%p
+			</p>
+			{#if weak.rows.length}
+				<ul class="weak">
+					{#each weak.rows as row (row.category)}
 						<li>
-							<div class="row">
-								<span class="name">{group.label}</span>
-								<span class="value"><b>{percent(group.rate)}</b> {group.games}판</span>
-							</div>
-							<div
-								class="track"
-								role="img"
-								aria-label={`승률 ${percent(group.rate)}, 공평한 몫 ${percent(group.fair)}`}
-							>
-								<span class="fill" style={`width:${Math.min(100, group.rate * 100)}%`}></span>
-								<span class="fair" style={`left:${group.fair * 100}%`}></span>
-							</div>
-							<span class="meta">세로 눈금 = 공평한 몫 {percent(group.fair)}</span>
+							{#snippet content()}
+								<span class="label">{row.label}</span>
+								<span class="bar"
+									><span style={`width:${(row.count / maxWeak) * 100}%`}></span></span
+								>
+								<b>{row.count}</b>
+								{#if row.drill}<Icon name="arrow_forward" size={18} />{/if}
+							{/snippet}
+							{#if row.drill}
+								<a
+									href={`${resolve('/(app)/train')}/?drill=${row.drill}`}
+									class="weak-row"
+									aria-label={`${row.label} 실수 ${row.count}번. 이 유형 훈련하기`}
+									data-testid={`rec-weak-${row.category}`}
+								>
+									{@render content()}
+								</a>
+							{:else}
+								<div class="weak-row" data-testid={`rec-weak-${row.category}`}>
+									{@render content()}
+								</div>
+							{/if}
 						</li>
 					{/each}
 				</ul>
 			{:else}
-				<div class="empty" data-testid="rec-empty">
-					<p>
-						{stats.practice
-							? `되돌리기를 쓴 연습판 ${stats.practice}판만 있다 (전적 제외). 끝까지 둔 판이 쌓이면 승률이 보인다.`
-							: '아직 끝낸 판이 없다. 한 판을 끝내면 상대 구성별 승률이 쌓인다.'}
-					</p>
-					<Button
-						icon="playing_cards"
-						data-testid="rec-first-game"
-						onclick={() => goto(resolve('/(app)'))}>첫 판 시작</Button
-					>
-				</div>
+				<p class="meta">확실한 실수가 아직 없다.</p>
 			{/if}
-			{#if stats.groups.length && stats.practice}
-				<p class="meta" data-testid="rec-practice">
-					되돌리기·다시 두기를 쓴 연습판 {stats.practice}판은 승률에서 뺐다.
-				</p>
-			{/if}
-		</section>
+		{:else}
+			<p class={['meta', loading && 'loading']} data-testid="rec-weak-empty">
+				판이 끝나면 결과 시트에서 복기하세요. 실수 유형이 여기에 쌓인다.
+			</p>
+		{/if}
+	</section>
 
-		<section aria-labelledby="rec-weak">
-			<h2 id="rec-weak">복기로 본 약점</h2>
-			{#if weak}
-				<p class="summary" data-testid="rec-weak-summary">
-					복기 {weak.reviewed}판 · 정확도 {percent(weak.accuracy)} · 판당 손실 {(
-						weak.lossPerGame * 100
-					).toFixed(1)}%p
-				</p>
-				{#if weak.rows.length}
-					<ul class="weak">
-						{#each weak.rows as row (row.category)}
-							<li>
-								{#snippet content()}
-									<span class="label">{row.label}</span>
-									<span class="bar"
-										><span style={`width:${(row.count / maxWeak) * 100}%`}></span></span
-									>
-									<b>{row.count}</b>
-									{#if row.drill}<Icon name="arrow_forward" size={18} />{/if}
-								{/snippet}
-								{#if row.drill}
-									<a
-										href={`${resolve('/(app)/train')}/?drill=${row.drill}`}
-										class="weak-row"
-										aria-label={`${row.label} 실수 ${row.count}번. 이 유형 훈련하기`}
-										data-testid={`rec-weak-${row.category}`}
-									>
-										{@render content()}
-									</a>
-								{:else}
-									<div class="weak-row" data-testid={`rec-weak-${row.category}`}>
-										{@render content()}
-									</div>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="meta">확실한 실수가 아직 없다.</p>
-				{/if}
-			{:else}
-				<p class="meta" data-testid="rec-weak-empty">
-					판이 끝나면 결과 시트에서 복기하세요. 실수 유형이 여기에 쌓인다.
-				</p>
-			{/if}
-		</section>
-
-		<section aria-labelledby="rec-days">
-			<h2 id="rec-days">최근 14일 훈련</h2>
-			{#if totalSolved}
-				<p class="summary" data-testid="rec-days-summary">
-					{totalSolved}문제 · 정답률 {percent(totalCorrect / totalSolved)}
-				</p>
-				<ol class="days" data-testid="rec-days-chart" onpointerleave={() => (hovered = null)}>
-					{#each days as day (day.date)}
-						<li>
-							<button
-								type="button"
-								aria-label={dayText(day)}
-								data-testid={`rec-day-${day.date}`}
-								onpointerenter={() => (hovered = day)}
-								onfocus={() => (hovered = day)}
-								onblur={() => (hovered = null)}
-								onclick={() => (hovered = day)}
-							>
-								<span
-									class={['day-bar', shown?.date === day.date && 'active']}
-									style={`height:${day.n ? Math.max(4, (day.n / maxDay) * 100) : 0}%`}
-								></span>
-							</button>
-						</li>
-					{/each}
-				</ol>
-				<div class="axis" aria-hidden="true">
-					<span>{days[0].label}</span><span>오늘</span>
-				</div>
-				<p class="readout" aria-live="polite" data-testid="rec-day-readout">
-					{shown ? dayText(shown) : ''}
-				</p>
-			{:else}
-				<div class="empty" data-testid="rec-days-empty">
-					<p>아직 푼 문제가 없다. 짧은 문제로 판단을 연습하면 날짜별로 쌓인다.</p>
-					<Button
-						variant="tonal"
-						icon="school"
-						data-testid="rec-first-train"
-						onclick={() => goto(resolve('/(app)/train'))}>오늘의 훈련 시작</Button
-					>
-				</div>
-			{/if}
-		</section>
-	{/if}
+	<section aria-labelledby="rec-days">
+		<h2 id="rec-days">최근 14일 훈련</h2>
+		{#if totalSolved}
+			<p class="summary" data-testid="rec-days-summary">
+				{totalSolved}문제 · 정답률 {percent(totalCorrect / totalSolved)}
+			</p>
+			<ol class="days" data-testid="rec-days-chart" onpointerleave={() => (hovered = null)}>
+				{#each days as day (day.date)}
+					<li>
+						<button
+							type="button"
+							aria-label={dayText(day)}
+							data-testid={`rec-day-${day.date}`}
+							onpointerenter={() => (hovered = day)}
+							onfocus={() => (hovered = day)}
+							onblur={() => (hovered = null)}
+							onclick={() => (hovered = day)}
+						>
+							<span
+								class={['day-bar', shown?.date === day.date && 'active']}
+								style={`height:${day.n ? Math.max(4, (day.n / maxDay) * 100) : 0}%`}
+							></span>
+						</button>
+					</li>
+				{/each}
+			</ol>
+			<div class="axis" aria-hidden="true">
+				<span>{days[0].label}</span><span>오늘</span>
+			</div>
+			<p class="readout" aria-live="polite" data-testid="rec-day-readout">
+				{shown ? dayText(shown) : ''}
+			</p>
+		{:else}
+			<div class={['empty', loading && 'loading']} data-testid="rec-days-empty">
+				<p>아직 푼 문제가 없다. 짧은 문제로 판단을 연습하면 날짜별로 쌓인다.</p>
+				<Button
+					variant="tonal"
+					icon="school"
+					disabled={loading}
+					data-testid="rec-first-train"
+					onclick={() => goto(resolve('/(app)/train'))}>오늘의 훈련 시작</Button
+				>
+			</div>
+		{/if}
+	</section>
 </main>
 
 <style>
+	:global(html[data-saved]) .loading {
+		visibility: hidden;
+	}
 	main {
 		display: grid;
 		gap: 12px;

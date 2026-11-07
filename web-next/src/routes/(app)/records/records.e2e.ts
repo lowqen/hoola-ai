@@ -54,6 +54,26 @@ test('빈 상태: 첫 판과 첫 훈련으로 가는 버튼을 보여 준다', a
 	await expect(page.getByTestId('start')).toBeVisible();
 });
 
+test.describe('스크립트를 받기 전', () => {
+	test.beforeEach(async ({ page }) => {
+		await page.route('**/_app/immutable/**/*.js', (route) => route.abort());
+	});
+
+	test('처음 온 사람에게는 프리렌더한 빈 상태가 바로 보인다', async ({ page }) => {
+		await page.goto('./records/');
+		await expect(page.getByTestId('rec-empty')).toBeVisible();
+		await expect(page.getByTestId('rec-first-game')).toBeDisabled();
+	});
+
+	test('기록이 있는 사람에게는 "기록 없음" 문구를 보여 주지 않는다', async ({ page }) => {
+		await seed(page, full);
+		await page.goto('./records/');
+		await expect(page.getByTestId('rec-empty')).toBeHidden();
+		await expect(page.getByTestId('rec-weak-empty')).toBeHidden();
+		await expect(page.getByTestId('rec-days-empty')).toBeHidden();
+	});
+});
+
 test('연습판만 있으면 전적에서 뺀다고 알려 준다', async ({ page }) => {
 	await seed(page, { settings: null, games: [game({ undo: true })] });
 	await page.goto('./records/');
