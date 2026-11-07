@@ -3,7 +3,7 @@
 	// 칸(slot)은 폭이 줄어 카드가 겹치고, 카드 자체는 크기를 유지한다.
 	import { flip } from 'svelte/animate';
 	import { draggable } from './drag.ts';
-	import { CARD_PX, type CardId, type CardSize } from './cards.ts';
+	import type { CardId } from './cards.ts';
 	import { receive, reflow, send } from './motion.svelte.ts';
 	import PlayingCard from './PlayingCard.svelte';
 
@@ -12,7 +12,6 @@
 		selected: CardId[];
 		/** 복기: 내 수와 추천을 카드 위에 표시한다. */
 		marks?: Partial<Record<CardId, 'mine' | 'best'>>;
-		size?: CardSize;
 		ontoggle: (card: CardId) => void;
 		ondoubletap?: (card: CardId) => void;
 		/** 지금 끌어서 낼 수 있는지. */
@@ -25,7 +24,6 @@
 		cards,
 		selected,
 		marks,
-		size = 'lg',
 		ontoggle,
 		ondoubletap,
 		canDrag = false,
@@ -35,17 +33,6 @@
 	}: Props = $props();
 
 	const DOUBLE_TAP_MS = 320;
-	/** 받은 뒤의 최대 손패와 터치 영역 하한 (DESIGN_PLAN §4: 48dp). */
-	const MAX_HAND = 8;
-	const MIN_TAP = 48;
-	/** 두 줄일 때 윗줄이 아랫줄에 가리는 높이. 윗줄 카드의 드러난 높이는 56px이다. */
-	const ROW_OVERLAP = 20;
-
-	let width = $state(0);
-	/** 8장을 한 줄로 겹쳐 놓으면 드러난 폭이 48dp보다 좁아지는 폭에서는 항상 두 줄이다. */
-	const twoRows = $derived(width > 0 && (width - CARD_PX[size].w) / (MAX_HAND - 1) < MIN_TAP);
-	const cardSize = $derived<CardSize>(twoRows ? 'md' : size);
-	const px = $derived(CARD_PX[cardSize]);
 	const columns = $derived(Math.max(4, Math.ceil(cards.length / 2)));
 	let focusCard = $state<CardId | null>(null);
 	let root = $state<HTMLElement>();
@@ -87,61 +74,68 @@
 		}
 	}
 
-	/** 부채꼴: 가운데에서 멀수록 살짝 눕고 내려간다. */
+	/** 부채꼴: 가운데에서 멀수록 살짝 눕고 내려간다. 두 줄 배치에서는 CSS가 무시한다. */
 	function fan(i: number, n: number) {
-		if (twoRows) return '--angle:0deg;--arc:0px';
 		const off = i - (n - 1) / 2;
 		return `--angle:${(off * 1.4).toFixed(2)}deg;--arc:${(off * off * 0.7).toFixed(2)}px`;
 	}
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div
-	bind:this={root}
-	bind:clientWidth={width}
-	class={['hand', twoRows && 'rows']}
-	role="group"
-	aria-label={`내 손패 ${cards.length}장`}
-	style={`--w:${px.w}px;--h:${px.h}px;--columns:${columns};--overlap:${ROW_OVERLAP}px`}
-	data-testid="hand"
-	onkeydown={keydown}
->
-	{#each cards as card, i (card)}
-		<div
-			class={['slot', twoRows && i >= columns && 'second']}
-			in:receive={{ key: card }}
-			out:send={{ key: card }}
-			animate:flip={reflow()}
-			style={fan(i, cards.length)}
-		>
+<div class="fit">
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div
+		bind:this={root}
+		class="hand"
+		role="group"
+		aria-label={`내 손패 ${cards.length}장`}
+		style={`--columns:${columns}`}
+		data-testid="hand"
+		onkeydown={keydown}
+	>
+		{#each cards as card, i (card)}
 			<div
-				class="drag"
-				use:draggable={{
-					enabled: canDrag,
-					canDrop: (zone) => canDrop?.(card, zone) ?? false,
-					onDrop: (zone) => ondrop?.(card, zone) ?? false,
-					onStart: () => ondragchange?.(card),
-					onEnd: () => ondragchange?.(null)
-				}}
+				class={['slot', i >= columns && 'second']}
+				in:receive={{ key: card }}
+				out:send={{ key: card }}
+				animate:flip={reflow()}
+				style={fan(i, cards.length)}
 			>
-				<div class={['tilt', selected.includes(card) && 'lifted']}>
-					<PlayingCard
-						{card}
-						size={cardSize}
-						raised
-						mark={marks?.[card]}
-						selected={selected.includes(card)}
-						tabindex={card === tabCard ? 0 : -1}
-						onclick={(e) => tap(card, e)}
-					/>
+				<div
+					class="drag"
+					use:draggable={{
+						enabled: canDrag,
+						canDrop: (zone) => canDrop?.(card, zone) ?? false,
+						onDrop: (zone) => ondrop?.(card, zone) ?? false,
+						onStart: () => ondragchange?.(card),
+						onEnd: () => ondragchange?.(null)
+					}}
+				>
+					<div class={['tilt', selected.includes(card) && 'lifted']}>
+						<PlayingCard
+							{card}
+							size="inherit"
+							raised
+							mark={marks?.[card]}
+							selected={selected.includes(card)}
+							tabindex={card === tabCard ? 0 : -1}
+							onclick={(e) => tap(card, e)}
+						/>
+					</div>
 				</div>
 			</div>
-		</div>
-	{/each}
+		{/each}
+	</div>
 </div>
 
 <style>
+	/* 배치는 CSS 컨테이너 쿼리로 정한다: 프리렌더 HTML이 처음부터 맞게 그려져 수화 때 레이아웃이 밀리지 않는다 */
+	.fit {
+		container-type: inline-size;
+	}
 	.hand {
+		/* lg 카드 (cards.ts CARD_PX) */
+		--w: 64px;
+		--h: 90px;
 		display: flex;
 		justify-content: center;
 		/* 고른 카드가 올라올 자리와 부채꼴로 내려갈 자리 */
@@ -156,22 +150,6 @@
 	}
 	.slot:last-child {
 		flex-shrink: 0;
-	}
-	/* 휴대폰: 두 줄이라 카드가 옆으로 겹치지 않는다. 장수가 줄어도 높이는 그대로라 행동 바가 움직이지 않는다 */
-	.rows {
-		flex-wrap: wrap;
-		align-content: flex-start;
-		padding: 12px 0 6px;
-		min-height: calc(var(--h) * 2 - var(--overlap) + 18px);
-	}
-	.rows .slot,
-	.rows .slot:last-child {
-		flex: 0 0 calc(100% / var(--columns));
-		display: flex;
-		justify-content: center;
-	}
-	.rows .second {
-		margin-top: calc(var(--overlap) * -1);
 	}
 	.slot:focus-within {
 		z-index: 2;
@@ -198,6 +176,33 @@
 	@media (hover: hover) {
 		.slot:hover .tilt:not(.lifted) {
 			--lift: -6px;
+		}
+	}
+	/*
+	 * 휴대폰: 받은 뒤 최대 8장을 한 줄로 겹치면 드러난 폭이 48dp(§4)보다 좁아지는 폭(64 + 7 × 48 = 400px)에서는 항상 두 줄이다.
+	 * md 카드(54×76)로 옆으로 겹치지 않는다. 윗줄의 드러난 높이는 56px이고, 장수가 줄어도 높이가 그대로라 행동 바가 움직이지 않는다.
+	 */
+	@container (width < 400px) {
+		.hand {
+			--w: 54px;
+			--h: 76px;
+			--overlap: 20px;
+			flex-wrap: wrap;
+			align-content: flex-start;
+			padding: 12px 0 6px;
+			min-height: calc(var(--h) * 2 - var(--overlap) + 18px);
+		}
+		.slot,
+		.slot:last-child {
+			flex: 0 0 calc(100% / var(--columns));
+			display: flex;
+			justify-content: center;
+		}
+		.second {
+			margin-top: calc(var(--overlap) * -1);
+		}
+		.tilt {
+			transform: translateY(var(--lift));
 		}
 	}
 </style>

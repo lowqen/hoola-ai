@@ -413,7 +413,6 @@
 		gap: 8px;
 	}
 	.states {
-		/* 첫 화면 밖이다: 볼 때까지 레이아웃·그리기와 펄스 애니메이션을 건너뛴다 */
 		display: flex;
 		flex-direction: column;
 		gap: 12px;

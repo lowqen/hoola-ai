@@ -34,6 +34,38 @@ test.beforeEach(async ({ page }) => {
 	await expect(page.getByTestId('turn')).toHaveText('내 차례');
 });
 
+// 예전에는 수화 뒤 폭을 재서 한 줄 → 두 줄로 바꿔 CLS 0.099가 났다 (Lighthouse 모바일 폭 412px)
+for (const [width, height, rows] of [
+	[412, 823, 2],
+	[1350, 940, 1]
+] as const) {
+	test(`손패는 프리렌더부터 ${rows}줄이고 ${width}px에서 레이아웃이 밀리지 않는다`, async ({
+		page
+	}) => {
+		await page.setViewportSize({ width, height });
+		await page.addInitScript(() => {
+			const shifts: number[] = [];
+			(window as unknown as { shifts: number[] }).shifts = shifts;
+			new PerformanceObserver((list) => {
+				for (const e of list.getEntries()) shifts.push((e as unknown as { value: number }).value);
+			}).observe({ type: 'layout-shift', buffered: true });
+		});
+		await page.goto('./motion/', { waitUntil: 'networkidle' });
+		await expect(page.getByTestId('turn')).toHaveText('내 차례');
+		const tops = await page
+			.getByTestId('hand')
+			.locator('[data-card]')
+			.evaluateAll(
+				(cards) => new Set(cards.map((c) => c.closest('.slot')!.getBoundingClientRect().top)).size
+			);
+		expect(tops).toBe(rows);
+		const cls = await page.evaluate(() =>
+			(window as unknown as { shifts: number[] }).shifts.reduce((sum, v) => sum + v, 0)
+		);
+		expect(cls).toBeLessThan(0.01);
+	});
+}
+
 test('오류 없이 그려지고 360px에서 가로 스크롤이 없다', async ({ page }) => {
 	const errors: string[] = [];
 	page.on('pageerror', (e) => errors.push(String(e)));

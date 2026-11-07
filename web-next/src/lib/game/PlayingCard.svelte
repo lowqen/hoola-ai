@@ -13,7 +13,8 @@
 	interface Props {
 		/** 없으면 뒷면. */
 		card?: CardId;
-		size?: CardSize;
+		/** 'inherit'이면 크기(--w, --h)를 부모의 CSS에서 받는다. */
+		size?: CardSize | 'inherit';
 		selected?: boolean;
 		/** 복기 표시: 내가 둔 수 / 추천 수. 색과 글자를 함께 쓴다. */
 		mark?: 'mine' | 'best';
@@ -33,7 +34,6 @@
 		onclick
 	}: Props = $props();
 
-	const px = $derived(CARD_PX[size]);
 	const classes = $derived(
 		[
 			'card',
@@ -46,7 +46,9 @@
 			.filter(Boolean)
 			.join(' ')
 	);
-	const style = $derived(`--w:${px.w}px;--h:${px.h}px`);
+	const style = $derived(
+		size === 'inherit' ? undefined : `--w:${CARD_PX[size].w}px;--h:${CARD_PX[size].h}px`
+	);
 	const label = $derived(
 		card ? `${cardAria(card)}${mark ? (mark === 'mine' ? ', 내 수' : ', 추천') : ''}` : undefined
 	);
