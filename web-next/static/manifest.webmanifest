@@ -1,0 +1,30 @@
+{
+	"name": "훌라 연습장",
+	"short_name": "훌라",
+	"description": "봇과 대전하고 스톱·땡큐 판단을 연습하는 훌라 연습장. 설치하면 오프라인에서도 둔다.",
+	"lang": "ko",
+	"dir": "ltr",
+	"id": "./",
+	"start_url": "./",
+	"scope": "./",
+	"display": "standalone",
+	"theme_color": "#1f6f50",
+	"background_color": "#f7faf5",
+	"categories": ["games"],
+	"icons": [
+		{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+		{ "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+		{
+			"src": "icons/icon-maskable-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
+			"src": "icons/icon-maskable-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	]
+}

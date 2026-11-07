@@ -17,7 +17,8 @@
 		"tokens": "node --import ./scripts/resolve-js.ts scripts/tokens.ts",
 		"tokens:check": "node --import ./scripts/resolve-js.ts scripts/tokens.ts --check",
 		"icons": "node --import ./scripts/resolve-js.ts scripts/icons.ts",
-		"icons:check": "node --import ./scripts/resolve-js.ts scripts/icons.ts --check"
+		"icons:check": "node --import ./scripts/resolve-js.ts scripts/icons.ts --check",
+		"app-icons": "node scripts/app-icons.ts"
 	},
 	"devDependencies": {
 		"@material-symbols/svg-500": "^0.48.3",

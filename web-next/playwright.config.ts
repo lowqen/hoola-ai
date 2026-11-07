@@ -10,7 +10,8 @@ export default defineConfig({
 		reuseExistingServer: !process.env.CI,
 		timeout: 180_000
 	},
-	use: { baseURL: `http://localhost:4173${base}/` },
+	// 서비스 워커는 테스트마다 앱 전체를 받고 네트워크 응답을 가로채므로, pwa.e2e.ts에서만 켠다
+	use: { baseURL: `http://localhost:4173${base}/`, serviceWorkers: 'block' },
 	testMatch: '**/*.e2e.{ts,js}',
 	reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list'
 });
