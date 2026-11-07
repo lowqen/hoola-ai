@@ -45,7 +45,7 @@
 </script>
 
 <p class="prompt" data-testid="t-prompt">
-	<b>오답 노트.</b> 예전에 틀린 장면입니다. 최선의 수를 고르세요.
+	<b>오답 노트.</b> 예전에 틀린 장면이다. 최선의 수를 고르세요.
 </p>
 
 <TrainScene {obs} />

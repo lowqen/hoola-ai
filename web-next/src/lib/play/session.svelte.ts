@@ -93,7 +93,7 @@ class PlaySession {
 	gamesPlayed = $state(0);
 	canUndo = $state(false);
 	starting = $state(false);
-	engineError = $state('');
+	engineError = $state(false);
 
 	resultOpen = $state(false);
 	reviewOpen = $state(false);
@@ -216,10 +216,12 @@ class PlaySession {
 	private async start(seed: number) {
 		this.hydrate();
 		this.starting = true;
+		this.engineError = false;
 		try {
 			this.engine ??= await loadEngine();
 		} catch (e) {
-			this.engineError = String(e);
+			console.warn('엔진 로드 실패', e);
+			this.engineError = true;
 			return;
 		} finally {
 			this.starting = false;

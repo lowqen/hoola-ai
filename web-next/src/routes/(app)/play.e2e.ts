@@ -160,6 +160,22 @@ test('스모크: 힌트·되돌리기·끝까지 두기·전적 저장 (기존 �
 	expect(errors).toEqual([]);
 });
 
+for (const file of ['hoola_wasm.js', 'hoola_wasm_bg.wasm']) {
+	test(`엔진을 못 받으면(${file}) 쉬운 안내를 보이고, 다시 누르면 시작한다`, async ({ page }) => {
+		const pattern = `**/${file}`;
+		await page.route(pattern, (r) => r.abort());
+		await page.goto('./');
+		await page.getByTestId('start').click();
+		const alert = page.getByRole('alert').filter({ hasText: '불러오지 못했다' });
+		await expect(alert).toContainText('연결을 확인');
+		await expect(alert).not.toContainText('Error');
+
+		await page.unroute(pattern);
+		await page.getByTestId('start').click();
+		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
+	});
+}
+
 test('셀프 모드: 고정 슬롯, 합법 여부를 미리 알려 주지 않고 누르면 거절한다', async ({ page }) => {
 	await seedStore(page, { seed: SEED.register });
 	await start(page);

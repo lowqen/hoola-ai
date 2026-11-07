@@ -52,7 +52,11 @@ export function loadEngine(): Promise<Engine> {
 		const mod = (await import(/* @vite-ignore */ enginePkgUrl())) as EngineModule;
 		await mod.default();
 		return mod;
-	})();
+	})().catch((e) => {
+		// 망이 잠깐 끊긴 실패를 붙들고 있으면 새로고침 전까지 다시 시도할 수 없다
+		loading = null;
+		throw e;
+	});
 	return loading;
 }
 

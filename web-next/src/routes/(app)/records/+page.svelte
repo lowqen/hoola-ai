@@ -150,11 +150,11 @@
 					{/each}
 				</ul>
 			{:else}
-				<p class="meta">확실한 실수가 아직 없다.</p>
+				<p class="summary">확실한 실수가 아직 없다.</p>
 			{/if}
 		{:else}
-			<p class={['meta', loading && 'loading']} data-testid="rec-weak-empty">
-				판이 끝나면 복기하세요. 실수 유형이 여기에 쌓인다.
+			<p class={['summary', loading && 'loading']} data-testid="rec-weak-empty">
+				아직 복기한 판이 없다. 판이 끝나고 복기하면 실수 유형이 여기에 쌓인다.
 			</p>
 		{/if}
 	</section>

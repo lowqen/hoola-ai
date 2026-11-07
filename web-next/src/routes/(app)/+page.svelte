@@ -106,7 +106,7 @@
 				>
 			{/if}
 			{#if session.engineError}
-				<p class="error" role="alert">엔진을 불러오지 못했다: {session.engineError}</p>
+				<p class="error" role="alert">게임을 불러오지 못했다. 연결을 확인하고 다시 눌러 보세요.</p>
 			{/if}
 		</section>
 	{/if}

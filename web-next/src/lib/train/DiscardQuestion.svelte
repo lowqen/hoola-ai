@@ -93,7 +93,7 @@
 </script>
 
 <p class="prompt" data-testid="t-prompt">
-	<b>등록·붙이기는 끝났습니다.</b> 버릴 카드 1장을 고르세요.
+	<b>등록·붙이기는 끝났다.</b> 버릴 카드 1장을 고르세요.
 </p>
 
 <TrainScene {obs} selected={pick ? [pick] : []} ontoggle={toggle} />
