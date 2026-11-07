@@ -200,72 +200,14 @@ jobs:
           path: search-results.md
 
   web:
-    name: Web practice app (WASM)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-pack
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Build WASM (web)
-        run: wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web/pkg --no-pack
-
-      - name: Build WASM (node) & smoke test
-        run: |
-          wasm-pack build crates/hoola-wasm --release --target nodejs --out-dir ../../target/pkg-node --no-pack
-          node web/test/node-smoke.cjs target/pkg-node
-
-      - name: Browser smoke test (Chromium)
-        working-directory: web/test
-        run: |
-          npm init -y > /dev/null
-          npm install --no-save playwright@1.49.1
-          npx playwright install --with-deps chromium
-          node browser-smoke.mjs
-
-      - name: Assemble site
-        run: |
-          mkdir -p _site
-          cp web/*.html web/*.js web/*.css _site/
-          cp -r web/pkg _site/pkg
-          rm -f _site/pkg/.gitignore
-          ls -la _site _site/pkg
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: hoola-web
-          path: _site
-
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: web-screenshots
-          path: web/test/*.png
-          if-no-files-found: ignore
-
-  web-next:
-    name: Web next (SvelteKit)
+    name: Web practice app (SvelteKit)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       BASE_PATH: /hoola-ai
     defaults:
       run:
-        working-directory: web-next
+        working-directory: web
     steps:
       - uses: actions/checkout@v5
 
@@ -283,13 +225,19 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: web-next/package-lock.json
+          cache-dependency-path: web/package-lock.json
 
       - name: Build WASM → static/pkg
         working-directory: .
         run: |
-          wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web-next/static/pkg --no-pack
-          rm -f web-next/static/pkg/.gitignore
+          wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web/static/pkg --no-pack
+          rm -f web/static/pkg/.gitignore
+
+      - name: WASM 바인딩 스모크 (Node)
+        working-directory: .
+        run: |
+          wasm-pack build crates/hoola-wasm --release --target nodejs --out-dir ../../target/pkg-node --no-pack
+          node crates/hoola-wasm/tests/node-smoke.cjs target/pkg-node
 
       - name: Install
         run: npm ci
@@ -318,22 +266,22 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: hoola-web-next
-          path: web-next/build
+          name: hoola-web
+          path: web/build
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: web-next-reports
+          name: web-reports
           path: |
-            web-next/.lighthouseci
-            web-next/playwright-report
+            web/.lighthouseci
+            web/playwright-report
           include-hidden-files: true
           if-no-files-found: ignore
 
   pages:
     name: Deploy GitHub Pages
-    needs: [web, web-next]
+    needs: [web]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -344,10 +292,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # 정식 앱(web-next)을 루트에 둔다. /next/는 옛 미리보기를 정리하는 안내 페이지다 (static/next/)
+      # /next/는 옛 미리보기 주소를 정리하는 안내 페이지다 (web/static/next/)
       - uses: actions/download-artifact@v4
         with:
-          name: hoola-web-next
+          name: hoola-web
           path: site
 
       - run: ls -la site site/next

@@ -20,7 +20,7 @@
   - `cargo test --workspace --all-targets`
   - `cargo fmt --all --check`
   - `cargo clippy --workspace --all-targets -- -D warnings`
-- `web-next`에서는 `npm run check`, `npm run lint`로 확인한다.
+- `web`에서는 `npm run check`, `npm run lint`로 확인한다.
 - 무거운 실험은 `gh workflow run ci.yml`로 수동 실행하고, 결과는 CI 아티팩트에서 받는다.
 
 ## 주의

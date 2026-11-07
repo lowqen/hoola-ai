@@ -1,4 +1,4 @@
-//! 훌라 엔진 WebAssembly 바인딩. 연습 환경 웹앱(`web/`)이 쓴다.
+//! 훌라 엔진 WebAssembly 바인딩. 연습장 웹앱(`web/`, SvelteKit)이 쓴다.
 //!
 //! JS와는 JSON 문자열로 주고받는다. 카드는 `"7D"`, 행동은 리플레이 텍스트(`"discard KD"`).
 //! 사람 좌석의 화면은 반드시 `observation(seat)`만으로 그린다 (숨은 정보 차단).
