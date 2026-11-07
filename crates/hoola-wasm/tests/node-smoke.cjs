@@ -1,4 +1,4 @@
-// WASM(nodejs 타깃) 바인딩 스모크 테스트: node web/test/node-smoke.cjs <pkg-node 경로>
+// WASM(nodejs 타깃) 바인딩 스모크 테스트: node crates/hoola-wasm/tests/node-smoke.cjs <pkg-node 경로>
 const path = require("path");
 const assert = require("assert");
 const { WasmGame, version } = require(path.resolve(process.argv[2], "hoola_wasm.js"));

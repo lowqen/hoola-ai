@@ -1,4 +1,4 @@
-# web-next — 연습장 새 버전 (SvelteKit + Material 3)
+# web — 연습장 (SvelteKit + Material 3)
 
 계획: [`../docs/DESIGN_PLAN.md`](../docs/DESIGN_PLAN.md) · 배포: https://lowqen.github.io/hoola-ai/
 
@@ -13,7 +13,7 @@
 
 `static/next/`는 옛 미리보기 주소(`/hoola-ai/next/`)의 안내 페이지와 정리용 서비스 워커다.
 
-엔진 준비: CI는 `wasm-pack build crates/hoola-wasm --target web --out-dir ../../web-next/static/pkg`로 만든다.
+엔진 준비: CI는 `wasm-pack build crates/hoola-wasm --target web --out-dir ../../web/static/pkg`로 만든다.
 로컬에서는 최신 CI 아티팩트 `hoola-web`의 `pkg/`를 `static/pkg/`에 복사해도 된다.
 
 구조

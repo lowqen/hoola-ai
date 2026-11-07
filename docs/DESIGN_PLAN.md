@@ -249,7 +249,7 @@
 
 **정식 교체**:
 - 1단계 (2026-11-07): 새 앱을 루트(`/hoola-ai/`)에 배포한다. 옛 앱은 남기지 않는다(`/legacy/` 없음). `/next/`에는 주소가 바뀌었다는 안내 페이지(`static/next/index.html`)와 옛 미리보기 서비스 워커를 스스로 지우는 정리용 워커(`static/next/service-worker.js`)를 둔다. 미리보기를 앱으로 설치한 사람은 새 주소에서 다시 설치해야 한다(앱 범위가 바뀜). 저장 데이터는 같은 출처라 그대로 이어진다. 개발용 화면(`/theme`·`/gallery`·`/motion`)은 `noindex`. Lighthouse 판정은 3회 중 한 회차(`median-run`)가 아니라 지표별 중앙값(`median`)으로 바꿔, 한 회차의 LCP 추정치 이상값에 배포가 막히지 않게 한다.
-- 2단계: 옛 앱 `web/`을 지우고 `web-next`를 `web`으로 옮긴다. 노드 스모크 테스트도 함께 옮긴다.
+- 2단계 (2026-11-07): 옛 바닐라 앱을 지우고 `web-next/`를 `web/`으로 옮겼다. WASM 바인딩 노드 스모크는 `crates/hoola-wasm/tests/node-smoke.cjs`로 옮겨 web job에서 돌린다. 아래 D0~D5의 `web-next/`는 지금의 `web/`이다.
 
 ---
 
