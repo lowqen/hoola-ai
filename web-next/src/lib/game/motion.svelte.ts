@@ -3,7 +3,7 @@
 // svelte의 crossfade는 두 카드를 함께 흐리게 하는데, 카드는 불투명하게 날아야 해서 같은 구조로 직접 만든다.
 import { prefersReducedMotion } from 'svelte/motion';
 import { linearEasing, springCurve, type SpringCurve } from '#lib/theme/motion.ts';
-import { SPRINGS } from '#lib/theme/spec.ts';
+import { SPRINGS } from '#lib/theme/springs.ts';
 
 type Easing = (t: number) => number;
 interface FlightConfig {

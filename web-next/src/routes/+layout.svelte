@@ -2,7 +2,8 @@
 	import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 	import '#lib/theme/tokens.css';
 	import '#lib/theme/base.css';
-	import favicon from '#lib/assets/favicon.svg';
+	// JS에 data URI로 넣지 않고 파일로 둔다
+	import favicon from '#lib/assets/favicon.svg?no-inline';
 	import SnackbarHost from '#lib/ui/SnackbarHost.svelte';
 	import type { LayoutProps } from './$types';
 

@@ -29,7 +29,8 @@ for (const route of [...ROUTES, 'play']) {
 			await page.goto('./', { waitUntil: 'networkidle' });
 			await page.getByTestId('start').click();
 			await page.getByTestId('hand').waitFor();
-			await page.waitForLoadState('networkidle');
+			// 첫 판에는 코치마크도 받는다. networkidle은 이미 지난 상태면 바로 끝나므로 직접 기다린다
+			await page.getByTestId('coach-skip').waitFor();
 		} else {
 			await page.goto(route, { waitUntil: 'networkidle' });
 		}

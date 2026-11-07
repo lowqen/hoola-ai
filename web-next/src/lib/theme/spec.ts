@@ -69,28 +69,7 @@ export const ELEVATION = [
 	'0 4px 4px 0 rgb(var(--md-sys-color-shadow-rgb) / 0.3), 0 8px 12px 6px rgb(var(--md-sys-color-shadow-rgb) / 0.15)'
 ] as const;
 
-/**
- * M3 모션 스킴 스프링 (감쇠비, 강성). Jetpack Compose Material3 MotionScheme 토큰 값.
- * spatial = 위치·크기 이동, effects = 색·투명도.
- */
-export const SPRINGS = {
-	standard: {
-		'spatial-fast': [0.9, 1400],
-		'spatial-default': [0.9, 700],
-		'spatial-slow': [0.9, 300],
-		'effects-fast': [1, 3800],
-		'effects-default': [1, 1600],
-		'effects-slow': [1, 800]
-	},
-	expressive: {
-		'spatial-fast': [0.6, 800],
-		'spatial-default': [0.8, 380],
-		'spatial-slow': [0.8, 200],
-		'effects-fast': [1, 3800],
-		'effects-default': [1, 1600],
-		'effects-slow': [1, 800]
-	}
-} as const;
+export { SPRINGS } from './springs.ts';
 
 /** 스프링을 못 쓰는 곳(트랜지션 단축 등)을 위한 M3 이징·길이. */
 export const EASING = {
