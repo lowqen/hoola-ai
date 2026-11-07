@@ -1,5 +1,5 @@
 // 기록 화면의 집계. 저장 형식은 기존 앱과 같다.
-import { BOTS } from '#lib/play/bots.ts';
+import { botName } from '#lib/play/bots.ts';
 import { CATEGORY, DRILL_OF, type Category } from '#lib/review/categories.ts';
 import type { GameRecord } from '#lib/store.ts';
 import type { PuzzleKind } from '#lib/train/drills.ts';
@@ -18,7 +18,7 @@ export function groupStats(games: GameRecord[]): { groups: GroupStat[]; practice
 	const counted = games.filter((g) => !g.undo);
 	const totals = new Map<string, { games: number; share: number; players: number }>();
 	for (const g of counted) {
-		const opponents = g.opponents.map((o) => BOTS[o]?.short ?? o).join('·');
+		const opponents = g.opponents.map(botName).join('·');
 		const label = `${g.beginner ? '초보 · ' : ''}${g.players}인 · ${opponents}`;
 		const total = totals.get(label) ?? { games: 0, share: 0, players: g.players };
 		total.games++;

@@ -23,7 +23,7 @@ import type { ReviewContext } from '#lib/review/analysis.ts';
 import type { NotebookItem, PuzzleKind } from '#lib/train/drills.ts';
 import { snackbar } from '#lib/ui/snackbar.svelte.ts';
 import { actionText, meldOrder, parseAction, type Observation, type Outcome } from './actions.ts';
-import { BOTS, DEFAULT_SETTINGS, normalizeSettings } from './bots.ts';
+import { BOTS, botName, DEFAULT_SETTINGS, normalizeSettings } from './bots.ts';
 
 const HUMAN = 0;
 const HINT_K = 96;
@@ -144,8 +144,8 @@ class PlaySession {
 	// ---------- 이름 ----------
 	seatName = (seat: number) => {
 		if (seat === HUMAN) return '나';
-		const bot = this.config && BOTS[this.config.opponents[seat - 1]];
-		return `${seat}번 ${bot ? bot.short : '봇'}`;
+		const key = this.config?.opponents[seat - 1];
+		return `${seat}번 ${key ? botName(key) : '봇'}`;
 	};
 
 	private actText(action: string, obs: Observation) {
@@ -177,7 +177,8 @@ class PlaySession {
 				name: this.seatName(seat),
 				count,
 				registered: obs.registered[seat],
-				last: last[seat] ? this.actText(last[seat], obs) : undefined
+				last: last[seat] ? this.actText(last[seat], obs) : undefined,
+				about: BOTS[this.config?.opponents[i] ?? '']?.desc
 			};
 		});
 	}

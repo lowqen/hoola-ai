@@ -49,7 +49,7 @@
 			{#if status === 'loading'}
 				엔진을 불러오는 중…
 			{:else if status === 'ready' && result}
-				엔진 {result.version} 연결됨 · 전문가 봇 2명이 한 판을 {result.moves}수 만에 끝냈다({REASONS[
+				엔진 {result.version} 연결됨 · 고수 봇 2명이 한 판을 {result.moves}수 만에 끝냈다({REASONS[
 					result.reason
 				] ?? result.reason}, {result.ms.toFixed(0)}ms)
 			{:else}

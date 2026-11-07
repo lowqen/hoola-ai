@@ -180,7 +180,7 @@
 		<h2 class="md-typescale-title-large">게임 색</h2>
 		<div class="felt">
 			<div class="seat">
-				<span class="hoola-type-seat-name">1번 실전친구</span>
+				<span class="hoola-type-seat-name">1번 친구</span>
 				<span class="hoola-type-opp-count">3<small>장</small></span>
 			</div>
 			<div class="cards">

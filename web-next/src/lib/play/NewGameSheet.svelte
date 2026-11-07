@@ -49,15 +49,16 @@
 
 	<h3>상대</h3>
 	<div class="chips" data-testid="presets">
-		{#each PRESETS as p (p.id)}
-			<Chip kind="filter" selected={preset === p.id} onclick={() => choosePreset(p.id)}
-				>{p.label}</Chip
+		{#each PRESETS as id (id)}
+			<Chip kind="filter" selected={preset === id} onclick={() => choosePreset(id)}
+				>{BOTS[id].name}</Chip
 			>
 		{/each}
-		<Chip kind="filter" selected={preset === null} onclick={() => (custom = true)}>직접 고르기</Chip
-		>
+		<Chip kind="filter" selected={preset === null} onclick={() => (custom = true)}>직접</Chip>
 	</div>
-	{#if preset === null}
+	{#if preset}
+		<p class="desc" data-testid="preset-desc">{BOTS[preset].desc}</p>
+	{:else}
 		<div class="custom">
 			{#each settings.opponents.slice(0, settings.players - 1) as opponent, i (i)}
 				<label>
@@ -70,7 +71,7 @@
 						}}
 					>
 						{#each Object.entries(BOTS) as [key, bot] (key)}
-							<option value={key}>{bot.label}</option>
+							<option value={key}>{bot.name} · {bot.desc}</option>
 						{/each}
 					</select>
 				</label>
@@ -171,6 +172,11 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
+	}
+	.desc {
+		margin: 8px 0 0;
+		color: var(--md-sys-color-on-surface-variant);
+		font-size: var(--md-sys-typescale-body-small-size);
 	}
 	.custom {
 		display: flex;

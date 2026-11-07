@@ -10,6 +10,8 @@
 		registered: boolean;
 		/** 방금 한 행동 한 줄. */
 		last?: string;
+		/** 봇 특징. 있으면 좌석을 누르거나 마우스를 올려 볼 수 있다. */
+		about?: string;
 	}
 	interface Props {
 		seat: SeatInfo;
@@ -21,10 +23,13 @@
 
 	/** 3장 이하면 스톱을 생각할 때다. */
 	const warn = $derived(seat.count <= 3);
+
+	let aboutOpen = $state(false);
+	const isMouse = (e: Event) => (e as PointerEvent).pointerType === 'mouse';
 </script>
 
 <article
-	class={['seat', active && 'active', warn && 'warn', compact && 'compact']}
+	class={['seat', active && 'active', warn && 'warn', compact && 'compact', seat.about && 'bot']}
 	data-zone={`seat-${seat.id}`}
 	aria-label={`${seat.name}, 손패 ${seat.count}장${seat.registered ? ', 등록함' : ''}${active ? ', 차례' : ''}`}
 >
@@ -41,6 +46,32 @@
 		{#if warn}<span class="alert"><Icon name="warning" size={18} /></span>{/if}
 	</div>
 	<p class="last">{seat.last ?? ''}</p>
+	{#if seat.about}
+		<!-- 터치에는 호버가 없으므로 좌석 전체를 눌러 연다 -->
+		<button
+			type="button"
+			class="about"
+			aria-label={`${seat.name} 특징: ${seat.about}`}
+			aria-expanded={aboutOpen}
+			data-testid={`seat-about-${seat.id}`}
+			onclick={(e) => {
+				if (!isMouse(e)) aboutOpen = !aboutOpen;
+			}}
+			onpointerenter={(e) => {
+				if (isMouse(e)) aboutOpen = true;
+			}}
+			onpointerleave={(e) => {
+				if (isMouse(e)) aboutOpen = false;
+			}}
+			onblur={() => (aboutOpen = false)}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') aboutOpen = false;
+			}}
+		></button>
+		{#if aboutOpen}
+			<span class="tip" role="tooltip" data-testid={`seat-tip-${seat.id}`}>{seat.about}</span>
+		{/if}
+	{/if}
 </article>
 
 <style>
@@ -166,6 +197,39 @@
 		.compact .last {
 			display: none;
 		}
+	}
+	.bot .name {
+		text-decoration: underline dotted;
+		text-underline-offset: 3px;
+	}
+	.about {
+		position: absolute;
+		inset: 0;
+		padding: 0;
+		border: 0;
+		border-radius: inherit;
+		background: none;
+		cursor: help;
+	}
+	.tip {
+		position: absolute;
+		top: calc(100% + 4px);
+		left: 0;
+		z-index: 50;
+		width: max-content;
+		max-width: 220px;
+		padding: 4px 8px;
+		border-radius: var(--md-sys-shape-corner-extra-small);
+		background: var(--md-sys-color-inverse-surface);
+		color: var(--md-sys-color-inverse-on-surface);
+		font-size: var(--md-sys-typescale-body-small-size);
+		line-height: var(--md-sys-typescale-body-small-line-height);
+		pointer-events: none;
+	}
+	/* 오른쪽 좌석의 말풍선은 화면 밖으로 나가지 않게 오른쪽에 맞춘다 */
+	.seat:nth-child(n + 2):nth-last-child(-n + 2) .tip {
+		right: 0;
+		left: auto;
 	}
 	@keyframes pulse {
 		from {

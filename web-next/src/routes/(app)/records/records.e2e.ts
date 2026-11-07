@@ -85,13 +85,24 @@ test('승률: 상대 구성별로 묶고 연습판은 뺀다', async ({ page }) 
 	await page.goto('./records/');
 	const rows = page.getByTestId('rec-groups').locator('li');
 	await expect(rows).toHaveCount(2);
-	await expect(rows.nth(0)).toContainText('3인 · 전문가·전문가');
+	await expect(rows.nth(0)).toContainText('3인 · 고수·고수');
 	await expect(rows.nth(0)).toContainText('50%');
 	await expect(rows.nth(0)).toContainText('2판');
 	await expect(rows.nth(0)).toContainText('공평한 몫 33%');
 	await expect(rows.nth(1)).toContainText('초보 · 2인');
 	await expect(rows.nth(1)).toContainText('공평한 몫 50%');
 	await expect(page.getByTestId('rec-practice')).toContainText('연습판 1판');
+});
+
+test('없어진 봇과 한 판은 옛 이름으로 따로 묶는다', async ({ page }) => {
+	const old = (key: string) => game({ players: 2, opponents: [key] });
+	await seed(page, { settings: null, games: [old('random'), old('friendD'), old('greedy')] });
+	await page.goto('./records/');
+	const groups = page.getByTestId('rec-groups');
+	await expect(groups.locator('li')).toHaveCount(3);
+	await expect(groups).toContainText('2인 · 무작위');
+	await expect(groups).toContainText('2인 · 옛 친구');
+	await expect(groups).toContainText('2인 · 초보');
 });
 
 test('약점: 집계를 보여 주고, 막대를 누르면 그 유형 훈련으로 간다', async ({ page }) => {

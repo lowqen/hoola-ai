@@ -1,7 +1,7 @@
 <script lang="ts">
 	// 대전 화면 (DESIGN_PLAN §5.1). 진행은 session, 판 화면은 Board가 맡고, 여기서는 시작 패널과 앱 바를 둔다.
 	import { onMount, type Component } from 'svelte';
-	import { BOTS } from '#lib/play/bots.ts';
+	import { botName } from '#lib/play/bots.ts';
 	import LazySheets from '#lib/play/LazySheets.svelte';
 	import { session } from '#lib/play/session.svelte.ts';
 	import Button from '#lib/ui/Button.svelte';
@@ -24,7 +24,7 @@
 	const beginner = $derived(session.settings.beginner);
 	const summary = $derived.by(() => {
 		const { players, opponents, beginner: easy } = session.settings;
-		const bots = opponents.slice(0, players - 1).map((o) => BOTS[o]?.short ?? o);
+		const bots = opponents.slice(0, players - 1).map(botName);
 		return `${players}인 · ${bots.join('·')} · ${easy ? '초보자' : '셀프'} 모드`;
 	});
 </script>

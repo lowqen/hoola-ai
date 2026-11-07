@@ -39,7 +39,7 @@
 						{/if}
 					{/if}
 					<span>{move.text}</span>
-					{#if move.isExpert}<span class="tag">전문가</span>{/if}
+					{#if move.isExpert}<span class="tag">고수</span>{/if}
 				</li>
 			{/each}
 		</ol>

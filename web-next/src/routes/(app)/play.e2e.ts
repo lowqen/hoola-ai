@@ -11,6 +11,7 @@ const SEED = {
 
 interface StoreSeed {
 	players?: number;
+	opponents?: string[];
 	seed?: string;
 	beginner?: boolean;
 	coached?: boolean;
@@ -27,7 +28,7 @@ async function seedStore(page: Page, opts: StoreSeed = {}) {
 			JSON.stringify({
 				settings: {
 					players: o.players ?? 3,
-					opponents: ['friendA', 'friendB', 'expert', 'expert'],
+					opponents: o.opponents ?? ['friendA', 'friendB', 'expert', 'expert'],
 					speed: o.speed ?? 60,
 					seed: o.seed ?? '777',
 					beginner: o.beginner ?? false,
@@ -248,6 +249,76 @@ test('저장 데이터 호환: 기존 전적·오답 노트·훈련 기록을 �
 	expect(saved.settings.sort).toBe('rank');
 	// 없어진 봇(친구 D)은 저장된 전적을 고치지 않는다
 	expect(saved.games[0].opponents).toEqual(['friendD']);
+});
+
+test('없어진 봇: 저장된 설정의 Random은 초보로 바뀌고 목록에 없다', async ({ page }) => {
+	await seedStore(page, { opponents: ['random', 'friendD', 'expert', 'expert'] });
+	await page.goto('./');
+	await page.getByTestId('open-new-game').click();
+	const selects = page.getByRole('dialog').locator('select');
+	await expect(selects.nth(0)).toHaveValue('greedy');
+	await expect(selects.nth(1)).toHaveValue('friendE');
+	await expect(selects.nth(0).locator('option')).toHaveCount(6);
+	await expect(selects.nth(0).locator('option[value="random"]')).toHaveCount(0);
+});
+
+test('프리셋: 칩은 간단한 이름, 고르면 설명이 나오고 처음에는 친구가 골라져 있다', async ({
+	page
+}) => {
+	await page.addInitScript(() => localStorage.removeItem('hoola-practice-v1'));
+	await page.goto('./');
+	await page.getByTestId('open-new-game').click();
+	const presets = page.getByTestId('presets').getByRole('button');
+	await expect(presets).toHaveText(['친구', '고수', '초보', '직접']);
+	await expect(presets.nth(0)).toHaveAttribute('aria-pressed', 'true');
+	await presets.nth(2).click();
+	await expect(page.getByTestId('preset-desc')).toHaveText('10점 이하면 바로 스톱');
+	await presets.nth(3).click();
+	await expect(page.getByTestId('preset-desc')).toHaveCount(0);
+	await expect(page.getByRole('dialog').locator('select')).toHaveCount(2);
+});
+
+test('봇 특징: 마우스를 올리면 보이고, 누르거나 Esc로 조작해도 판은 그대로다', async ({ page }) => {
+	await seedStore(page, { seed: SEED.register });
+	await start(page);
+	const tip = page.getByTestId('seat-tip-1');
+	await expect(tip).toHaveCount(0);
+	await page.getByTestId('seat-about-1').hover();
+	await expect(tip).toHaveText('스톱 없이 털기만 노린다');
+	await page.getByTestId('seat-about-1').click();
+	await expect(tip).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(tip).toHaveCount(0);
+	await page.mouse.move(0, 0);
+	await page.getByTestId('seat-about-1').focus();
+	await page.keyboard.press('Enter');
+	await expect(tip).toBeVisible();
+	await expect(handCards(page)).toHaveCount(7);
+});
+
+test.describe('봇 특징 (터치)', () => {
+	test.use({ hasTouch: true, viewport: { width: 360, height: 640 } });
+
+	test('5인전에서 좌석을 누르면 말풍선이 화면 안에 나오고, 다시 누르면 닫힌다', async ({
+		page
+	}) => {
+		await seedStore(page, { players: 5, seed: SEED.register });
+		await start(page);
+		for (const seat of [1, 2, 3, 4]) {
+			const about = page.getByTestId(`seat-about-${seat}`);
+			const tip = page.getByTestId(`seat-tip-${seat}`);
+			await about.tap();
+			await expect(tip).toBeVisible();
+			const box = (await tip.boundingBox())!;
+			expect(box.x).toBeGreaterThanOrEqual(0);
+			expect(box.x + box.width).toBeLessThanOrEqual(360);
+			await about.tap();
+			await expect(tip).toHaveCount(0);
+		}
+		expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+			360
+		);
+	});
 });
 
 test('키보드: D 받기, Enter 주 행동, R·T·S 슬롯', async ({ page }) => {
@@ -494,15 +565,15 @@ test.describe('과업 시나리오: 목표 탭 수', () => {
 		expect(await page.getByTestId('log').textContent()).toContain('되돌리기');
 	});
 
-	test('10. 상대를 "실전 친구"로 바꿔 새 판 = 3탭 이하', async ({ page }) => {
+	test('10. 상대를 "친구"로 바꿔 새 판 = 3탭 이하', async ({ page }) => {
 		await seedStore(page, { seed: SEED.register });
 		await page.goto('./');
 		const t = tapCounter();
 		await t.tap(page.getByTestId('open-new-game'));
-		await t.tap(page.getByTestId('presets').getByRole('button', { name: '실전 친구' }));
+		await t.tap(page.getByTestId('presets').getByRole('button', { name: '친구' }));
 		await t.tap(page.getByTestId('start-game'));
 		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
-		await expect(page.locator('[data-zone="seat-1"]')).toContainText('실전친구');
+		await expect(page.locator('[data-zone="seat-1"]')).toContainText('1번 친구');
 		expect(t.count).toBeLessThanOrEqual(3);
 		expect((await stored(page)).settings.opponents[0]).toBe('friendE');
 	});
