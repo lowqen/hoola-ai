@@ -31,7 +31,10 @@ export interface Engine {
 	version(): string;
 	/** 카드들이 조합이면 종류, 아니면 없음. */
 	meldKind(cards: string): string | undefined;
-	WasmGame: new (players: number, seed: number, firstPlayer: number, rulesToml: string) => WasmGame;
+	WasmGame: {
+		new (players: number, seed: number, firstPlayer: number, rulesToml: string): WasmGame;
+		fromReplay(json: string): WasmGame;
+	};
 }
 
 interface EngineModule extends Engine {

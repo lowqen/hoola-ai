@@ -1,6 +1,3 @@
-/// <reference no-default-lib="true"/>
-/// <reference lib="esnext" />
-/// <reference lib="webworker" />
 // 오프라인 지원 (DESIGN_PLAN §7). 앱 셸·WASM 엔진은 설치 때 한꺼번에 받고, 글꼴(약 3MB)은 활성화 뒤 백그라운드로 받는다.
 //
 // 업데이트: skipWaiting을 쓰지 않는다. 열린 페이지가 옛 지연 로드 묶음을 찾지 못해 판 도중에 깨질 수 있어서,

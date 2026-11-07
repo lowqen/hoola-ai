@@ -84,6 +84,34 @@ test('오프라인: 앱을 새로 열어 WASM 엔진으로 판을 시작한다',
 	await expect(reopened.getByTestId('hand').locator('[data-card]').first()).toBeVisible();
 });
 
+test('오프라인: 앱을 닫았다 다시 열면 두던 판이 이어진다', async ({ page, context }) => {
+	test.setTimeout(240_000);
+	await installThenGoOffline(page, context);
+	await page.evaluate(() =>
+		localStorage.setItem(
+			'hoola-practice-v1',
+			JSON.stringify({ settings: { coached: true }, games: [] })
+		)
+	);
+	await page.goto('./');
+	await page.getByTestId('start').click();
+	const hand = page.getByTestId('hand').locator('[data-card]');
+	await expect(page.getByTestId('turn')).toHaveText('내 차례', { timeout: 30_000 });
+	const before = await hand.count();
+	await page.locator('[data-slot="primary"]').click();
+	await expect(hand).toHaveCount(before + 1);
+	const ids = await hand.evaluateAll((els) => els.map((e) => e.getAttribute('data-card')));
+
+	await page.close();
+	const reopened = await context.newPage();
+	await reopened.goto('./');
+	const restored = reopened.getByTestId('hand').locator('[data-card]');
+	await expect(restored).toHaveCount(before + 1, { timeout: 30_000 });
+	expect(await restored.evaluateAll((els) => els.map((e) => e.getAttribute('data-card')))).toEqual(
+		ids
+	);
+});
+
 test('오프라인: 목록에 없는 주소는 첫 화면으로 받는다', async ({ page, context }) => {
 	test.setTimeout(240_000);
 	await installThenGoOffline(page, context);

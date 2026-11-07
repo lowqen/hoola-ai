@@ -77,6 +77,28 @@ async function handIds(page: Page) {
 	return handCards(page).evaluateAll((els) => els.map((e) => e.getAttribute('data-card')!));
 }
 
+/** 등록 먼저, 큰 카드부터 버려 스톱이 켜질 때까지 간다. */
+async function playUntilStopEnabled(page: Page) {
+	for (let i = 0; i < 20; i++) {
+		await myTurn(page);
+		if ((await slot(page, 'stop').getAttribute('aria-disabled')) === 'false') break;
+		const label = await slot(page, 'primary').textContent();
+		if (label?.includes('받기')) {
+			await slot(page, 'primary').click();
+			continue;
+		}
+		if ((await slot(page, 'register').getAttribute('aria-disabled')) === 'false') {
+			await slot(page, 'register').click();
+			await pickFirstChoice(page);
+			await page.waitForTimeout(50);
+			continue;
+		}
+		const ids = await handIds(page);
+		await handCard(page, ids.sort((a, b) => pts(b) - pts(a))[0]).click();
+		await slot(page, 'primary').click();
+	}
+}
+
 /** 탭 수를 세어 가며 누른다. */
 function tapCounter() {
 	const counter = {
@@ -175,6 +197,120 @@ for (const file of ['hoola_wasm.js', 'hoola_wasm_bg.wasm']) {
 		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
 	});
 }
+
+test.describe('판 복원', () => {
+	const GAME_KEY = 'hoola-practice-game-v1';
+	const savedGame = (page: Page) => page.evaluate((k) => localStorage.getItem(k), GAME_KEY);
+
+	test('새로고침해도 손패·차례가 그대로이고 되돌리기도 된다', async ({ page }) => {
+		await seedStore(page, {});
+		await start(page);
+		await myTurn(page);
+		const beforeDraw = await handIds(page);
+		await slot(page, 'primary').click();
+		await expect(handCards(page)).toHaveCount(beforeDraw.length + 1);
+		const hand = await handIds(page);
+
+		await page.reload();
+		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
+		await myTurn(page);
+		expect(await handIds(page)).toEqual(hand);
+		await expect(page.getByTestId('log')).toContainText('이어서 두기');
+
+		await page.getByTestId('undo').click();
+		await expect(handCards(page)).toHaveCount(beforeDraw.length);
+		expect((await handIds(page)).sort()).toEqual([...beforeDraw].sort());
+	});
+
+	test('봇 차례에 닫혀도 봇이 이어서 두고 내 차례가 온다', async ({ page }) => {
+		await seedStore(page, { speed: 1000 });
+		await start(page);
+		await myTurn(page);
+		await slot(page, 'primary').click();
+		const ids = await handIds(page);
+		const pick = ids.sort((a, b) => pts(b) - pts(a))[0];
+		await handCard(page, pick).click();
+		await slot(page, 'primary').click();
+		await expect(page.getByTestId('turn')).not.toHaveText('내 차례');
+		const hand = (await handIds(page)).sort();
+
+		await page.reload();
+		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
+		await waitTurnOrOver(page);
+		expect((await handIds(page)).sort()).toEqual(hand);
+	});
+
+	test('복원하는 동안 첫 화면이 비치지 않는다', async ({ page }) => {
+		await seedStore(page, {});
+		await start(page);
+		await myTurn(page);
+		await page.addInitScript(() => {
+			const w = window as unknown as { startSeen: boolean };
+			w.startSeen = false;
+			const look = () => {
+				const el = document.querySelector('[data-testid="start"]');
+				if (el?.checkVisibility({ visibilityProperty: true })) w.startSeen = true;
+				requestAnimationFrame(look);
+			};
+			requestAnimationFrame(look);
+		});
+		await page.reload();
+		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
+		expect(await page.evaluate(() => (window as unknown as { startSeen: boolean }).startSeen)).toBe(
+			false
+		);
+	});
+
+	test('판이 끝나면 저장을 지워 다음에는 첫 화면이 뜨고 전적은 한 번만 쌓인다', async ({
+		page
+	}) => {
+		await seedStore(page, { seed: SEED.stop, beginner: true });
+		await start(page);
+		await playUntilStopEnabled(page);
+		expect(await savedGame(page)).not.toBeNull();
+		await slot(page, 'stop').click();
+		await expect(page.getByTestId('result-reason')).toContainText('스톱');
+		expect(await savedGame(page)).toBeNull();
+		expect((await stored(page)).games).toHaveLength(1);
+
+		await page.reload();
+		await expect(page.getByTestId('start')).toBeVisible();
+		await expect(page.getByTestId('hand')).toBeHidden();
+	});
+
+	const broken = (over: object) =>
+		JSON.stringify({
+			config: { players: 3, opponents: ['friendE', 'friendE'], fullDiscards: false, seed: 1 },
+			replay: '{}',
+			decisions: [],
+			usedBeginner: false,
+			usedUndo: false,
+			recorded: false,
+			...over
+		});
+	for (const [name, value] of [
+		['JSON이 아니다', '{ 깨짐'],
+		['필드가 없다', '{}'],
+		['리플레이를 못 읽는다', broken({})],
+		[
+			'없는 봇이다',
+			broken({
+				config: { players: 3, opponents: ['없는봇', '없는봇'], fullDiscards: false, seed: 1 }
+			})
+		]
+	] as const) {
+		test(`저장을 읽을 수 없으면(${name}) 버리고 새 판을 시작할 수 있다`, async ({ page }) => {
+			await seedStore(page, {});
+			await page.goto('./robots.txt');
+			await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GAME_KEY, value]);
+			await page.goto('./');
+			await expect(page.getByTestId('start')).toBeVisible();
+			await expect.poll(() => savedGame(page)).toBeNull();
+			await page.getByTestId('start').click();
+			await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
+		});
+	}
+});
 
 test('셀프 모드: 고정 슬롯, 합법 여부를 미리 알려 주지 않고 누르면 거절한다', async ({ page }) => {
 	await seedStore(page, { seed: SEED.register });
@@ -540,25 +676,7 @@ test.describe('과업 시나리오: 목표 탭 수', () => {
 	test('6. 스톱 = 1탭', async ({ page }) => {
 		await seedStore(page, { seed: SEED.stop, beginner: true });
 		await start(page);
-		// 등록 먼저, 큰 카드부터 버려 스톱이 켜질 때까지 간다
-		for (let i = 0; i < 20; i++) {
-			await myTurn(page);
-			if ((await slot(page, 'stop').getAttribute('aria-disabled')) === 'false') break;
-			const label = await slot(page, 'primary').textContent();
-			if (label?.includes('받기')) {
-				await slot(page, 'primary').click();
-				continue;
-			}
-			if ((await slot(page, 'register').getAttribute('aria-disabled')) === 'false') {
-				await slot(page, 'register').click();
-				await pickFirstChoice(page);
-				await page.waitForTimeout(50);
-				continue;
-			}
-			const ids = await handIds(page);
-			await handCard(page, ids.sort((a, b) => pts(b) - pts(a))[0]).click();
-			await slot(page, 'primary').click();
-		}
+		await playUntilStopEnabled(page);
 		const t = tapCounter();
 		await t.tap(slot(page, 'stop'));
 		await expect(page.getByTestId('result-reason')).toContainText('스톱');

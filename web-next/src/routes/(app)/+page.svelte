@@ -11,6 +11,9 @@
 
 	onMount(() => session.hydrate());
 
+	// 프리렌더 HTML은 첫 화면이다. 이어서 둘 판이 있으면 복원이 끝날 때까지 비치지 않게 가린다.
+	const guard = `<script>try{if(localStorage.getItem('hoola-practice-game-v1'))document.documentElement.dataset.resuming=''}catch(e){}<\/script>`;
+
 	let Board = $state.raw<Component>();
 	let boardRequested = false;
 	$effect(() => {
@@ -30,6 +33,7 @@
 </script>
 
 <svelte:head>
+	{@html guard}
 	<title>훌라 연습장</title>
 	<meta
 		name="description"
@@ -164,6 +168,9 @@
 		min-height: 1.5em;
 		color: var(--md-sys-color-on-surface-variant);
 		font-size: var(--md-sys-typescale-body-medium-size);
+	}
+	:global(html[data-resuming]) .start {
+		visibility: hidden;
 	}
 	.secondary {
 		display: flex;

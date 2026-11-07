@@ -78,3 +78,43 @@ export function saveStore(store: Store) {
 		// 저장 실패해도 게임은 계속한다
 	}
 }
+
+// ---------- 진행 중인 판 ----------
+// 전적 저장소와 키를 나눈다. 기존 앱과 같은 형식을 유지하고, 깨져도 전적에 영향이 없게 한다.
+export const GAME_KEY = 'hoola-practice-game-v1';
+
+export interface SavedGame {
+	config: { players: number; opponents: string[]; fullDiscards: boolean; seed: number };
+	/** 엔진 리플레이 JSON. 규칙·시드·행동이 모두 들어 있다. */
+	replay: string;
+	decisions: { index: number; action: string }[];
+	usedBeginner: boolean;
+	usedUndo: boolean;
+	recorded: boolean;
+}
+
+export function loadGame(): SavedGame | null {
+	try {
+		const raw = localStorage.getItem(GAME_KEY);
+		return raw ? (JSON.parse(raw) as SavedGame) : null;
+	} catch {
+		clearGame();
+		return null;
+	}
+}
+
+export function saveGame(game: SavedGame) {
+	try {
+		localStorage.setItem(GAME_KEY, JSON.stringify(game));
+	} catch {
+		// 저장 실패해도 게임은 계속한다
+	}
+}
+
+export function clearGame() {
+	try {
+		localStorage.removeItem(GAME_KEY);
+	} catch {
+		// 저장소를 못 쓰면 지울 것도 없다
+	}
+}

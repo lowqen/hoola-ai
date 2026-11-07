@@ -12,10 +12,14 @@ import {
 	type WasmGame
 } from '#lib/engine.ts';
 import {
+	clearGame,
+	loadGame,
 	loadStore,
+	saveGame,
 	saveStore,
 	type GameRecord,
 	type ReviewSummary,
+	type SavedGame,
 	type Settings,
 	type Store
 } from '#lib/store.ts';
@@ -127,6 +131,7 @@ class PlaySession {
 		this.settings = normalizeSettings(this.store.settings);
 		this.gamesPlayed = this.store.games.length;
 		setMotionSpeed(this.settings.speed <= 150 ? 0.6 : 1);
+		void this.resume();
 	}
 
 	saveSettings() {
@@ -250,6 +255,56 @@ class PlaySession {
 		if (!settings.coached) this.coachStep = 1;
 	}
 
+	/** 진행 중이던 판을 되살린다. 새로고침이나 OS의 앱 종료 뒤에도 판이 이어진다. */
+	private async resume() {
+		try {
+			const saved = loadGame();
+			if (!saved) return;
+			this.starting = true;
+			// 엔진을 못 받은 것은 망 문제일 수 있어 저장을 남긴다
+			this.engine ??= await loadEngine();
+			if (this.game) return; // 기다리는 사이 새 판을 시작했다
+			this.restore(saved);
+		} catch (e) {
+			console.warn('판 복원 실패', e);
+		} finally {
+			this.starting = false;
+			delete document.documentElement.dataset.resuming;
+		}
+	}
+
+	/** 엔진이나 봇이 바뀌어 저장을 읽을 수 없으면 버리고 첫 화면으로 간다. */
+	private restore(saved: SavedGame) {
+		try {
+			if (!saved.config.opponents.every((key) => BOTS[key])) throw new Error('없는 봇');
+			this.game = this.engine!.WasmGame.fromReplay(saved.replay);
+		} catch (e) {
+			console.warn('저장된 판을 버린다', e);
+			clearGame();
+			return;
+		}
+		this.config = saved.config;
+		this.decisions = saved.decisions;
+		this.usedBeginner = saved.usedBeginner;
+		this.usedUndo = saved.usedUndo;
+		this.recorded = saved.recorded;
+		this.lastRecord = null;
+		this.resetLog(`이어서 두기 · 시드 ${saved.config.seed}`);
+		this.resetTurnState();
+		this.step();
+	}
+
+	private saveProgress() {
+		saveGame({
+			config: this.config!,
+			replay: this.game!.replayJson(),
+			decisions: this.decisions,
+			usedBeginner: this.usedBeginner,
+			usedUndo: this.usedUndo,
+			recorded: this.recorded
+		});
+	}
+
 	private stopTimers() {
 		this.generation++;
 		clearTimeout(this.timer);
@@ -302,9 +357,11 @@ class PlaySession {
 		const game = this.game!;
 		this.publish(this.readObs());
 		if (game.isOver) {
+			clearGame();
 			this.finish();
 			return;
 		}
+		this.saveProgress();
 		if (game.currentPlayer === HUMAN) {
 			if (this.settings.beginner && this.settings.autoHint) void this.runHint();
 			return;
