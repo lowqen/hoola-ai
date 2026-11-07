@@ -12,7 +12,8 @@
 	import Dialog from '#lib/ui/Dialog.svelte';
 	import Icon from '#lib/ui/Icon.svelte';
 	import Progress from '#lib/ui/Progress.svelte';
-	import { CATEGORY, DRILL_OF, REVIEW_K } from './analysis.ts';
+	import { REVIEW_K } from './analysis.ts';
+	import { CATEGORY, DRILL_OF } from './categories.ts';
 	import { review } from './review.svelte.ts';
 	import WinChart from './WinChart.svelte';
 

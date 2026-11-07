@@ -26,11 +26,11 @@ export default defineConfig({
 						},
 						{
 							name: 'play',
-							test: /src\/lib\/play\/(session\.svelte|actions|bots|LazySheets)/,
+							test: /src\/lib\/play\/(session\.svelte|actions|LazySheets)/,
 							priority: 2
 						},
 						// 훈련·기록은 대전 세션 없이 저장소와 엔진 호출만 쓴다
-						{ name: 'data', test: /src\/lib\/(store|engine)\.ts/, priority: 3 },
+						{ name: 'data', test: /src\/lib\/(store|engine|play\/bots)\.ts/, priority: 3 },
 						{ name: 'table', test: /src\/lib\/game\//, priority: 1 }
 					]
 				}

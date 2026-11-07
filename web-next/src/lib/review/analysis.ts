@@ -10,7 +10,8 @@ import {
 	type Outcome
 } from '#lib/play/actions.ts';
 import type { ReviewSummary } from '#lib/store.ts';
-import type { NotebookItem, PuzzleKind } from '#lib/train/drills.ts';
+import type { NotebookItem } from '#lib/train/drills.ts';
+import type { Category } from './categories.ts';
 import { fragmentOf, unseenOf } from '#lib/train/scoring.ts';
 import type { IconName } from '#lib/ui/icons.ts';
 
@@ -39,24 +40,6 @@ const BEST: Grade = { id: 'best', min: 0, label: '최선', icon: 'star' };
 const TABLE: Grade = { id: 'table', min: 0, label: '기준표대로', icon: 'rule' };
 
 export const LEGEND: Grade[] = [BEST, TABLE, GRADES[2], GRADES[1], GRADES[0]];
-
-export type Category = 'stop' | 'thankyou' | 'meld' | 'discard' | 'other';
-
-export const CATEGORY: Record<Category, string> = {
-	stop: '스톱 판단',
-	thankyou: '땡큐',
-	meld: '등록·붙이기',
-	discard: '버림 선택',
-	other: '기타'
-};
-
-/** 실수 유형에 맞는 훈련. */
-export const DRILL_OF: Partial<Record<Category, PuzzleKind>> = {
-	stop: 'stop',
-	thankyou: 'thankyou',
-	meld: 'meld',
-	discard: 'discard'
-};
 
 export interface Decision {
 	index: number;

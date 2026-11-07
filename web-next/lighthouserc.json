@@ -8,7 +8,8 @@
 				"http://localhost:4174/hoola-ai/next/theme/",
 				"http://localhost:4174/hoola-ai/next/gallery/",
 				"http://localhost:4174/hoola-ai/next/motion/",
-				"http://localhost:4174/hoola-ai/next/train/"
+				"http://localhost:4174/hoola-ai/next/train/",
+				"http://localhost:4174/hoola-ai/next/records/"
 			],
 			"numberOfRuns": 3
 		},
