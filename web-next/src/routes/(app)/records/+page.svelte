@@ -154,7 +154,7 @@
 			{/if}
 		{:else}
 			<p class={['meta', loading && 'loading']} data-testid="rec-weak-empty">
-				판이 끝나면 결과 시트에서 복기하세요. 실수 유형이 여기에 쌓인다.
+				판이 끝나면 복기하세요. 실수 유형이 여기에 쌓인다.
 			</p>
 		{/if}
 	</section>

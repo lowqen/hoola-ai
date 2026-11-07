@@ -92,7 +92,7 @@
 					>상대와 모드 바꾸기</Button
 				>
 				<Button variant="text" icon="help" onclick={() => (session.rulesOpen = true)}
-					>규칙 30초 요약</Button
+					>규칙 요약</Button
 				>
 			</div>
 			{#if session.gamesPlayed < 3 && !beginner}
