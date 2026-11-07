@@ -18,4 +18,6 @@
 
 - `src/lib/engine.ts` — 엔진 로더(메인 스레드), 워커 호출
 - `src/lib/engine.worker.ts` — 무거운 계산 전용 워커
-- `src/routes/` — 화면 (모두 프리렌더)
+- `src/lib/ui/` — M3 컴포넌트 키트
+- `src/lib/game/` — 게임 컴포넌트(카드·좌석·더미·조합·손패·장면), 카드 모션, 끌기
+- `src/routes/` — 화면 (모두 프리렌더). `/motion` 모션 데모, `/gallery` 컴포넌트, `/theme` 테마

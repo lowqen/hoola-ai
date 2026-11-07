@@ -15,7 +15,9 @@
 		"test:e2e": "playwright install && playwright test",
 		"test": "npm run test:e2e",
 		"tokens": "node --import ./scripts/resolve-js.ts scripts/tokens.ts",
-		"tokens:check": "node --import ./scripts/resolve-js.ts scripts/tokens.ts --check"
+		"tokens:check": "node --import ./scripts/resolve-js.ts scripts/tokens.ts --check",
+		"icons": "node --import ./scripts/resolve-js.ts scripts/icons.ts",
+		"icons:check": "node --import ./scripts/resolve-js.ts scripts/icons.ts --check"
 	},
 	"devDependencies": {
 		"@material-symbols/svg-500": "^0.48.3",

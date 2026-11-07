@@ -6,7 +6,8 @@
 			"url": [
 				"http://localhost:4174/hoola-ai/next/",
 				"http://localhost:4174/hoola-ai/next/theme/",
-				"http://localhost:4174/hoola-ai/next/gallery/"
+				"http://localhost:4174/hoola-ai/next/gallery/",
+				"http://localhost:4174/hoola-ai/next/motion/"
 			],
 			"numberOfRuns": 3
 		},

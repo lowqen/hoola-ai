@@ -297,6 +297,9 @@ jobs:
       - name: Design tokens (최신 여부 + 6개 테마 명암 대비)
         run: npm run tokens:check
 
+      - name: Icon sprite (최신 여부)
+        run: npm run icons:check
+
       - name: Type check & format
         run: |
           npm run check

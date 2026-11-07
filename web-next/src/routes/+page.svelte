@@ -66,6 +66,7 @@
 			<li>D5 · 다듬기·설치형 앱(PWA)</li>
 		</ol>
 		<p class="links">
+			<a href={`${resolve('/motion')}/`}>모션 데모 →</a>
 			<a href={`${resolve('/gallery')}/`}>컴포넌트 갤러리 →</a>
 			<a href={`${resolve('/theme')}/`}>테마 미리보기 →</a>
 			<a href="../" rel="external">지금 버전 연습장으로 →</a>

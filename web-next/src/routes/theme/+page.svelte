@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { applyPrefs, followSystem, readPrefs, type Prefs } from '#lib/theme/apply.ts';
-	import { checkContrast, themeColors, type ContrastResult } from '#lib/theme/scheme.ts';
+	import type { ContrastResult } from '#lib/theme/scheme.ts';
 	import {
 		HIERARCHY,
 		SEED,
@@ -19,9 +19,13 @@
 		contrast: 'standard'
 	});
 	let seed = $state(SEED);
-	let colors = $derived(themeColors(seed, applied.theme, applied.contrast));
-	let results = $derived<ContrastResult[]>(checkContrast(colors));
-	let failCount = $derived(results.filter((r) => !r.ok).length);
+	/** 색 계산 라이브러리는 이 미리보기에서만 쓰고 무거워서 첫 그리기 뒤에 불러온다. */
+	let scheme = $state<typeof import('#lib/theme/scheme.ts') | null>(null);
+	let colors = $derived<Record<string, string>>(
+		scheme ? scheme.themeColors(seed, applied.theme, applied.contrast) : {}
+	);
+	let results = $derived<ContrastResult[] | null>(scheme ? scheme.checkContrast(colors) : null);
+	let failCount = $derived(results?.filter((r) => !r.ok).length);
 	/** 시드를 바꿨을 때만 미리보기 영역에 색을 직접 넣는다 (기본 시드는 tokens.css 그대로). */
 	let overrideStyle = $derived(
 		seed.toLowerCase() === SEED
@@ -36,6 +40,7 @@
 	);
 
 	onMount(() => {
+		void import('#lib/theme/scheme.ts').then((mod) => (scheme = mod));
 		prefs = readPrefs();
 		applied = applyPrefs(prefs, false);
 		return followSystem(
@@ -202,13 +207,17 @@
 				class={`badge ${failCount ? 'bad' : 'ok'}`}
 				data-testid="contrast-fail-count"
 				data-count={failCount}
-				>{failCount ? `${failCount}개 실패` : `${results.length}쌍 모두 통과`}</span
+				>{!results
+					? '검사 중'
+					: failCount
+						? `${failCount}개 실패`
+						: `${results.length}쌍 모두 통과`}</span
 			>
 		</h2>
 		<table class="contrast md-typescale-body-small">
 			<thead><tr><th>용도</th><th>전경 / 배경</th><th>대비</th><th>기준</th></tr></thead>
 			<tbody>
-				{#each results as r (r.fg + r.bg)}
+				{#each results ?? [] as r (r.fg + r.bg)}
 					<tr class={r.ok ? '' : 'fail'}>
 						<td>{r.use}</td>
 						<td class="mono">{r.fg} / {r.bg}</td>

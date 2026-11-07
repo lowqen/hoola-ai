@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { ICONS, type IconName } from './icons.ts';
+	import type { IconName } from './icons.ts';
+	import sprite from './icons.svg?url';
 
 	interface Props {
 		name: IconName;
@@ -18,8 +19,7 @@
 	aria-label={label}
 	aria-hidden={label ? undefined : 'true'}
 >
-	<!-- eslint-disable-next-line svelte/no-at-html-tags -- 빌드 때 고정된 SVG 문자열 -->
-	{@html ICONS[name]}
+	<svg aria-hidden="true"><use href={`${sprite}#${name}`} /></svg>
 </span>
 
 <style>
@@ -31,7 +31,7 @@
 		height: var(--icon-size);
 		line-height: 0;
 	}
-	.icon :global(svg) {
+	svg {
 		width: 100%;
 		height: 100%;
 		fill: currentColor;

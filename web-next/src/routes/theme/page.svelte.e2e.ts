@@ -45,6 +45,8 @@ test('저장한 테마는 새로고침 직후 첫 그리기 전에 적용된다'
 
 test('시드 색을 바꾸면 미리보기 색이 바뀐다', async ({ page }) => {
 	await page.goto('./theme/');
+	// 색 계산 모듈이 실린 뒤에 시드를 바꾼다
+	await expect(page.getByTestId('contrast-fail-count')).toHaveAttribute('data-count', '0');
 	const before = await page.evaluate(() =>
 		getComputedStyle(document.querySelector('.page')!).getPropertyValue('--md-sys-color-primary')
 	);
