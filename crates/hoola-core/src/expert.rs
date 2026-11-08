@@ -521,7 +521,10 @@ mod tests {
         assert_eq!(cfg.samples, 8);
         assert_eq!(ExpertConfig::parse("").unwrap(), ExpertConfig::default());
         assert_eq!(ExpertConfig::default().outs_weight, None);
-        assert_eq!(ExpertConfig::parse("outs=1.5").unwrap().outs_weight, Some(1.5));
+        assert_eq!(
+            ExpertConfig::parse("outs=1.5").unwrap().outs_weight,
+            Some(1.5)
+        );
         let table = ExpertConfig::parse("stop=r-,2,5,9,10").unwrap();
         assert_eq!(
             table.stop,
