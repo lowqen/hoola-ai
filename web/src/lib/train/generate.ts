@@ -28,8 +28,8 @@ export interface PuzzleEngine {
 }
 
 const OPPONENTS = [
-	'expert:stop=t3:meld=dump:outs=1', // 친구 (bots.ts의 friendE)
-	'expert:stop=t3:meld=dump:outs=1',
+	'expert:stop=t10:meld=dump:outs=1', // 친구 (bots.ts의 friendE)
+	'expert:stop=t10:meld=dump:outs=1',
 	'expert',
 	'expert:stop=never',
 	'expert:stop=never:meld=allin'

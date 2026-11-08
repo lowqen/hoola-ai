@@ -5,8 +5,8 @@ import type { Settings } from '#lib/store.ts';
 export const BOTS: Record<string, { name: string; desc: string; spec: string }> = {
 	friendE: {
 		name: '친구',
-		desc: '실제 친구 모델. 모아서 한 번에 등록, 3점 이하 스톱',
-		spec: 'expert:stop=t3:meld=dump:outs=1'
+		desc: '실제 친구 모델. 모아서 한 번에 등록, 스톱할 수 있으면 바로 스톱',
+		spec: 'expert:stop=t10:meld=dump:outs=1'
 	},
 	expert: { name: '고수', desc: '전략서대로 둔다', spec: 'expert' },
 	greedy: { name: '초보', desc: '10점 이하면 바로 스톱', spec: 'greedy' },
