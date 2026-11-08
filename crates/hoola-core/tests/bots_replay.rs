@@ -85,9 +85,7 @@ fn replay_with_house_rules() {
 
 #[test]
 fn replay_keeps_heads_up_stop5_variant() {
-    let toml = "[stop]
-two_player_limit = 5
-";
+    let toml = "[stop]\ntwo_player_limit = 5\n";
     let rules = hoola_core::preset::parse(toml).unwrap().rules;
     for seed in 0..20 {
         let mut g = Game::new(rules.clone(), 2, seed, 1).unwrap();

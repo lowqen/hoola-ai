@@ -450,16 +450,14 @@ mod tests {
         assert_eq!(p.rules.stop.two_player_limit, None);
         assert_eq!(p.rules.stop.limit_for(2), 10);
         // 키 있음: 2인만 바뀐다
-        let p = parse("[stop]
-two_player_limit = 5").unwrap();
+        let p = parse("[stop]\ntwo_player_limit = 5").unwrap();
         assert_eq!(p.rules.stop.two_player_limit, Some(5));
         assert_eq!(p.rules.stop.limit_for(2), 5);
         assert_eq!(p.rules.stop.limit_for(3), 10);
         assert_eq!(p.rules.stop.limit_for(5), 10);
         // 잘못된 타입
         assert!(matches!(
-            parse("[stop]
-two_player_limit = \"five\""),
+            parse("[stop]\ntwo_player_limit = \"five\""),
             Err(PresetError::Parse(_))
         ));
     }
