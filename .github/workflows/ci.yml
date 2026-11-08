@@ -47,6 +47,12 @@ jobs:
       - name: Doc tests
         run: cargo test --workspace --doc
 
+      # 임시: Cargo.lock을 커밋하려고 CI가 만든 파일을 받는다 (A1)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cargo-lock-workspace
+          path: Cargo.lock
+
   lint:
     name: Format & Clippy
     runs-on: ubuntu-latest
@@ -123,6 +129,12 @@ jobs:
         run: |
           python -m pip install dist/*.whl "pytest>=8"
           python -m pytest -q crates/hoola-py/tests
+
+      # 임시: Cargo.lock을 커밋하려고 CI가 만든 파일을 받는다 (A1)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cargo-lock-py
+          path: crates/hoola-py/Cargo.lock
 
       - uses: actions/upload-artifact@v4
         with:
