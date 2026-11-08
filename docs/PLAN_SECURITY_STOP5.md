@@ -247,3 +247,5 @@ B1~B2는 웹 변경 없이 먼저 끝낼 수 있다. B5는 S2 결과(모드별 �
   - #2·#3 toml 1.1: 코드 호환성 문제는 없다. 두 PR 모두 `hoola-core`의 toml을 올리는데 lock 파일을 하나씩만 갱신해서, 반대쪽 lock이 `--locked`에 걸렸다. #2 브랜치에 #3의 `crates/hoola-py/Cargo.lock`을 합쳐 push했다(3dc8306). 이후 #2의 CI가 전부 통과했다. 처음 실패에 섞여 있던 Lighthouse 실패는 재실행에서 통과해 일시적인 것으로 본다. #3은 #2를 병합하면 필요 없어진다. Dependabot이 스스로 닫지 않으면 닫는다.
   - #4 typescript 7: 최신 `svelte-check@4.7.8`의 peer 의존성이 `typescript@^5 || ^6`이라 `npm ci`가 ERESOLVE로 실패한다. 외부 패키지 호환성 문제라 `@dependabot ignore this major version`으로 닫았다. svelte-check가 TypeScript 7을 지원하면 다시 받는다.
   - 교훈: path 의존성을 공유하는 두 Cargo 디렉터리는 Dependabot이 PR을 따로 만든다. 같은 크레이트가 올라가면 lock 두 개를 한 PR로 합쳐야 한다.
+- 2026-11-09 B0 완료: 친구 E 사양을 `expert:stop=t10:meld=dump:outs=1`로 바꿨다(3c46206: lab, 웹 봇, 훈련 문제 생성). 10점 규칙으로 F를 다시 잰 결과는 `docs/lab/2026-11-09-friends-model-e-fix.md`에 있다. 2인 E 상대 전략서 71.6%(옛 73.3%), Greedy 70.3%, 나도 버티기 50.6%이고, 기준표가 최선과 0.2%p 이내다. STRATEGY §6.0과 TRAINING 3단계 수치를 고쳤고, 옛 기록에는 대체 표시를 달았다.
+  - 발견: 수동 실험(workflow_dispatch)이 같은 concurrency 그룹이라 `main` push 실행을 취소했다. 그래서 3c46206은 배포되지 않았다. 그룹에 이벤트 이름을 넣어 고쳤다.
