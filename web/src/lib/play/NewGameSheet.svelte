@@ -46,6 +46,20 @@
 			{ value: '5', label: '5인' }
 		]}
 	/>
+	{#if settings.players === 2}
+		<div class="variant">
+			<Switch
+				label="1:1 스톱 5점"
+				checked={!!settings.stop5}
+				testid="stop5"
+				onchange={(checked) => {
+					settings.stop5 = checked;
+					session.saveSettings();
+				}}
+			/>
+			<p class="desc">켜면 손패 5점 이하일 때만 스톱할 수 있다 (친구 변형 규칙).</p>
+		</div>
+	{/if}
 
 	<h3>상대</h3>
 	<div class="chips" data-testid="presets">
@@ -172,6 +186,12 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
+	}
+	.variant {
+		margin-top: 12px;
+	}
+	.variant .desc {
+		margin-top: 4px;
 	}
 	.desc {
 		margin: 8px 0 0;

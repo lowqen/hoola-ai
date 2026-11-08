@@ -1,6 +1,6 @@
 // 훈련 문제 생성 (워커 전용): 봇끼리 실제로 두다가 문제 조건에 맞는 장면에서 멈추고, 엔진으로 정답을 계산한다.
 import type { Observation } from '#lib/play/actions.ts';
-import { STOP_TABLE } from '#lib/play/actions.ts';
+import { stopTableFor } from '#lib/play/actions.ts';
 import type { Puzzle, PuzzleKind, ScoredMove } from './drills.ts';
 
 export interface PuzzleGame {
@@ -43,7 +43,7 @@ let nextStopAnswer = true;
 
 function stopTableOf(obs: Observation) {
 	const fewest = Math.min(7, ...obs.hand_counts.filter((_, seat) => seat !== 0));
-	const limit = STOP_TABLE[fewest];
+	const limit = stopTableFor(obs.stop_limit)[fewest];
 	return { fewest, limit, stop: limit !== null && obs.hand_points <= limit };
 }
 

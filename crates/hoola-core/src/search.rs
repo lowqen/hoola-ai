@@ -271,7 +271,7 @@ mod tests {
     fn parse_spec() {
         let c = SearchConfig::parse("k=4:rollout=stop=t8;outs=2").unwrap();
         assert_eq!(c.k, 4);
-        assert_eq!(c.rollout.outs_weight, 2.0);
+        assert_eq!(c.rollout.outs_weight, Some(2.0));
         assert_eq!(SearchConfig::parse("").unwrap(), SearchConfig::default());
         assert!(SearchConfig::parse("k=0").is_err());
         assert!(SearchConfig::parse("depth=3").is_err());

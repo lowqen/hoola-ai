@@ -26,9 +26,10 @@
 	const obs = $derived(session.obs);
 	const beginner = $derived(session.settings.beginner);
 	const summary = $derived.by(() => {
-		const { players, opponents, beginner: easy } = session.settings;
+		const { players, opponents, beginner: easy, stop5 } = session.settings;
 		const bots = opponents.slice(0, players - 1).map(botName);
-		return `${players}인 · ${bots.join('·')} · ${easy ? '초보자' : '셀프'} 모드`;
+		const variant = players === 2 && stop5 ? ' · 스톱 5점' : '';
+		return `${players}인${variant} · ${bots.join('·')} · ${easy ? '초보자' : '셀프'} 모드`;
 	});
 </script>
 
@@ -41,7 +42,7 @@
 	/>
 </svelte:head>
 
-<TopAppBar title="훌라">
+<TopAppBar title="훌라" subtitle={obs && session.stop5 ? '1:1 스톱 5점' : undefined}>
 	{#snippet actions()}
 		{#if obs}
 			<IconButton

@@ -16,6 +16,8 @@ export interface Settings {
 	sort?: 'suit' | 'rank';
 	/** 새 앱에서 추가: 코치마크를 봤는지. */
 	coached?: boolean;
+	/** 변형 "1:1 스톱 5점" (2인 판에서만 적용). 예전 저장분에는 없어서 꺼짐으로 읽는다. */
+	stop5?: boolean;
 }
 
 /** 판 복기 요약. 기록 화면의 약점 집계가 쓴다. */
@@ -38,6 +40,8 @@ export interface GameRecord {
 	beginner: boolean;
 	replay: unknown;
 	human_seat: number;
+	/** 변형 "1:1 스톱 5점"으로 둔 판. 켜진 판에만 적는다. */
+	stop5?: boolean;
 	review?: ReviewSummary;
 }
 
@@ -84,7 +88,14 @@ export function saveStore(store: Store) {
 export const GAME_KEY = 'hoola-practice-game-v1';
 
 export interface SavedGame {
-	config: { players: number; opponents: string[]; fullDiscards: boolean; seed: number };
+	config: {
+		players: number;
+		opponents: string[];
+		fullDiscards: boolean;
+		seed: number;
+		/** 예전 저장분에는 없다(꺼짐). 규칙 자체는 replay의 rules_toml에 있다. */
+		stop5?: boolean;
+	};
 	/** 엔진 리플레이 JSON. 규칙·시드·행동이 모두 들어 있다. */
 	replay: string;
 	decisions: { index: number; action: string }[];

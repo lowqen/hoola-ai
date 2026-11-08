@@ -9,14 +9,18 @@ export const BOTS: Record<string, { name: string; desc: string; spec: string }> 
 		spec: 'expert:stop=t10:meld=dump:outs=1'
 	},
 	expert: { name: '고수', desc: '전략서대로 둔다', spec: 'expert' },
-	greedy: { name: '초보', desc: '10점 이하면 바로 스톱', spec: 'greedy' },
-	friendA: { name: '버티기', desc: '스톱 없이 털기만 노린다', spec: 'expert:stop=never' },
+	greedy: { name: '초보', desc: '스톱할 수 있으면 바로 스톱', spec: 'greedy' },
+	friendA: { name: '버티기', desc: '스톱 없이 털기만 노린다', spec: 'expert:stop=never:outs=3' },
 	friendB: {
 		name: '승부사',
 		desc: '스톱 없이 털 때만 등록',
-		spec: 'expert:stop=never:meld=allin'
+		spec: 'expert:stop=never:meld=allin:outs=3'
 	},
-	friendC: { name: '잠수', desc: '등록을 미루고 2점 이하 스톱', spec: 'expert:stop=t2:meld=hold' }
+	friendC: {
+		name: '잠수',
+		desc: '등록을 미루고 2점 이하 스톱',
+		spec: 'expert:stop=t2:meld=hold:outs=3'
+	}
 };
 
 /** 새 판 시트의 빠른 선택. */
@@ -26,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	players: 3,
 	opponents: ['friendE', 'friendE', 'friendE', 'friendE'],
 	fullDiscards: false,
+	stop5: false,
 	beginner: false,
 	autoHint: false,
 	speed: 500,

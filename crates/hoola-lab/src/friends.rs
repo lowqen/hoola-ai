@@ -13,17 +13,17 @@ pub const FRIENDS: &[(&str, &str, &str)] = &[
     (
         "A",
         "버티기: 스톱 안 함, 조합은 즉시 등록",
-        "expert:stop=never",
+        "expert:stop=never:outs=3",
     ),
     (
         "B",
         "한방: 스톱 안 함, 한 번에 털 수 있을 때만 등록",
-        "expert:stop=never:meld=allin",
+        "expert:stop=never:meld=allin:outs=3",
     ),
     (
         "C",
         "늦은 스톱·보류: 2점 이하에서만 스톱, 털기·스톱 가능할 때까지 등록 보류",
-        "expert:stop=t2:meld=hold",
+        "expert:stop=t2:meld=hold:outs=3",
     ),
     (
         "E",

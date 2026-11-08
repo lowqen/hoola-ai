@@ -54,8 +54,8 @@ pub struct ExpertConfig {
     pub thank_you: bool,
     /// 다음 사람 땡큐 위험 가중치 (위험 확률 × 10점 × 가중치).
     pub danger_weight: f64,
-    /// 아웃 1장당 보존 가치 (점).
-    pub outs_weight: f64,
+    /// 아웃 1장당 보존 가치 (점). `None`이면 판 규칙에 맞는 기본값([`default_outs_weight`]).
+    pub outs_weight: Option<f64>,
     /// 믿음 샘플 수.
     pub samples: usize,
 }
@@ -69,7 +69,7 @@ impl Default for ExpertConfig {
             single_seven: true,
             thank_you: true,
             danger_weight: 0.0,
-            outs_weight: 3.0,
+            outs_weight: None,
             samples: 32,
         }
     }
@@ -130,7 +130,7 @@ impl ExpertConfig {
                 "seven" => cfg.single_seven = flag(value)?,
                 "ty" => cfg.thank_you = flag(value)?,
                 "danger" => cfg.danger_weight = value.parse().map_err(|_| bad())?,
-                "outs" => cfg.outs_weight = value.parse().map_err(|_| bad())?,
+                "outs" => cfg.outs_weight = Some(value.parse().map_err(|_| bad())?),
                 "samples" => {
                     cfg.samples = value.parse().map_err(|_| bad())?;
                     if cfg.samples == 0 {
@@ -141,6 +141,18 @@ impl ExpertConfig {
             }
         }
         Ok(cfg)
+    }
+}
+
+/// 아웃당 보존 가치의 규칙별 기본값.
+/// - 10점 규칙: 3점 (P2 H5)
+/// - 2인 판 스톱 한도 5점 이하(변형 `two_player_limit = 5`): 8점. 판이 길어져 조각 보존이
+///   이득이다(B3 S5: 3점 대비 +0.87%p, 10점 규칙에서는 8점이 −1.26%p라 방향이 반대. S9 결정)
+pub fn default_outs_weight(num_players: usize, stop_limit: u32) -> f64 {
+    if num_players == 2 && stop_limit <= 5 {
+        8.0
+    } else {
+        3.0
     }
 }
 
@@ -445,11 +457,14 @@ impl crate::bot::Bot for ExpertBot {
                 } else {
                     hand
                 };
+                let outs_weight = self
+                    .cfg
+                    .outs_weight
+                    .unwrap_or_else(|| default_outs_weight(obs.num_players, obs.stop_limit));
                 let mut best: Option<(f64, Card)> = None;
                 for card in candidates {
                     let mut score = f64::from(pts(card))
-                        - self.cfg.outs_weight
-                            * outs(hand, card, unseen, rules.meld.ace_mode) as f64;
+                        - outs_weight * outs(hand, card, unseen, rules.meld.ace_mode) as f64;
                     if self.cfg.danger_weight > 0.0 {
                         score -=
                             self.cfg.danger_weight * 10.0 * self.danger(obs, card, &unseen_vec);
@@ -480,6 +495,15 @@ mod tests {
     }
 
     #[test]
+    fn outs_weight_default_follows_rules() {
+        // S9: 2인 판 한도 5점(변형)에서만 8점, 나머지는 3점
+        assert_eq!(default_outs_weight(2, 5), 8.0);
+        assert_eq!(default_outs_weight(2, 10), 3.0);
+        assert_eq!(default_outs_weight(3, 10), 3.0);
+        assert_eq!(default_outs_weight(5, 10), 3.0);
+    }
+
+    #[test]
     fn parse_spec() {
         let cfg =
             ExpertConfig::parse("stop=t5:meld=hold:seven=0:ty=off:danger=0:samples=8").unwrap();
@@ -496,6 +520,8 @@ mod tests {
         assert_eq!(cfg.danger_weight, 0.0);
         assert_eq!(cfg.samples, 8);
         assert_eq!(ExpertConfig::parse("").unwrap(), ExpertConfig::default());
+        assert_eq!(ExpertConfig::default().outs_weight, None);
+        assert_eq!(ExpertConfig::parse("outs=1.5").unwrap().outs_weight, Some(1.5));
         let table = ExpertConfig::parse("stop=r-,2,5,9,10").unwrap();
         assert_eq!(
             table.stop,

@@ -45,6 +45,11 @@ export interface Outcome {
 
 /** 전략서 v1 스톱 기준표: 가장 적게 든 상대의 장수 → 스톱할 최대 점수 (null = 스톱 안 함). */
 export const STOP_TABLE: (number | null)[] = [null, null, 4, 8, 10, 10, 10, 10];
+/** 변형 "1:1 스톱 5점" 기준표 (STRATEGY §7, B3 S2의 `-,3,5`): 1장 금지, 2장 3점, 3장 이상 5점. */
+export const STOP_TABLE_STOP5: (number | null)[] = [null, null, 3, 5, 5, 5, 5, 5];
+
+/** 이 판의 스톱 한도에 맞는 기준표. */
+export const stopTableFor = (stopLimit: number) => (stopLimit <= 5 ? STOP_TABLE_STOP5 : STOP_TABLE);
 
 export function parseAction(action: string): { verb: string; cards: CardId[]; meld?: number } {
 	const [verb, ...rest] = action.split(' ');
@@ -98,7 +103,7 @@ export function actionText(action: string, obs: Observation, seatName: (s: numbe
 export function stopAdvice(obs: Observation, humanSeat: number) {
 	const others = obs.hand_counts.filter((_, seat) => seat !== humanSeat);
 	const fewest = Math.min(7, ...others);
-	const limit = STOP_TABLE[fewest];
+	const limit = stopTableFor(obs.stop_limit)[fewest];
 	const ok = limit !== null && obs.hand_points <= limit;
 	return {
 		ok,

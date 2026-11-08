@@ -41,6 +41,7 @@ interface GameConfig {
 	opponents: string[];
 	fullDiscards: boolean;
 	seed: number;
+	stop5?: boolean;
 }
 
 export interface LogLine {
@@ -207,6 +208,17 @@ class PlaySession {
 		return !!this.config?.fullDiscards;
 	}
 
+	/** 지금 판(없으면 다음 판 설정)의 스톱 한도. 판이 있으면 엔진 관측값을 믿는다. */
+	get stopLimit(): number {
+		if (this.obs) return this.obs.stop_limit;
+		return this.settings.players === 2 && this.settings.stop5 ? 5 : 10;
+	}
+
+	/** 변형 "1:1 스톱 5점"이 적용된 판인가 (판이 없으면 다음 판 설정). */
+	get stop5(): boolean {
+		return this.stopLimit < 10;
+	}
+
 	// ---------- 진행 ----------
 	/** 저장된 설정으로 새 판. 시드를 정해 두었으면 그 시드로 한다. */
 	async newGame() {
@@ -233,14 +245,18 @@ class PlaySession {
 		}
 		this.stopTimers();
 		const { settings } = this;
+		const stop5 = settings.players === 2 && !!settings.stop5;
 		this.config = {
 			players: settings.players,
 			opponents: settings.opponents.slice(0, settings.players - 1),
 			fullDiscards: settings.fullDiscards,
-			seed
+			seed,
+			...(stop5 && { stop5 })
 		};
 		const first = seed % settings.players;
-		const rules = settings.fullDiscards ? '[visibility]\ndiscard_history = "full"\n' : '';
+		const rules =
+			(settings.fullDiscards ? '[visibility]\ndiscard_history = "full"\n' : '') +
+			(stop5 ? '[stop]\ntwo_player_limit = 5\n' : '');
 		this.game?.free();
 		this.game = new this.engine.WasmGame(settings.players, seed, first, rules);
 		this.decisions = [];
@@ -248,7 +264,9 @@ class PlaySession {
 		this.usedUndo = false;
 		this.recorded = false;
 		this.lastRecord = null;
-		this.resetLog(`판 시작 · 시드 ${seed} · 선: ${this.seatName(first)}`);
+		this.resetLog(
+			`판 시작 · 시드 ${seed} · 선: ${this.seatName(first)}${stop5 ? ' · 스톱 5점' : ''}`
+		);
 		this.resetTurnState();
 		this.newGameOpen = false;
 		this.step();
@@ -690,7 +708,8 @@ class PlaySession {
 			undo: this.usedUndo,
 			beginner: this.usedBeginner,
 			replay: JSON.parse(this.game!.replayJson()),
-			human_seat: HUMAN
+			human_seat: HUMAN,
+			...(config.stop5 && { stop5: true })
 		};
 		this.lastRecord = record;
 		this.store.games.push(record);

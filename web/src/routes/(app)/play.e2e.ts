@@ -16,6 +16,7 @@ interface StoreSeed {
 	beginner?: boolean;
 	coached?: boolean;
 	speed?: number;
+	stop5?: boolean;
 	games?: unknown[];
 	extra?: Record<string, unknown>;
 }
@@ -32,7 +33,8 @@ async function seedStore(page: Page, opts: StoreSeed = {}) {
 					speed: o.speed ?? 60,
 					seed: o.seed ?? '777',
 					beginner: o.beginner ?? false,
-					coached: o.coached ?? true
+					coached: o.coached ?? true,
+					...(o.stop5 !== undefined && { stop5: o.stop5 })
 				},
 				games: o.games ?? [],
 				...o.extra
@@ -351,6 +353,81 @@ test('셀프 모드: 고정 슬롯, 합법 여부를 미리 알려 주지 않고
 	await expect(handCards(page)).toHaveCount(7);
 });
 
+test.describe('1:1 스톱 5점', () => {
+	test('스위치는 2인에서만 보이고 기본은 꺼짐, 켜면 설정에 저장된다', async ({ page }) => {
+		await seedStore(page, {});
+		await page.goto('./');
+		await page.getByTestId('open-new-game').click();
+		const players = page.getByTestId('players');
+		const toggle = page.getByTestId('stop5');
+		await expect(toggle).toHaveCount(0);
+
+		await players.getByRole('radio', { name: '2인' }).click();
+		await expect(toggle).toBeVisible();
+		await expect(toggle).not.toBeChecked();
+		await page.locator('label', { has: toggle }).click();
+		await expect(toggle).toBeChecked();
+		expect((await stored(page)).settings.stop5).toBe(true);
+
+		await players.getByRole('radio', { name: '3인' }).click();
+		await expect(toggle).toHaveCount(0);
+		await page.keyboard.press('Escape');
+		// 3인에서는 켜 둔 설정이 있어도 적용되지 않는다
+		await expect(page.getByTestId('start-summary')).not.toContainText('스톱 5점');
+	});
+
+	test('켠 2인 판: 상단 표시, 5점 한도로 거절, 규칙 기준표, 새로고침 뒤에도 유지되고 전적에 남는다', async ({
+		page
+	}) => {
+		test.setTimeout(120_000);
+		await seedStore(page, { players: 2, opponents: ['greedy'], stop5: true });
+		await page.goto('./');
+		await expect(page.getByTestId('start-summary')).toContainText('2인 · 스톱 5점');
+		await page.getByTestId('start').click();
+		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
+		const banner = page.getByRole('banner');
+		await expect(banner).toContainText('1:1 스톱 5점');
+		await expect(page.getByTestId('log')).toContainText('스톱 5점');
+
+		// 7장 이상 손패는 최소 10점이라 언제나 거절된다. 이유에 한도 5점이 나온다
+		await myTurn(page);
+		await slot(page, 'stop').click({ force: true });
+		await expect(snack(page)).toContainText('5점 이하일 때만 스톱할 수 있다');
+
+		await page.getByTestId('open-rules').click();
+		await expect(page.getByTestId('rules-stop5')).toBeVisible();
+		await expect(page.getByTestId('rules-stop-limit')).toContainText('5점 이하면');
+		const table = page.getByTestId('stop-table');
+		await expect(table).toContainText('2장3점 이하');
+		await expect(table).toContainText('3장 이상5점 이하');
+		await expect(table).not.toContainText('10점');
+		await page.keyboard.press('Escape');
+
+		await page.reload();
+		await expect(page.getByTestId('hand')).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByRole('banner')).toContainText('1:1 스톱 5점');
+		await myTurn(page);
+		await slot(page, 'stop').click({ force: true });
+		await expect(snack(page)).toContainText('5점 이하일 때만 스톱할 수 있다');
+		expect(
+			JSON.parse(await page.evaluate(() => localStorage.getItem('hoola-practice-game-v1')!)).config
+				.stop5
+		).toBe(true);
+	});
+
+	test('끈 2인 판은 10점 규칙 그대로이고 상단 표시가 없다', async ({ page }) => {
+		await seedStore(page, { players: 2, opponents: ['greedy'] });
+		await start(page);
+		await expect(page.getByRole('banner')).not.toContainText('스톱 5점');
+		await myTurn(page);
+		await slot(page, 'stop').click({ force: true });
+		await expect(snack(page)).toContainText('10점 이하일 때만 스톱할 수 있다');
+		await page.getByTestId('open-rules').click();
+		await expect(page.getByTestId('rules-stop5')).toHaveCount(0);
+		await expect(page.getByTestId('stop-table')).toContainText('4장 이상10점 이하');
+	});
+});
+
 test('초보자 모드: 할 수 있는 수만 켜지고, 고를 수가 여럿이면 시트로 묻는다', async ({ page }) => {
 	await seedStore(page, { seed: SEED.register, beginner: true });
 	await start(page);
@@ -425,7 +502,7 @@ test('프리셋: 칩은 간단한 이름, 고르면 설명이 나오고 처음�
 	await expect(presets).toHaveText(['친구', '고수', '초보', '직접']);
 	await expect(presets.nth(0)).toHaveAttribute('aria-pressed', 'true');
 	await presets.nth(2).click();
-	await expect(page.getByTestId('preset-desc')).toHaveText('10점 이하면 바로 스톱');
+	await expect(page.getByTestId('preset-desc')).toHaveText('스톱할 수 있으면 바로 스톱');
 	await presets.nth(3).click();
 	await expect(page.getByTestId('preset-desc')).toHaveCount(0);
 	await expect(page.getByRole('dialog').locator('select')).toHaveCount(2);

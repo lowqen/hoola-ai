@@ -19,7 +19,9 @@ export function groupStats(games: GameRecord[]): { groups: GroupStat[]; practice
 	const totals = new Map<string, { games: number; share: number; players: number }>();
 	for (const g of counted) {
 		const opponents = g.opponents.map(botName).join('·');
-		const label = `${g.beginner ? '초보 · ' : ''}${g.players}인 · ${opponents}`;
+		// 스톱 5점 변형은 승률이 달라서 따로 묶는다
+		const variant = g.stop5 ? ' 스톱 5점' : '';
+		const label = `${g.beginner ? '초보 · ' : ''}${g.players}인${variant} · ${opponents}`;
 		const total = totals.get(label) ?? { games: 0, share: 0, players: g.players };
 		total.games++;
 		total.share += g.share;

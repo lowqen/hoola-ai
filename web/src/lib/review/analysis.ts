@@ -4,7 +4,7 @@ import type { HintMove } from '#lib/engine.ts';
 import {
 	actionText,
 	parseAction,
-	STOP_TABLE,
+	stopTableFor,
 	type GameEvent,
 	type Observation,
 	type Outcome
@@ -96,7 +96,7 @@ function stopTableCheck(
 ) {
 	if (obs.phase !== 'turn_start' || !legal.includes('stop')) return null;
 	const fewest = fewestOpponent(obs, seat);
-	const limit = STOP_TABLE[fewest];
+	const limit = stopTableFor(obs.stop_limit)[fewest];
 	const tableStop = limit !== null && obs.hand_points <= limit;
 	const mineStop = mine === 'stop';
 	return {
@@ -125,7 +125,7 @@ function explain(
 	const b = parseAction(best.action);
 	const pts = obs.hand_points;
 	const fewest = fewestOpponent(obs, ctx.seat);
-	const table = tableText(fewest, STOP_TABLE[fewest]);
+	const table = tableText(fewest, stopTableFor(obs.stop_limit)[fewest]);
 	const name = (action: string) => actionText(action, obs, ctx.seatName);
 
 	if (b.verb === 'stop' && m.verb !== 'stop') {

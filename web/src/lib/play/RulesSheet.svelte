@@ -3,6 +3,7 @@
 	import PlayingCard from '#lib/game/PlayingCard.svelte';
 	import BottomSheet from '#lib/ui/BottomSheet.svelte';
 	import Button from '#lib/ui/Button.svelte';
+	import { stopTableFor } from './actions.ts';
 	import { session } from './session.svelte.ts';
 
 	const EXAMPLES = [
@@ -10,12 +11,21 @@
 		{ name: '런', text: '같은 무늬 연속 3장 이상 (K 다음은 A)', cards: ['8C', '9C', 'TC'] },
 		{ name: '7', text: '7은 한 장만으로 등록할 수 있다', cards: ['7H'] }
 	];
-	const STOP_ROWS = [
-		['1장', '스톱 금지'],
-		['2장', '4점 이하'],
-		['3장', '8점 이하'],
-		['4장 이상', '10점 이하']
-	];
+	const limit = $derived(session.stopLimit);
+	/** 기준표를 장수별로 묶는다: 같은 값이 이어지는 뒤쪽은 "n장 이상"으로 접는다. */
+	const stopRows = $derived.by(() => {
+		const table = stopTableFor(limit);
+		const rows: [string, string][] = [];
+		for (let k = 1; k < table.length; k++) {
+			const text = table[k] === null ? '스톱 금지' : `${table[k]}점 이하`;
+			if (table.slice(k).every((v) => v === table[k]) && k < table.length - 1) {
+				rows.push([`${k}장 이상`, text]);
+				break;
+			}
+			rows.push([`${k}장`, text]);
+		}
+		return rows;
+	});
 </script>
 
 <BottomSheet bind:open={session.rulesOpen} label="규칙 요약">
@@ -44,16 +54,24 @@
 	<h3>땡큐</h3>
 	<p>바로 앞 사람이 버린 맨 위 카드와 내 손패 2장 이상으로 조합을 만들어 등록한다.</p>
 
-	<h3>스톱</h3>
-	<p>
-		받기 전에 손패 10점 이하면 선언할 수 있다. 다른 모두보다 낮아야 이긴다. 전략서 기준표(가장 적게
-		든 상대의 장수 기준)는 다음과 같다.
+	<h3>
+		스톱{#if session.stop5}<span class="badge" data-testid="rules-stop5">1:1 스톱 5점</span>{/if}
+	</h3>
+	<p data-testid="rules-stop-limit">
+		받기 전에 손패 {limit}점 이하면 선언할 수 있다. 다른 모두보다 낮아야 이긴다. 전략서 기준표(가장
+		적게 든 상대의 장수 기준)는 다음과 같다.
 	</p>
-	<table>
+	{#if session.stop5}
+		<p class="note">
+			변형 규칙에서는 스톱이 늦어지고 털기로 끝나는 판이 늘어난다. 페어·연속 같은 조각을 평소보다
+			오래 남겨 털기를 노린다.
+		</p>
+	{/if}
+	<table data-testid="stop-table">
 		<thead><tr><th scope="col">상대 최소 장수</th><th scope="col">스톱 기준</th></tr></thead>
 		<tbody>
-			{#each STOP_ROWS as [count, limit] (count)}
-				<tr><td>{count}</td><td>{limit}</td></tr>
+			{#each stopRows as [count, text] (count)}
+				<tr><td>{count}</td><td>{text}</td></tr>
 			{/each}
 		</tbody>
 	</table>
@@ -126,6 +144,19 @@
 	}
 	th {
 		font-weight: 700;
+	}
+	.badge {
+		margin-left: 8px;
+		padding: 2px 8px;
+		border-radius: var(--md-sys-shape-corner-small);
+		background: var(--md-sys-color-tertiary-container);
+		color: var(--md-sys-color-on-tertiary-container);
+		font-size: var(--md-sys-typescale-label-medium-size);
+		font-weight: 700;
+	}
+	.note {
+		margin-top: 6px;
+		color: var(--md-sys-color-on-surface-variant);
 	}
 	.again {
 		display: flex;
