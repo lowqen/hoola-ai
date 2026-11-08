@@ -257,3 +257,12 @@ B1~B2는 웹 변경 없이 먼저 끝낼 수 있다. B5는 S2 결과(모드별 �
 - 2026-11-09 B1 완료(705448a, 28ab8b9): B.3대로 `StopRules.two_player_limit`과 `limit_for(players)`를 추가했다. `can_stop`, 관측값 `stop_limit`(WASM이 그대로 내보냄), 전문가 봇 `hold` 기준, lab 스톱 표(H8, F3)가 실제 판 인원의 한도를 쓴다. `config/presets/heads_up_stop5.toml`, RULES.md §8.3과 v1.3 변경 이력을 추가했고, `offline_casual.toml`에는 주석으로 키를 안내했다. 테스트: rules_spec 3개(2인 5점 가능·6점 불가, 3인 10점 가능, 변형 없는 2인 10점 가능), 프리셋 파싱(키 없음·있음·잘못된 타입, `heads_up_stop5` 로드), 변형 리플레이 왕복. CI test·fmt·clippy 통과.
   - B2 일부도 했다: lab `--preset PATH`와 결과 머리말의 프리셋 이름. 남은 B2: `ci.yml` 수동 실행 입력 `preset`과 `heads_up_stop5` H0 수동 실행.
   - 웹은 바꾸지 않았다. 웹은 `two_player_limit`을 넣지 않으므로 동작이 같다.
+- 2026-11-09 배포 조건 보완과 B2 완료(ef7185e): Pages 배포 job의 `needs`에 `test`(Build & Test)와 `lint`(Format & Clippy)를 넣어, Rust 검사가 실패하면 배포하지 않는다. push CI 전체 통과와 배포를 확인했다.
+  - 수동 실행 입력 `preset`(`heads_up_stop5` 기본 | `offline_casual`)을 추가해 `lab-friends`, `lab-search`, 새 `lab-study`에 `--preset config/presets/<preset>.toml`로 넘긴다. 실험 선택지에 `stop5`(S1·S2·S7)를 추가했다. `lab-study`는 2인만 돌며 H0(S1), H8과 S2 후보표(S2)를 한 아티팩트(`study-results`)로 낸다. 10점 비교값은 같은 실행의 `lab` job(같은 시드)에서 얻는다.
+  - concurrency 그룹에 실험·프리셋을 넣어 수동 실험끼리도 서로 취소하지 않게 했다.
+  - hoola-lab: S2 가설(`--only S2`로만 돈다), F2에 2인 한도가 10보다 낮을 때 5점용 규칙표 후보 4개를 추가했다.
+- 2026-11-09 B3 1차(S1·S2·S7): `gh workflow run ci.yml -f experiment=stop5 -f preset=heads_up_stop5`(run 42496991557). 기록은 `docs/lab/2026-11-09-stop5-study.md`.
+  - S1: 스톱 성공 82% → 68%, 털기 11% → 27%, 평균 턴 8.7 → 11.0. 선 이점은 커지지 않았다(53.3% → 52.6%, 유의하지 않음).
+  - S2: 기준표 **`-,3,5`**(1장 금지, 2장 3점 이하, 3장 이상 가능하면 스톱)가 확률 계산 대비 −0.27%p로 채택 기준을 통과했다. H8 표를 그대로 옮긴 `-,2,5`는 −0.51%p, "가능하면 스톱"(`t5`)은 −1.18%p.
+  - S7: 전략서 봇 2인 승률 E 63.6%(10점 71.6%), A 57.9%(60.7%), B 65.6%(74.7%), C 59.7%(63.2%). 친구용 스톱 설정은 필요 없다(`-,3,5`로 충분). 10점에서 손해였던 조각 보존(아웃당 5~8점)이 5점 변형에서는 세 친구 모두에게 +0.7~1.7%p 이득으로 뒤집혔다 → S5를 앞당겨 셀프플레이로 확인한다.
+  - 남은 B3: S3·S4·S5·S6·S8·S9. S5 결과로 기준 봇이 바뀌면 S7을 다시 잰다.
