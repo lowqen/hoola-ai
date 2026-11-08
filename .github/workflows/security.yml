@@ -39,7 +39,7 @@ jobs:
         with:
           manifest-path: ${{ matrix.manifest }}
           command: check
-          command-arguments: --config deny.toml
+          command-arguments: --config=deny.toml
 
   npm-audit:
     name: npm audit (web)
