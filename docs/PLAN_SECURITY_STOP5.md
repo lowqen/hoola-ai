@@ -239,4 +239,5 @@ B1~B2는 웹 변경 없이 먼저 끝낼 수 있다. B5는 S2 결과(모드별 �
 - 2026-11-08 A2: `.github/dependabot.yml`을 추가했다(초안 그대로, svelte 그룹을 마이너 그룹보다 앞에 둠).
 - 2026-11-08 A3: API로 Dependabot 알림, 보안 업데이트, 비공개 취약점 신고, CodeQL 기본 설정을 켰다. CodeQL API는 언어 목록에 `rust`를 받지 않아서 언어를 지정하지 않았다. 그러면 감지된 언어를 모두 분석한다. `SECURITY.md`는 아직 쓰지 않았다.
 - 2026-11-08 A4: `security.yml`을 추가했다(cargo-deny 2곳, `npm audit --audit-level=high`, PR 의존성 검토, 월요일 09:00 KST 정기 실행). `deny.toml`을 추가했다. 서드파티 액션은 2주 이상 지난 릴리스의 SHA로 고정했다: rust-cache v2.9.3, install-action v2.87.31, cargo-deny-action v2.1.1, rust-toolchain master(2026-10-16). wasm-pack은 지금 CI가 쓰는 0.15.1로 고정했다. 모든 checkout에 `persist-credentials: false`를 넣었다.
+- 2026-11-08 A4 첫 성과: cargo-deny가 `pyo3 0.25.1`의 RustSec 권고 2건(RUSTSEC-2026-0176 `PyCFunction::new_closure` Sync 누락, RUSTSEC-2026-0177 `PyList`/`PyTuple` 반복자 범위 밖 읽기)을 잡았다. pyo3를 0.30.1로 올리고, 0.26에서 이름이 바뀐 `py.allow_threads`를 `py.detach`로 고쳤다. CI의 hoola-py clippy, wheel, pytest가 통과했다. `deny.toml`에서 쓰이지 않는 BSD-3-Clause를 뺐다.
 - 2026-11-08 A5: `ci.yml`의 push 트리거에서 `dependabot/**`를 뺐다. `main` ruleset "main 보호"(id 26798901)를 만들었다: 필수 체크 3개, 강제 push 금지, 삭제 금지, 관리자 우회.
