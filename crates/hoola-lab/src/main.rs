@@ -185,6 +185,8 @@ struct Args {
     only: Option<String>,
     players: Vec<usize>,
     preset: Option<String>,
+    /// F1에 추가로 넣을 내 봇 사양 (`--me`, 여러 번 가능)
+    me: Vec<String>,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -195,6 +197,7 @@ fn parse_args() -> Result<Args, String> {
         only: None,
         players: vec![2, 3],
         preset: None,
+        me: Vec::new(),
     };
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
@@ -205,6 +208,7 @@ fn parse_args() -> Result<Args, String> {
             "--out" => a.out = Some(value()?),
             "--only" => a.only = Some(value()?),
             "--preset" => a.preset = Some(value()?),
+            "--me" => a.me.push(value()?),
             "--players" => {
                 a.players = value()?
                     .split(',')
@@ -316,7 +320,7 @@ fn main() {
     // 친구 페르소나 실험과 L3 탐색은 오래 걸려서 --only로만 돈다 (CI 별도 잡)
     match args.only.as_deref() {
         Some("F") => {
-            friends::friends(&mut md, args.deals, args.seed, &rules);
+            friends::friends(&mut md, args.deals, args.seed, &rules, &args.me);
             finish(&md, &args, started);
             return;
         }

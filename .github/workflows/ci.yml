@@ -19,6 +19,10 @@ on:
         type: choice
         options: [heads_up_stop5, offline_casual]
         default: heads_up_stop5
+      me:
+        description: "친구 실험 F1에 추가할 내 봇 사양 (공백으로 구분, 예: expert:outs=8)"
+        type: string
+        default: ""
 
 # 같은 브랜치에 새 푸시가 오면 이전 실행은 취소.
 # 이벤트별로 그룹을 나눠, 수동 실험(workflow_dispatch)이 push 실행(배포)을 취소하지 않게 한다.
@@ -203,7 +207,12 @@ jobs:
         run: cargo build --locked --release -p hoola-lab
 
       - name: Run friend experiments (테이블당 약 10만 판)
-        run: ./target/release/hoola-lab --only F --deals 33334 --preset "config/presets/${{ inputs.preset }}.toml" --out friends-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+        env:
+          ME: ${{ inputs.me }}
+        run: |
+          extra=()
+          for s in $ME; do extra+=(--me "$s"); done
+          ./target/release/hoola-lab --only F --deals 33334 --preset "config/presets/${{ inputs.preset }}.toml" "${extra[@]}" --out friends-results.md | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v7
         with:

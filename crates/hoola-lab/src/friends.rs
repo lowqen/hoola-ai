@@ -94,8 +94,8 @@ fn merged_turns(reports: &[MatchReport]) -> f64 {
         / games as f64
 }
 
-/// F: [나, 친구...] 2인·3인.
-pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
+/// F: [나, 친구...] 2인·3인. `extra_me`는 F1에 추가로 넣을 내 봇 사양이다.
+pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules, extra_me: &[String]) {
     let started = Instant::now();
     let _ = writeln!(md, "# 친구 페르소나 실험 (2인·3인)\n");
     let _ = writeln!(
@@ -121,7 +121,11 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         ("A·C", vec!["A", "C"]),
         ("B·C", vec!["B", "C"]),
     ];
-    let me_bots = [("전략서 v1 (expert)", "expert"), ("Greedy", "greedy")];
+    let mut me_bots: Vec<(String, String)> = vec![
+        ("전략서 v1 (expert)".into(), "expert".into()),
+        ("Greedy".into(), "greedy".into()),
+    ];
+    me_bots.extend(extra_me.iter().map(|s| (format!("`{s}`"), s.clone())));
     let _ = writeln!(
         md,
         "## F1. 친구 상대 승률\n\n딜 {deals}개 × 자리 회전 (2인 테이블당 {}판, 3인 {}판)\n",
@@ -133,7 +137,8 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
         "| 나 | 친구 테이블 | 내 승률 | 95% CI | 공평한 몫 | 친구 승률 | 평균 턴 | 털기 | 스톱 성공 | 스톱 실패 |"
     );
     let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|");
-    for (me_label, me) in me_bots {
+    for (me_label, me) in &me_bots {
+        let me = me.as_str();
         for (tname, ids) in &tables {
             let mut bots = vec![me.to_string()];
             bots.extend(ids.iter().map(|id| spec(id).to_string()));
