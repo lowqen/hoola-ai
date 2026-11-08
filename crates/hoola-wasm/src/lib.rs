@@ -75,7 +75,7 @@ fn observation_json(o: &Observation<'_>) -> Value {
         "stock_len": o.stock_len,
         "thank_you_target": o.thank_you_target.map(|c| c.to_string()),
         "top_discarder": o.top_discarder,
-        "stop_limit": o.rules.stop.limit,
+        "stop_limit": o.stop_limit,
         "events": events,
         "revealed_hands": o.revealed_hands.as_ref().map(|hs| hs.iter().map(|&h| cards(h)).collect::<Vec<_>>()),
     })

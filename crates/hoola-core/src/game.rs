@@ -474,7 +474,7 @@ impl Game {
     fn can_stop(&self) -> bool {
         let p = &self.players[self.current];
         let stop = &self.rules.stop;
-        p.hand.points(&self.rules.points) <= stop.limit
+        p.hand.points(&self.rules.points) <= stop.limit_for(self.players.len())
             && (!stop.requires_registration || p.registered)
             && (stop.first_turn_allowed || p.turns_started > 1)
     }

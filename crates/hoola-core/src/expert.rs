@@ -413,7 +413,7 @@ impl crate::bot::Bot for ExpertBot {
                 let register_now = going_out
                     || match self.cfg.meld {
                         MeldMode::Now => true,
-                        MeldMode::Hold => after <= rules.stop.limit,
+                        MeldMode::Hold => after <= obs.stop_limit,
                         MeldMode::AllIn => false,
                         MeldMode::Dump => self.dumping,
                     };

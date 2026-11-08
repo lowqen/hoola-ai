@@ -248,7 +248,7 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     );
     let lineup = ["expert", spec("A"), spec("B")];
     let table = stop_table::collect(&lineup, "expert", deals, seed + 9_000_000, rules);
-    stop_table::render(&table, rules.stop.limit, 200, true, md);
+    stop_table::render(&table, rules.stop.limit_for(lineup.len()), 200, true, md);
     let _ = writeln!(md);
     eprintln!("F3 done ({:.0}s)", started.elapsed().as_secs_f64());
 }

@@ -1,0 +1,9 @@
+# 1:1 스톱 5점 변형 — offline_casual 위에 덮어쓴다 (RULES.md §8.3)
+# 2인으로 시작한 판에서만 스톱 한도가 5점이 된다. 3인 이상은 offline_casual과 같다.
+
+[meta]
+name = "heads_up_stop5"
+description = "offline_casual + 2인 판 스톱 5점 이하"
+
+[stop]
+two_player_limit = 5

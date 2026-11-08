@@ -18,6 +18,8 @@ pub struct Observation<'a> {
     pub current_player: usize,
     pub phase: Phase,
     pub turn: u32,
+    /// 이 판의 실제 스톱 한도 (인원별 변형 반영, `StopRules::limit_for`).
+    pub stop_limit: u32,
     /// 내 손패.
     pub hand: CardSet,
     /// 좌석별 손패 장수.
@@ -86,6 +88,7 @@ impl Game {
             current_player: self.current_player(),
             phase: self.phase(),
             turn: self.turn(),
+            stop_limit: rules.stop.limit_for(n),
             hand: self.hand(seat),
             hand_counts: (0..n).map(|s| self.hand(s).len()).collect(),
             registered: (0..n).map(|s| self.player(s).registered).collect(),

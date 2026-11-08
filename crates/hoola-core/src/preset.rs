@@ -202,6 +202,9 @@ struct RawThankYou {
 struct RawStop {
     timing: String,
     limit: u32,
+    /// 2인 판 전용 한도 (선택). 없으면 `limit`.
+    #[serde(default)]
+    two_player_limit: Option<u32>,
     requires_registration: bool,
     first_turn_allowed: bool,
     win_rule: String,
@@ -317,6 +320,7 @@ impl RawPreset {
             },
             stop: StopRules {
                 limit: self.stop.limit,
+                two_player_limit: self.stop.two_player_limit,
                 requires_registration: self.stop.requires_registration,
                 first_turn_allowed: self.stop.first_turn_allowed,
             },
@@ -437,6 +441,40 @@ mod tests {
                 "{text:?} should be unsupported"
             );
         }
+    }
+
+    #[test]
+    fn two_player_limit_is_optional() {
+        // 키 없음: 모든 인원에서 limit
+        let p = parse("").unwrap();
+        assert_eq!(p.rules.stop.two_player_limit, None);
+        assert_eq!(p.rules.stop.limit_for(2), 10);
+        // 키 있음: 2인만 바뀐다
+        let p = parse("[stop]
+two_player_limit = 5").unwrap();
+        assert_eq!(p.rules.stop.two_player_limit, Some(5));
+        assert_eq!(p.rules.stop.limit_for(2), 5);
+        assert_eq!(p.rules.stop.limit_for(3), 10);
+        assert_eq!(p.rules.stop.limit_for(5), 10);
+        // 잘못된 타입
+        assert!(matches!(
+            parse("[stop]
+two_player_limit = \"five\""),
+            Err(PresetError::Parse(_))
+        ));
+    }
+
+    #[test]
+    fn heads_up_stop5_preset() {
+        let p = load(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../config/presets/heads_up_stop5.toml"
+        ))
+        .unwrap();
+        assert_eq!(p.name, "heads_up_stop5");
+        let mut expected = Rules::default();
+        expected.stop.two_player_limit = Some(5);
+        assert_eq!(p.rules, expected);
     }
 
     #[test]

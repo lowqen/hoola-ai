@@ -32,14 +32,27 @@ impl Default for ThankYouRules {
 pub struct StopRules {
     /// 손패 점수가 이 값 이하일 때 선언 가능.
     pub limit: u32,
+    /// 2인 판에서만 쓰는 한도 (`two_player_limit`, RULES.md §8.3 변형). `None`이면 `limit`.
+    pub two_player_limit: Option<u32>,
     pub requires_registration: bool,
     pub first_turn_allowed: bool,
+}
+
+impl StopRules {
+    /// `players`인 판의 실제 스톱 한도.
+    pub fn limit_for(&self, players: usize) -> u32 {
+        match self.two_player_limit {
+            Some(limit) if players == 2 => limit,
+            _ => self.limit,
+        }
+    }
 }
 
 impl Default for StopRules {
     fn default() -> Self {
         StopRules {
             limit: 10,
+            two_player_limit: None,
             requires_registration: false,
             first_turn_allowed: true,
         }

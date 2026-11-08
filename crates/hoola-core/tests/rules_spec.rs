@@ -178,6 +178,42 @@ fn stop_rule_switches() {
     assert!(!g.legal_actions().contains(&Action::Stop));
 }
 
+/// RULES.md §8.3 변형: 2인 판만 스톱 5점 이하.
+fn stop5() -> Rules {
+    let mut r = Rules::default();
+    r.stop.two_player_limit = Some(5);
+    r
+}
+
+fn can_stop(rules: Rules, list: &[&str]) -> bool {
+    game_with(rules, list, Some("2D"), &[])
+        .legal_actions()
+        .contains(&Action::Stop)
+}
+
+#[test]
+fn stop5_heads_up_limit_is_five() {
+    assert!(can_stop(stop5(), &["AS 4C", "KS"])); // 5점
+    assert!(!can_stop(stop5(), &["AS 5C", "KS"])); // 6점
+    let g = game_with(stop5(), &["AS 4C", "KS"], Some("2D"), &[]);
+    assert_eq!(g.observation(0).stop_limit, 5);
+}
+
+#[test]
+fn stop5_three_players_keep_ten() {
+    assert!(can_stop(stop5(), &["AS 2S 3D 4C", "KS", "QS"])); // 10점
+    assert!(!can_stop(stop5(), &["AS 2S 3D 5C", "KS", "QS"])); // 11점
+    let g = game_with(stop5(), &["AS 2S 3D 4C", "KS", "QS"], Some("2D"), &[]);
+    assert_eq!(g.observation(0).stop_limit, 10);
+}
+
+#[test]
+fn heads_up_without_variant_keeps_ten() {
+    assert!(can_stop(Rules::default(), &["AS 2S 3D 4C", "KS"])); // 10점
+    let g = game_with(Rules::default(), &["AS 2S 3D 4C", "KS"], Some("2D"), &[]);
+    assert_eq!(g.observation(0).stop_limit, 10);
+}
+
 #[test]
 fn e5_e6_tie_with_caller_loses() {
     let (ok, winners, _) = stop_result(&["6S", "6H"]);

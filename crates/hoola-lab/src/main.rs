@@ -7,6 +7,7 @@
 //! ```text
 //! hoola-lab --deals 4000 --out lab-results.md
 //! hoola-lab --only H1 --deals 1000
+//! hoola-lab --only H0 --preset config/presets/heads_up_stop5.toml
 //! ```
 
 mod belief_lab;
@@ -17,7 +18,7 @@ use std::fmt::Write as _;
 use std::time::Instant;
 
 use hoola_core::arena::{MatchConfig, MatchReport, run_match};
-use hoola_core::{ExpertConfig, FirstPlayer, Rules};
+use hoola_core::{ExpertConfig, FirstPlayer, Rules, preset};
 
 const BASE: &str = "expert";
 
@@ -137,6 +138,7 @@ struct Args {
     out: Option<String>,
     only: Option<String>,
     players: Vec<usize>,
+    preset: Option<String>,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -146,6 +148,7 @@ fn parse_args() -> Result<Args, String> {
         out: None,
         only: None,
         players: vec![2, 3],
+        preset: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
@@ -155,6 +158,7 @@ fn parse_args() -> Result<Args, String> {
             "--seed" => a.seed = value()?.parse().map_err(|_| "bad --seed")?,
             "--out" => a.out = Some(value()?),
             "--only" => a.only = Some(value()?),
+            "--preset" => a.preset = Some(value()?),
             "--players" => {
                 a.players = value()?
                     .split(',')
@@ -209,14 +213,25 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let rules = Rules::default();
+    let loaded = match &args.preset {
+        Some(path) => preset::load(path),
+        None => Ok(preset::offline_casual()),
+    };
+    let preset = match loaded {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(2);
+        }
+    };
+    let rules = preset.rules;
     let started = Instant::now();
     let mut md = String::new();
     let _ = writeln!(md, "# hoola-lab 결과\n");
     let _ = writeln!(
         md,
-        "- 규칙: `offline_casual` · 딜 {} (듀플리케이트, 2인 판 수 = 딜 × 2, 3인 = 딜 × 3) · 시작 시드 {}",
-        args.deals, args.seed
+        "- 규칙: `{}` · 딜 {} (듀플리케이트, 2인 판 수 = 딜 × 2, 3인 = 딜 × 3) · 시작 시드 {}",
+        preset.name, args.deals, args.seed
     );
     let _ = writeln!(
         md,
@@ -374,7 +389,7 @@ fn main() {
             let lineup = vec![BASE; n];
             let table = stop_table::collect(&lineup, BASE, args.deals * 3, args.seed, &rules);
             let _ = writeln!(md, "### {n}인\n");
-            stop_table::render(&table, rules.stop.limit, 200, n > 2, &mut md);
+            stop_table::render(&table, rules.stop.limit_for(n), 200, n > 2, &mut md);
             let _ = writeln!(md);
         }
         eprintln!("H8 done ({:.0}s)", started.elapsed().as_secs_f64());

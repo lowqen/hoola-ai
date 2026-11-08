@@ -84,6 +84,28 @@ fn replay_with_house_rules() {
 }
 
 #[test]
+fn replay_keeps_heads_up_stop5_variant() {
+    let toml = "[stop]
+two_player_limit = 5
+";
+    let rules = hoola_core::preset::parse(toml).unwrap().rules;
+    for seed in 0..20 {
+        let mut g = Game::new(rules.clone(), 2, seed, 1).unwrap();
+        let (mut a, mut b) = random_pair(seed);
+        let outcome = play_out(&mut g, &mut [&mut a as &mut dyn Bot, &mut b]);
+
+        let mut replay = Replay::new(toml, 2, seed, 1);
+        replay.record(&g);
+        let back = Replay::from_json(&replay.to_json()).unwrap();
+        let g2 = back.replay().unwrap();
+        assert_eq!(g2.rules(), &rules);
+        assert_eq!(g2.observation(0).stop_limit, 5);
+        assert_eq!(g2.outcome(), Some(&outcome));
+        assert_eq!(g2.events(), g.events());
+    }
+}
+
+#[test]
 fn replay_rejects_bad_input() {
     let mut replay = Replay::new("", 2, 1, 0);
     replay.actions = vec!["draw".into(), "draw".into()];

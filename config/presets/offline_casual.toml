@@ -51,6 +51,7 @@ on_initial_upcard = true          # [확정] 선은 첫 차례에 첫 공개패�
 [stop]                            # §8
 timing = "before_acquire"         # [확정]
 limit = 10                        # [확정] 손패 점수 ≤ limit, 인원 무관
+# two_player_limit = 5            # [선택] 2인 판 전용 한도 (§8.3 변형, heads_up_stop5.toml). 생략하면 limit
 requires_registration = false     # [확정]
 first_turn_allowed = true         # [확정]
 win_rule = "strictly_lowest"      # [확정] 동점 또는 더 낮은 사람 있으면 선언자 패배
