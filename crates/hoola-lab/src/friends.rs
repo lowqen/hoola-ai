@@ -181,6 +181,12 @@ pub fn friends(md: &mut String, deals: u64, seed: u64, rules: &Rules) {
     stop_specs.push(("규칙표 -,6,10,10".into(), "expert:stop=r-,6,10".into()));
     stop_specs.push(("규칙표 2,6,10,10".into(), "expert:stop=r2,6,10".into()));
     stop_specs.push(("규칙표 4,8,10,10".into(), "expert:stop=r4,8,10".into()));
+    // 2인 한도가 낮은 변형(heads_up_stop5)용 규칙표 후보
+    if rules.stop.limit_for(2) < rules.stop.limit {
+        for t in ["r-,2,4,5", "r-,3,5", "r-,2,5", "r-,-,5"] {
+            stop_specs.push((format!("규칙표 {}", &t[1..]), format!("expert:stop={t}")));
+        }
+    }
     stop_specs.push((
         "스톱 안 함 (나도 버티기)".into(),
         "expert:stop=never".into(),

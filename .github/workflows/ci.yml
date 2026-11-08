@@ -10,15 +10,21 @@ on:
   workflow_dispatch:
     inputs:
       experiment:
-        description: "수동 실험 (all | friends | search | belief)"
+        description: "수동 실험 (all | friends | search | belief | stop5 = S1·S2·S7)"
         type: choice
-        options: [all, friends, search, belief]
+        options: [all, friends, search, belief, stop5]
         default: all
+      preset:
+        description: "수동 실험 규칙 프리셋 (config/presets/*.toml)"
+        type: choice
+        options: [heads_up_stop5, offline_casual]
+        default: heads_up_stop5
 
 # 같은 브랜치에 새 푸시가 오면 이전 실행은 취소.
 # 이벤트별로 그룹을 나눠, 수동 실험(workflow_dispatch)이 push 실행(배포)을 취소하지 않게 한다.
+# 수동 실험끼리도 실험·프리셋이 다르면 서로 취소하지 않는다.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.experiment }}-${{ inputs.preset }}
   cancel-in-progress: true
 
 permissions:
@@ -179,7 +185,7 @@ jobs:
   lab-friends:
     name: Friend persona lab
     # 무거운 실험: 수동 실행(gh workflow run ci.yml -f experiment=...)일 때만
-    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'friends')
+    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'friends' || inputs.experiment == 'stop5')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -197,7 +203,7 @@ jobs:
         run: cargo build --locked --release -p hoola-lab
 
       - name: Run friend experiments (테이블당 약 10만 판)
-        run: ./target/release/hoola-lab --only F --deals 33334 --out friends-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+        run: ./target/release/hoola-lab --only F --deals 33334 --preset "config/presets/${{ inputs.preset }}.toml" --out friends-results.md | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -225,12 +231,51 @@ jobs:
         run: cargo build --locked --release -p hoola-lab
 
       - name: Run L3 probe
-        run: ./target/release/hoola-lab --only L3 --deals 1000 --out search-results.md | tee -a "$GITHUB_STEP_SUMMARY"
+        run: ./target/release/hoola-lab --only L3 --deals 1000 --preset "config/presets/${{ inputs.preset }}.toml" --out search-results.md | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v7
         with:
           name: search-results
           path: search-results.md
+
+  lab-study:
+    name: Variant study (S1·S2)
+    # 무거운 실험: 수동 실행(gh workflow run ci.yml -f experiment=stop5 -f preset=...)일 때만.
+    # 2인만 돈다. 10점 규칙 비교값은 같은 실행의 lab job(같은 시드)에서 얻는다.
+    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'stop5')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PRESET: config/presets/${{ inputs.preset }}.toml
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Build release
+        run: cargo build --locked --release -p hoola-lab
+
+      - name: S1 게임 모양 (H0, 셀프플레이 16,000판)
+        run: ./target/release/hoola-lab --only H0 --players 2 --deals 8000 --preset "$PRESET" --out s1.md
+
+      - name: S2 스톱 승률표 (H8) + 기준표 후보 (후보당 16,000판)
+        run: |
+          ./target/release/hoola-lab --only H8 --players 2 --deals 8000 --preset "$PRESET" --out s2-table.md
+          ./target/release/hoola-lab --only S2 --players 2 --deals 8000 --preset "$PRESET" --out s2-rules.md
+
+      - name: 결과 합치기
+        run: cat s1.md s2-table.md s2-rules.md | tee study-results.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: study-results
+          path: study-results.md
 
   # 웹은 WASM을 한 번만 빌드해 아티팩트로 나누고, 검사·E2E·Lighthouse를 병렬 job으로 돌린다.
   # 필수 체크 이름("Web practice app (SvelteKit)")은 마지막 게이트 job이 이어받는다.
@@ -441,8 +486,11 @@ jobs:
 
   pages:
     name: Deploy GitHub Pages
-    needs: [web]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.web.result == 'success'
+    # Rust 검사(test, fmt·clippy)가 실패해도 배포하지 않는다
+    needs: [test, lint, web]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.test.result == 'success' && needs.lint.result == 'success' && needs.web.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

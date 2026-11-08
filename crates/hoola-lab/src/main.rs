@@ -119,6 +119,23 @@ fn hypotheses() -> Vec<Hypothesis> {
             ],
         },
         Hypothesis {
+            id: "S2",
+            title: "1:1 스톱 5점 변형: 사람용 스톱 기준표",
+            question: "`heads_up_stop5`에서 외울 기준표 후보가 확률 계산(기준 c0.9)만큼 강한가? 사양 `stop=r1장,2장,3장 이상` (`-`는 스톱 안 함). --only S2로만 돈다",
+            candidates: vec![
+                c("확률 ≥ 0.9", "expert:stop=c0.9"),
+                c("가능하면 스톱 (t5)", "expert:stop=t5"),
+                c("점수 ≤ 4", "expert:stop=t4"),
+                c("점수 ≤ 3", "expert:stop=t3"),
+                c("-,2,4,5", "expert:stop=r-,2,4,5"),
+                c("-,3,5", "expert:stop=r-,3,5"),
+                c("-,2,5", "expert:stop=r-,2,5"),
+                c("-,-,5", "expert:stop=r-,-,5"),
+                c("1,3,5", "expert:stop=r1,3,5"),
+                c("스톱 안 함", "expert:stop=never"),
+            ],
+        },
+        Hypothesis {
             id: "H7",
             title: "스톱 판단 샘플 수",
             question: "상대 손패를 몇 번 샘플링해야 스톱 판단이 충분히 정확한가?",
@@ -320,7 +337,12 @@ fn main() {
     }
 
     for h in hypotheses() {
-        if args.only.as_deref().is_some_and(|o| o != h.id) {
+        // S*(변형 규칙 연구)는 --only로 고를 때만 돈다
+        let selected = match args.only.as_deref() {
+            Some(o) => o == h.id,
+            None => !h.id.starts_with('S'),
+        };
+        if !selected {
             continue;
         }
         let mut jobs = Vec::new();
