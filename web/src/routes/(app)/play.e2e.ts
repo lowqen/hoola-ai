@@ -714,9 +714,9 @@ test.describe('과업 시나리오: 목표 탭 수', () => {
 	});
 });
 
-/** 등록하지 않고 큰 카드만 버려 봇에게 진다. */
+/** 등록하지 않고 큰 카드만 버려 봇에게 진다. 봇 지연은 기본값(60ms)으로 둔다 (900ms면 판 하나에 50초를 기다린다). */
 async function loseGame(page: Page) {
-	await seedStore(page, { seed: SEED.register, speed: 900 });
+	await seedStore(page, { seed: SEED.register });
 	await start(page);
 	for (let i = 0; i < 300; i++) {
 		await waitTurnOrOver(page);

@@ -4,6 +4,8 @@ on:
   push:
     # Dependabot 브랜치는 pull_request 실행만 (중복 방지)
     branches-ignore: ["dependabot/**"]
+    # 문서만 바뀐 push는 건너뛴다. PR은 필수 체크가 멈추지 않게 항상 돌린다.
+    paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -230,15 +232,12 @@ jobs:
           name: search-results
           path: search-results.md
 
-  web:
-    name: Web practice app (SvelteKit)
+  # 웹은 WASM을 한 번만 빌드해 아티팩트로 나누고, 검사·E2E·Lighthouse를 병렬 job으로 돌린다.
+  # 필수 체크 이름("Web practice app (SvelteKit)")은 마지막 게이트 job이 이어받는다.
+  wasm:
+    name: Web WASM build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      BASE_PATH: /hoola-ai
-    defaults:
-      run:
-        working-directory: web
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -258,20 +257,48 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
 
       - name: Build WASM → static/pkg
-        working-directory: .
         run: |
           wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web/static/pkg --no-pack -- --locked
           rm -f web/static/pkg/.gitignore
 
       - name: WASM 바인딩 스모크 (Node)
-        working-directory: .
         run: |
           wasm-pack build crates/hoola-wasm --release --target nodejs --out-dir ../../target/pkg-node --no-pack -- --locked
           node crates/hoola-wasm/tests/node-smoke.cjs target/pkg-node
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm-pkg
+          path: web/static/pkg
+          retention-days: 1
+
+  web-check:
+    name: Web check & build
+    needs: [wasm]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_PATH: /hoola-ai
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-pkg
+          path: web/static/pkg
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Install
         run: npm ci
@@ -290,33 +317,132 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: E2E (Chromium)
-        run: |
-          npx playwright install --with-deps chromium
-          npx playwright test
-
-      - name: Lighthouse (모바일, 중앙값)
-        run: npx -y @lhci/cli@0.16.0 autorun
-
       - uses: actions/upload-artifact@v7
         with:
           name: hoola-web
           path: web/build
 
+  e2e:
+    name: Web E2E (${{ matrix.shard }}/2)
+    needs: [wasm]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      BASE_PATH: /hoola-ai
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-pkg
+          path: web/static/pkg
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # webServer가 빌드 후 vite preview를 띄운다 (playwright.config.ts)
+      - name: E2E (Chromium)
+        run: npx playwright test --shard=${{ matrix.shard }}/2
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: web-reports
+          name: e2e-report-${{ matrix.shard }}
           path: |
-            web/.lighthouseci
             web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+
+  lighthouse:
+    name: Lighthouse (${{ matrix.name }})
+    needs: [wasm]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      # 페이지 6개 × 3회를 job 3개로 나눈다. URL 목록은 lighthouserc.json의 것을 덮어쓴다.
+      matrix:
+        include:
+          - name: home·theme
+            urls: --collect.url=http://localhost:4174/hoola-ai/ --collect.url=http://localhost:4174/hoola-ai/theme/
+          - name: gallery·motion
+            urls: --collect.url=http://localhost:4174/hoola-ai/gallery/ --collect.url=http://localhost:4174/hoola-ai/motion/
+          - name: train·records
+            urls: --collect.url=http://localhost:4174/hoola-ai/train/ --collect.url=http://localhost:4174/hoola-ai/records/
+    env:
+      BASE_PATH: /hoola-ai
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-pkg
+          path: web/static/pkg
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install & build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Lighthouse (모바일, 중앙값)
+        run: npx -y @lhci/cli@0.16.0 autorun ${{ matrix.urls }}
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-${{ strategy.job-index }}
+          path: web/.lighthouseci
           include-hidden-files: true
           if-no-files-found: ignore
+
+  web:
+    name: Web practice app (SvelteKit)
+    # 필수 체크. 앞 job이 실패하거나 취소되면 이 job도 실패해야 하므로 always()로 돌린다
+    # (건너뛴 job은 필수 체크에서 통과로 친다).
+    needs: [wasm, web-check, e2e, lighthouse]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 웹 job 결과 확인
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "결과: $RESULTS"
+          for r in $RESULTS; do [ "$r" = success ] || exit 1; done
 
   pages:
     name: Deploy GitHub Pages
     needs: [web]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.web.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
