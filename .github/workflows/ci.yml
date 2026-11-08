@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    # Dependabot 브랜치는 pull_request 실행만 (중복 방지)
+    branches-ignore: ["dependabot/**"]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -33,25 +34,24 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Build
-        run: cargo build --workspace --all-targets
+        run: cargo build --locked --workspace --all-targets
 
       - name: Test
-        run: cargo test --workspace --all-targets
+        run: cargo test --locked --workspace --all-targets
 
       - name: Doc tests
-        run: cargo test --workspace --doc
+        run: cargo test --locked --workspace --doc
 
-      # 임시: Cargo.lock을 커밋하려고 CI가 만든 파일을 받는다 (A1)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cargo-lock-workspace
-          path: Cargo.lock
 
   lint:
     name: Format & Clippy
@@ -59,18 +59,21 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-
-      - uses: dtolnay/rust-toolchain@stable
         with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Format
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
 
   bench:
     name: Simulation benchmark
@@ -78,13 +81,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Build release
-        run: cargo build --release -p hoola-sim
+        run: cargo build --locked --release -p hoola-sim
 
       - name: 2인 Greedy vs Random (듀플리케이트)
         run: ./target/release/hoola-sim --players 2 --games 20000 --bots greedy,random | tee -a "$GITHUB_STEP_SUMMARY"
@@ -101,16 +108,19 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
         with:
+          toolchain: stable
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates/hoola-py
 
@@ -118,23 +128,18 @@ jobs:
         working-directory: crates/hoola-py
         run: |
           cargo fmt --check
-          cargo clippy --all-targets -- -D warnings
+          cargo clippy --locked --all-targets -- -D warnings
 
       - name: Build wheel
         run: |
           python -m pip install "maturin>=1.8,<2"
-          maturin build --release -m crates/hoola-py/Cargo.toml -o dist
+          maturin build --locked --release -m crates/hoola-py/Cargo.toml -o dist
 
       - name: Install wheel & pytest
         run: |
           python -m pip install dist/*.whl "pytest>=8"
           python -m pytest -q crates/hoola-py/tests
 
-      # 임시: Cargo.lock을 커밋하려고 CI가 만든 파일을 받는다 (A1)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cargo-lock-py
-          path: crates/hoola-py/Cargo.lock
 
       - uses: actions/upload-artifact@v4
         with:
@@ -147,13 +152,17 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Build release
-        run: cargo build --release -p hoola-lab
+        run: cargo build --locked --release -p hoola-lab
 
       - name: Run hypotheses
         run: ./target/release/hoola-lab --deals 8000 --out lab-results.md | tee -a "$GITHUB_STEP_SUMMARY"
@@ -171,13 +180,17 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Build release
-        run: cargo build --release -p hoola-lab
+        run: cargo build --locked --release -p hoola-lab
 
       - name: Run friend experiments (테이블당 약 10만 판)
         run: ./target/release/hoola-lab --only F --deals 33334 --out friends-results.md | tee -a "$GITHUB_STEP_SUMMARY"
@@ -195,13 +208,17 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Build release
-        run: cargo build --release -p hoola-lab
+        run: cargo build --locked --release -p hoola-lab
 
       - name: Run L3 probe
         run: ./target/release/hoola-lab --only L3 --deals 1000 --out search-results.md | tee -a "$GITHUB_STEP_SUMMARY"
@@ -222,16 +239,19 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v5
-
-      - uses: dtolnay/rust-toolchain@stable
         with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
           targets: wasm32-unknown-unknown
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
-          tool: wasm-pack
+          tool: wasm-pack@0.15.1
 
       - uses: actions/setup-node@v4
         with:
@@ -242,13 +262,13 @@ jobs:
       - name: Build WASM → static/pkg
         working-directory: .
         run: |
-          wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web/static/pkg --no-pack
+          wasm-pack build crates/hoola-wasm --release --target web --out-dir ../../web/static/pkg --no-pack -- --locked
           rm -f web/static/pkg/.gitignore
 
       - name: WASM 바인딩 스모크 (Node)
         working-directory: .
         run: |
-          wasm-pack build crates/hoola-wasm --release --target nodejs --out-dir ../../target/pkg-node --no-pack
+          wasm-pack build crates/hoola-wasm --release --target nodejs --out-dir ../../target/pkg-node --no-pack -- --locked
           node crates/hoola-wasm/tests/node-smoke.cjs target/pkg-node
 
       - name: Install

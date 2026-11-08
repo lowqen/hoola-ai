@@ -1,0 +1,72 @@
+# 의존성 보안 점검 (docs/PLAN_SECURITY_STOP5.md A4)
+# 권고 DB는 코드가 안 바뀌어도 매일 갱신되므로 주 1회 정기 실행도 한다.
+name: Security
+
+on:
+  push:
+    branches-ignore: ["dependabot/**"]
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 1" # 월요일 09:00 KST
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-deny:
+    name: cargo-deny (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: workspace
+            manifest: Cargo.toml
+          - name: hoola-py
+            manifest: crates/hoola-py/Cargo.toml
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          manifest-path: ${{ matrix.manifest }}
+          command: check
+          command-arguments: --config deny.toml
+
+  npm-audit:
+    name: npm audit (web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # 빌드용 개발 의존성의 low 등급(deepmerge)은 통과시키고 high 이상만 막는다
+      - name: npm audit
+        run: npm audit --audit-level=high
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high

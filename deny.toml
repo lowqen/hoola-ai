@@ -1,0 +1,29 @@
+# cargo-deny 설정 (docs/PLAN_SECURITY_STOP5.md A4)
+# CI: 워크스페이스와 crates/hoola-py 두 곳을 검사한다.
+
+[advisories]
+# RustSec 권고 DB. 취약점은 항상 실패, 회수(yanked)된 버전도 실패.
+yanked = "deny"
+ignore = []
+
+[licenses]
+# 의존성에서 허용하는 라이선스. 새 라이선스가 들어오면 CI가 실패하고, 확인 뒤 추가한다.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-3-Clause",
+  "Unicode-3.0",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+ignore = true # publish = false인 우리 크레이트
+
+[bans]
+multiple-versions = "warn"
+wildcards = "warn" # 워크스페이스 내부 path 의존성은 버전이 없다
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

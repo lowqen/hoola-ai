@@ -1,0 +1,67 @@
+# 의존성 버전 업데이트 (docs/PLAN_SECURITY_STOP5.md A2)
+# 보안 업데이트는 이 일정과 상관없이 바로 PR로 온다 (저장소 설정에서 켬).
+# 병합은 사람이 한다: main에 들어가면 Pages에 바로 배포된다.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    cooldown:
+      default-days: 7 # 갓 나온 버전은 7일 뒤에 제안한다 (공급망 공격 완충)
+    groups:
+      rust-minor:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(cargo)"
+
+  - package-ecosystem: cargo
+    directory: /crates/hoola-py # 워크스페이스 밖의 별도 크레이트
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    cooldown:
+      default-days: 7
+    groups:
+      py-minor:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps(py)"
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    cooldown:
+      default-days: 7
+    groups:
+      svelte:
+        patterns: ["svelte", "@sveltejs/*", "svelte-check", "prettier-plugin-svelte"]
+      web-minor:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(web)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Asia/Seoul
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(ci)"
