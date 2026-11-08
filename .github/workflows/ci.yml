@@ -128,17 +128,23 @@ jobs:
         working-directory: crates/hoola-py
         run: |
           cargo fmt --check
-          cargo clippy --locked --all-targets -- -D warnings
+          cargo clippy --all-targets -- -D warnings  # TEMP-LOCK
 
       - name: Build wheel
         run: |
           python -m pip install "maturin>=1.8,<2"
-          maturin build --locked --release -m crates/hoola-py/Cargo.toml -o dist
+          maturin build --release -m crates/hoola-py/Cargo.toml -o dist
 
       - name: Install wheel & pytest
         run: |
           python -m pip install dist/*.whl "pytest>=8"
           python -m pytest -q crates/hoola-py/tests
+
+      # TEMP-LOCK: pyo3 업그레이드로 바뀐 lock 파일을 받는다
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cargo-lock-py
+          path: crates/hoola-py/Cargo.lock
 
 
       - uses: actions/upload-artifact@v4

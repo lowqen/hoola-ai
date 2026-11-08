@@ -264,7 +264,7 @@ fn simulate<'py>(
         bots,
         duplicate,
     };
-    let report = py.allow_threads(|| run_match(&cfg)).map_err(value_err)?;
+    let report = py.detach(|| run_match(&cfg)).map_err(value_err)?;
     let d = PyDict::new(py);
     d.set_item("games", report.games)?;
     d.set_item("deals", report.deals)?;
