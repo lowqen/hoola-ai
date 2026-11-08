@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       experiment:
-        description: "수동 실험 (all | friends | search | belief | stop5 = S1·S2·S7)"
+        description: "수동 실험 (all | friends | search | belief | study = 변형 S1~S6 | stop5 = study + friends)"
         type: choice
-        options: [all, friends, search, belief, stop5]
+        options: [all, friends, search, belief, study, stop5]
         default: all
       preset:
         description: "수동 실험 규칙 프리셋 (config/presets/*.toml)"
@@ -239,10 +239,10 @@ jobs:
           path: search-results.md
 
   lab-study:
-    name: Variant study (S1·S2)
-    # 무거운 실험: 수동 실행(gh workflow run ci.yml -f experiment=stop5 -f preset=...)일 때만.
+    name: Variant study (S1~S6)
+    # 수동 실행(gh workflow run ci.yml -f experiment=study|stop5 -f preset=...)일 때만.
     # 2인만 돈다. 10점 규칙 비교값은 같은 실행의 lab job(같은 시드)에서 얻는다.
-    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'stop5')
+    if: github.event_name == 'workflow_dispatch' && (inputs.experiment == 'all' || inputs.experiment == 'study' || inputs.experiment == 'stop5')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -269,8 +269,15 @@ jobs:
           ./target/release/hoola-lab --only H8 --players 2 --deals 8000 --preset "$PRESET" --out s2-table.md
           ./target/release/hoola-lab --only S2 --players 2 --deals 8000 --preset "$PRESET" --out s2-rules.md
 
+      - name: S3 등록 · S4 7 단독(H3) · S6 땡큐(H4) · S5 땡큐 위험(H5)·조각 보존 (S5는 후보당 32,000판)
+        run: |
+          for id in S3 H3 H4 H5; do
+            ./target/release/hoola-lab --only "$id" --players 2 --deals 8000 --preset "$PRESET" --out "s-$id.md"
+          done
+          ./target/release/hoola-lab --only S5 --players 2 --deals 16000 --preset "$PRESET" --out s-S5.md
+
       - name: 결과 합치기
-        run: cat s1.md s2-table.md s2-rules.md | tee study-results.md >> "$GITHUB_STEP_SUMMARY"
+        run: cat s1.md s2-table.md s2-rules.md s-S3.md s-H3.md s-H4.md s-H5.md s-S5.md | tee study-results.md >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v7
         with:
