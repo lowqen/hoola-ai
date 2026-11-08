@@ -249,3 +249,11 @@ B1~B2는 웹 변경 없이 먼저 끝낼 수 있다. B5는 S2 결과(모드별 �
   - 교훈: path 의존성을 공유하는 두 Cargo 디렉터리는 Dependabot이 PR을 따로 만든다. 같은 크레이트가 올라가면 lock 두 개를 한 PR로 합쳐야 한다.
 - 2026-11-09 B0 완료: 친구 E 사양을 `expert:stop=t10:meld=dump:outs=1`로 바꿨다(3c46206: lab, 웹 봇, 훈련 문제 생성). 10점 규칙으로 F를 다시 잰 결과는 `docs/lab/2026-11-09-friends-model-e-fix.md`에 있다. 2인 E 상대 전략서 71.6%(옛 73.3%), Greedy 70.3%, 나도 버티기 50.6%이고, 기준표가 최선과 0.2%p 이내다. STRATEGY §6.0과 TRAINING 3단계 수치를 고쳤고, 옛 기록에는 대체 표시를 달았다.
   - 발견: 수동 실험(workflow_dispatch)이 같은 concurrency 그룹이라 `main` push 실행을 취소했다. 그래서 3c46206은 배포되지 않았다. 그룹에 이벤트 이름을 넣어 고쳤다.
+- 2026-11-09 CI 고속화(44f1926): push 실행 전체가 **9분 40초 → 3분 2초~3분 16초**로 줄었다. Rust job은 캐시 덕에 원래 1분 이내였고, 병목은 웹 job 하나(9분 15초: E2E 4분 46초, Lighthouse 3분 29초)였다.
+  - 웹 job을 `wasm`(WASM 빌드·Node 스모크, `wasm-pkg` 아티팩트) → `web-check`(토큰·아이콘·check·lint·빌드, 배포 아티팩트) / `e2e` 2샤드 / `lighthouse` 3샤드(페이지 2개씩, `--collect.url`로 덮어씀) 병렬로 나눴다. 필수 체크 이름 `Web practice app (SvelteKit)`은 `always()`로 도는 게이트 job이 이어받아 ruleset을 바꾸지 않았다.
+  - E2E: `play.e2e.ts`의 36개가 한 워커에서 직렬로 돌았다. `fullyParallel: true`로 나눴다(테스트마다 새 컨텍스트에 저장소를 심어 공유 상태가 없다). 복기 테스트 4개의 `loseGame`이 봇 지연 900ms라 테스트당 약 50초를 기다렸다. 기본값 60ms로 바꿨다(로컬에서 4개 통과).
+  - 문서(`**/*.md`, `docs/**`)만 바뀐 push는 CI와 보안 점검을 건너뛴다. PR은 필수 체크가 멈추지 않도록 CI를 항상 돌린다.
+  - 참고: Pages 배포는 웹 게이트만 기다린다(전부터 그랬다). 705448a는 rustfmt 실패 상태로 배포됐고, 28ab8b9에서 고쳤다.
+- 2026-11-09 B1 완료(705448a, 28ab8b9): B.3대로 `StopRules.two_player_limit`과 `limit_for(players)`를 추가했다. `can_stop`, 관측값 `stop_limit`(WASM이 그대로 내보냄), 전문가 봇 `hold` 기준, lab 스톱 표(H8, F3)가 실제 판 인원의 한도를 쓴다. `config/presets/heads_up_stop5.toml`, RULES.md §8.3과 v1.3 변경 이력을 추가했고, `offline_casual.toml`에는 주석으로 키를 안내했다. 테스트: rules_spec 3개(2인 5점 가능·6점 불가, 3인 10점 가능, 변형 없는 2인 10점 가능), 프리셋 파싱(키 없음·있음·잘못된 타입, `heads_up_stop5` 로드), 변형 리플레이 왕복. CI test·fmt·clippy 통과.
+  - B2 일부도 했다: lab `--preset PATH`와 결과 머리말의 프리셋 이름. 남은 B2: `ci.yml` 수동 실행 입력 `preset`과 `heads_up_stop5` H0 수동 실행.
+  - 웹은 바꾸지 않았다. 웹은 `two_player_limit`을 넣지 않으므로 동작이 같다.
