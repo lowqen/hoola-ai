@@ -22,7 +22,10 @@ pub const CANDIDATES: &[(&str, &str)] = &[
     ("+ 등록 탐색 + 베이즈", "search:k=128:meld=1:belief=bayes"),
     ("+ 둘 다, 기준 z=1", "search:k=128:meld=1:belief=bayes:z=1"),
     ("+ 둘 다, k=256", "search:k=256:meld=1:belief=bayes"),
-    ("+ 둘 다, 스톱도 탐색", "search:k=128:meld=1:belief=bayes:stop=1"),
+    (
+        "+ 둘 다, 스톱도 탐색",
+        "search:k=128:meld=1:belief=bayes:stop=1",
+    ),
 ];
 
 /// 믿음 진단 변형 (이름, 증거 강도). `None`은 학습된 표만.
@@ -71,7 +74,12 @@ fn diagnose(n: usize, deals: std::ops::Range<u64>, seed: u64, rules: &Rules) -> 
         let (game_seed, first) = deal_setup(rules, n, seed, deal);
         let mut game = Game::new(rules.clone(), n, game_seed, first).expect("valid rules");
         let mut bots: Vec<ExpertBot> = (0..n)
-            .map(|s| ExpertBot::new(ExpertConfig::default(), game_seed.wrapping_mul(1000) + s as u64))
+            .map(|s| {
+                ExpertBot::new(
+                    ExpertConfig::default(),
+                    game_seed.wrapping_mul(1000) + s as u64,
+                )
+            })
             .collect();
         let mut rng = hoola_core::Rng::seed_from_u64(game_seed ^ 0xD1A6);
         while !game.is_over() {
@@ -217,7 +225,11 @@ fn add(a: &mut [f64], b: &[f64]) {
 
 fn merged(reports: &[MatchReport], bot: &str) -> (f64, f64) {
     let k = reports.len() as f64;
-    let mean = reports.iter().map(|r| r.bot(bot).unwrap().mean).sum::<f64>() / k;
+    let mean = reports
+        .iter()
+        .map(|r| r.bot(bot).unwrap().mean)
+        .sum::<f64>()
+        / k;
     let ci = reports
         .iter()
         .map(|r| r.bot(bot).unwrap().ci95.powi(2))

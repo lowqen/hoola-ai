@@ -116,9 +116,7 @@ impl SearchConfig {
                         .ok_or_else(|| format!("bad bc: {value:?}"))?
                 }
                 "br" => {
-                    cfg.bayes.recent = value
-                        .parse()
-                        .map_err(|_| format!("bad br: {value:?}"))?
+                    cfg.bayes.recent = value.parse().map_err(|_| format!("bad br: {value:?}"))?
                 }
                 _ => return Err(format!("unknown search option {key:?}")),
             }
@@ -363,7 +361,8 @@ mod tests {
                 break;
             }
             let s = g.current_player();
-            let a = ExpertBot::new(ExpertConfig::default(), 7).act(&g.observation(s), &g.legal_actions());
+            let a = ExpertBot::new(ExpertConfig::default(), 7)
+                .act(&g.observation(s), &g.legal_actions());
             g.apply(a).unwrap();
         }
         let s = g.current_player();
