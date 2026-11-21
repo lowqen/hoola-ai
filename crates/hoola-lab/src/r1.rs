@@ -14,18 +14,22 @@ use hoola_core::{Bot, ExpertBot, ExpertConfig, Game, Rules};
 use crate::rating::{deal_setup, par_map};
 use crate::run_all;
 
-/// 탐색 봇 후보 (이름, 사양).
+/// 탐색 봇 후보 (이름, 사양). 1차 결과(등록 탐색 +1.3%p, z=1 +1.0%p, 베이즈·스톱 탐색은 미미)는
+/// docs/lab/2026-11-21-r1-search.md. 지금은 2차: 바꾸는 기준과 베이즈 강도, 샘플 수.
 pub const CANDIDATES: &[(&str, &str)] = &[
-    ("현재 웹 탐색 봇", "search:k=128"),
-    ("+ 등록 탐색", "search:k=128:meld=1"),
-    ("+ 베이즈 믿음", "search:k=128:belief=bayes"),
-    ("+ 등록 탐색 + 베이즈", "search:k=128:meld=1:belief=bayes"),
-    ("+ 둘 다, 기준 z=1", "search:k=128:meld=1:belief=bayes:z=1"),
-    ("+ 둘 다, k=256", "search:k=256:meld=1:belief=bayes"),
+    ("1차 최고 (z=1)", "search:k=128:meld=1:belief=bayes:z=1"),
+    ("z=0.5", "search:k=128:meld=1:belief=bayes:z=0.5"),
+    ("z=0 (가장 좋은 수)", "search:k=128:meld=1:belief=bayes:z=0"),
     (
-        "+ 둘 다, 스톱도 탐색",
-        "search:k=128:meld=1:belief=bayes:stop=1",
+        "z=1, 강한 베이즈",
+        "search:k=128:meld=1:belief=bayes:z=1:bp=0.02:bm=0.1:bd=0.5",
     ),
+    ("z=1, k=256", "search:k=256:meld=1:belief=bayes:z=1"),
+    (
+        "z=0.5, k=256, 강한 베이즈",
+        "search:k=256:meld=1:belief=bayes:z=0.5:bp=0.02:bm=0.1:bd=0.5",
+    ),
+    ("z=1, 베이즈 없음", "search:k=128:meld=1:z=1"),
 ];
 
 /// 믿음 진단 변형 (이름, 증거 강도). `None`은 학습된 표만.
@@ -44,6 +48,8 @@ fn belief_variants() -> Vec<(&'static str, Option<BayesParams>)> {
         ("남은 조합만", Some(only(1.0, d.meld, 1.0))),
         ("버림만", Some(only(1.0, 1.0, d.discard))),
         ("강하게 (0.02, 0.1, 0.5)", Some(only(0.02, 0.1, 0.5))),
+        ("더 강하게 (0.01, 0.05, 0.4)", Some(only(0.01, 0.05, 0.4))),
+        ("버림 강하게 (0.02, 0.1, 0.3)", Some(only(0.02, 0.1, 0.3))),
         (
             "후보 64",
             Some(BayesParams {
