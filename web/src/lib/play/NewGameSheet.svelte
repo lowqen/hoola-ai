@@ -5,12 +5,13 @@
 	import Chip from '#lib/ui/Chip.svelte';
 	import SegmentedButton from '#lib/ui/SegmentedButton.svelte';
 	import Switch from '#lib/ui/Switch.svelte';
-	import { BOTS, PRESETS, presetOf } from './bots.ts';
+	import { botAbout, BOTS, PRESETS, presetOf } from './bots.ts';
 	import { session } from './session.svelte.ts';
 
 	const settings = $derived(session.settings);
 	let custom = $state(false);
 	const preset = $derived(custom ? null : presetOf(settings));
+	const about = (key: string) => botAbout(key, settings.players, !!settings.stop5);
 
 	function setPlayers(value: string) {
 		settings.players = +value;
@@ -65,13 +66,13 @@
 	<div class="chips" data-testid="presets">
 		{#each PRESETS as id (id)}
 			<Chip kind="filter" selected={preset === id} onclick={() => choosePreset(id)}
-				>{BOTS[id].name}</Chip
+				>{BOTS[id].name} <span class="level">{BOTS[id].level}</span></Chip
 			>
 		{/each}
 		<Chip kind="filter" selected={preset === null} onclick={() => (custom = true)}>직접</Chip>
 	</div>
 	{#if preset}
-		<p class="desc" data-testid="preset-desc">{BOTS[preset].desc}</p>
+		<p class="desc" data-testid="preset-desc">{about(preset)}</p>
 	{:else}
 		<div class="custom">
 			{#each settings.opponents.slice(0, settings.players - 1) as opponent, i (i)}
@@ -85,9 +86,10 @@
 						}}
 					>
 						{#each Object.entries(BOTS) as [key, bot] (key)}
-							<option value={key}>{bot.name} · {bot.desc}</option>
+							<option value={key}>{bot.name} · {bot.level}</option>
 						{/each}
 					</select>
+					<span class="desc">{about(opponent)}</span>
 				</label>
 			{/each}
 		</div>
@@ -181,6 +183,15 @@
 		font-size: var(--md-sys-typescale-title-small-size);
 		font-weight: 700;
 		color: var(--md-sys-color-on-surface-variant);
+	}
+	.level {
+		margin-left: 2px;
+		padding: 0 6px;
+		border-radius: var(--md-sys-shape-corner-extra-small);
+		background: var(--md-sys-color-secondary-container);
+		color: var(--md-sys-color-on-secondary-container);
+		font-size: var(--md-sys-typescale-label-small-size);
+		font-weight: 600;
 	}
 	.chips {
 		display: flex;

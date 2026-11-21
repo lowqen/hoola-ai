@@ -5,6 +5,7 @@ import { expectFrom, flyBack, scaled, setMotionSpeed } from '#lib/game/motion.sv
 import type { MeldInfo } from '#lib/game/MeldGroup.svelte';
 import type { SeatInfo } from '#lib/game/Seat.svelte';
 import {
+	botMove,
 	hint as requestHint,
 	loadEngine,
 	type Engine,
@@ -27,7 +28,14 @@ import type { ReviewContext } from '#lib/review/analysis.ts';
 import type { NotebookItem, PuzzleKind } from '#lib/train/drills.ts';
 import { snackbar } from '#lib/ui/snackbar.svelte.ts';
 import { actionText, meldOrder, parseAction, type Observation, type Outcome } from './actions.ts';
-import { BOTS, botName, DEFAULT_SETTINGS, normalizeSettings } from './bots.ts';
+import {
+	botAbout,
+	BOTS,
+	botName,
+	DEFAULT_SETTINGS,
+	normalizeSettings,
+	withSubject
+} from './bots.ts';
 
 const HUMAN = 0;
 const HINT_K = 96;
@@ -184,7 +192,11 @@ class PlaySession {
 				count,
 				registered: obs.registered[seat],
 				last: last[seat] ? this.actText(last[seat], obs) : undefined,
-				about: BOTS[this.config?.opponents[i] ?? '']?.desc
+				about: botAbout(
+					this.config?.opponents[i] ?? '',
+					obs.hand_counts.length,
+					!!this.config?.stop5
+				)
 			};
 		});
 	}
@@ -384,15 +396,28 @@ class PlaySession {
 			if (this.settings.beginner && this.settings.autoHint) void this.runHint();
 			return;
 		}
-		this.timer = setTimeout(() => {
+		this.timer = setTimeout(async () => {
 			const seat = game.currentPlayer;
 			const before = this.obs!;
+			const moves = game.actionCount;
 			const spec = BOTS[this.config!.opponents[seat - 1]].spec;
-			const action = game.botAction(spec, seat);
+			const action = await this.botMove(game, spec, seat);
+			// 기다리는 동안 새 판·되돌리기로 판이 바뀌었으면 버린다
+			if (this.game !== game || game.actionCount !== moves) return;
 			game.apply(action);
 			this.stage(seat, action, before);
 			this.step();
 		}, this.settings.speed);
+	}
+
+	/** 봇의 수. 탐색 봇은 무거워서 워커에서 두고, 실패하면 전략서 봇으로 대신 둔다. */
+	private async botMove(game: WasmGame, spec: string, seat: number): Promise<string> {
+		if (!spec.startsWith('search')) return game.botAction(spec, seat);
+		try {
+			return await botMove(game.replayJson(), spec, seat);
+		} catch {
+			return this.game === game ? game.botAction('expert', seat) : '';
+		}
 	}
 
 	/** 방금 둔 수의 카드 출발지를 알린다. 손패·바닥·버림패 사이 이동은 자동으로 날아간다. */
@@ -677,11 +702,11 @@ class PlaySession {
 		if (out.reason === 'out') {
 			return points > limit
 				? {
-						cause: `${limit}점 이하가 되기 전에 ${name(out.player ?? 0)}가 털었다 → 훈련: 조합 찾기`,
+						cause: `${limit}점 이하가 되기 전에 ${withSubject(name(out.player ?? 0))} 털었다 → 훈련: 조합 찾기`,
 						drill: 'meld'
 					}
 				: {
-						cause: `스톱할 수 있는 점수였는데 ${name(out.player ?? 0)}가 먼저 털었다 → 훈련: 스톱 판단`,
+						cause: `스톱할 수 있는 점수였는데 ${withSubject(name(out.player ?? 0))} 먼저 털었다 → 훈련: 스톱 판단`,
 						drill: 'stop'
 					};
 		}

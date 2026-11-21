@@ -239,9 +239,9 @@
 		<div class="row">
 			<Chip icon="help">규칙 보기</Chip>
 			<Chip icon="replay" elevated>같은 패 다시</Chip>
-			<Chip kind="filter" bind:selected={filters.friend}>친구</Chip>
-			<Chip kind="filter" bind:selected={filters.expert}>고수</Chip>
-			<Chip kind="filter" bind:selected={filters.greedy}>초보</Chip>
+			<Chip kind="filter" bind:selected={filters.friend}>친구모델</Chip>
+			<Chip kind="filter" bind:selected={filters.expert}>전략서</Chip>
+			<Chip kind="filter" bind:selected={filters.greedy}>즉시스톱</Chip>
 			<Chip kind="assist" disabled>비활성</Chip>
 		</div>
 		<div class="row">
@@ -362,7 +362,7 @@
 			]}
 		/>
 		<div class="device" data-testid="device">
-			<TopAppBar title="훌라" subtitle="2인 · 친구" scrolled={false} sticky={false}>
+			<TopAppBar title="훌라" subtitle="2인 · 친구모델" scrolled={false} sticky={false}>
 				{#snippet actions()}
 					<IconButton icon="undo" label="되돌리기" />
 					<IconButton icon="more_vert" label="더보기" />
@@ -431,8 +431,8 @@
 			]}
 		/>
 		<div class="row">
-			<Chip kind="filter" bind:selected={filters.friend}>친구</Chip>
-			<Chip kind="filter" bind:selected={filters.expert}>고수</Chip>
+			<Chip kind="filter" bind:selected={filters.friend}>친구모델</Chip>
+			<Chip kind="filter" bind:selected={filters.expert}>전략서</Chip>
 		</div>
 		<Switch label="초보자 모드" bind:checked={beginner} />
 		<Button

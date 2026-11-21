@@ -85,35 +85,37 @@ export interface SelfTest {
 	ms: number;
 }
 
-/** 엔진 동작 확인 (워커): 전문가 봇 2명이 한 판을 끝까지 둔다. */
-export function selfTest(seed = 2026): Promise<SelfTest> {
+type AskKind = 'selfTest' | 'hint' | 'botMove' | 'puzzle';
+type Answer<K extends AskKind> = Extract<WorkerResponse, { ok: true; kind: K }>;
+
+/** 요청 하나에 응답 하나인 워커 호출. */
+function ask<K extends AskKind>(
+	kind: K,
+	body: Omit<Extract<WorkerRequest, { kind: K }>, 'id' | 'kind' | 'pkgUrl'>
+): Promise<Answer<K>> {
 	const id = ++nextId;
 	return new Promise((resolve, reject) => {
 		pending.set(id, (r) => {
-			if (r.ok && r.kind === 'selfTest') resolve(r);
+			if (r.ok && r.kind === kind) resolve(r as Answer<K>);
 			else reject(new Error(r.ok ? '응답 종류가 다르다' : r.error));
 		});
-		const req: WorkerRequest = { id, kind: 'selfTest', pkgUrl: enginePkgUrl(), seed };
-		engineWorker().postMessage(req);
+		engineWorker().postMessage({ ...body, id, kind, pkgUrl: enginePkgUrl() });
 	});
 }
 
+/** 엔진 동작 확인 (워커): 전문가 봇 2명이 한 판을 끝까지 둔다. */
+export const selfTest = (seed = 2026): Promise<SelfTest> => ask('selfTest', { seed });
+
 /** L3 힌트 (워커): 지금까지의 기보로 판을 복원해 수마다 추정 승률을 낸다. */
-export function hint(
+export const hint = (
 	replay: string,
 	k: number,
 	seed: number
-): Promise<{ scored: HintMove[]; expert: string }> {
-	const id = ++nextId;
-	return new Promise((resolve, reject) => {
-		pending.set(id, (r) => {
-			if (r.ok && r.kind === 'hint') resolve(r);
-			else reject(new Error(r.ok ? '응답 종류가 다르다' : r.error));
-		});
-		const req: WorkerRequest = { id, kind: 'hint', pkgUrl: enginePkgUrl(), replay, k, seed };
-		engineWorker().postMessage(req);
-	});
-}
+): Promise<{ scored: HintMove[]; expert: string }> => ask('hint', { replay, k, seed });
+
+/** 무거운 봇(탐색)의 수 (워커): 기보로 판을 복원해 메인 스레드와 같은 수를 낸다. */
+export const botMove = (replay: string, spec: string, seed: number): Promise<string> =>
+	ask('botMove', { replay, spec, seed }).then((r) => r.action);
 
 /** 판 복기 (워커): 결정마다 평가 결과를 보낸다. 돌려준 함수를 부르면 멈춘다. */
 export function reviewGame(
@@ -151,14 +153,5 @@ export function reviewGame(
 }
 
 /** 훈련 문제 하나를 만든다 (워커). */
-export function puzzle(type: PuzzleKind): Promise<Puzzle> {
-	const id = ++nextId;
-	return new Promise((resolve, reject) => {
-		pending.set(id, (r) => {
-			if (r.ok && r.kind === 'puzzle') resolve(r.puzzle);
-			else reject(new Error(r.ok ? '응답 종류가 다르다' : r.error));
-		});
-		const req: WorkerRequest = { id, kind: 'puzzle', pkgUrl: enginePkgUrl(), puzzle: type };
-		engineWorker().postMessage(req);
-	});
-}
+export const puzzle = (type: PuzzleKind): Promise<Puzzle> =>
+	ask('puzzle', { puzzle: type }).then((r) => r.puzzle);

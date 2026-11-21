@@ -39,6 +39,7 @@ export interface HintMove {
 export type WorkerRequest =
 	| { id: number; kind: 'selfTest'; pkgUrl: string; seed: number }
 	| { id: number; kind: 'hint'; pkgUrl: string; replay: string; k: number; seed: number }
+	| { id: number; kind: 'botMove'; pkgUrl: string; replay: string; spec: string; seed: number }
 	| { id: number; kind: 'puzzle'; pkgUrl: string; puzzle: PuzzleKind; seed?: undefined }
 	| {
 			id: number;
@@ -62,6 +63,7 @@ export type WorkerResponse =
 			ms: number;
 	  }
 	| { id: number; ok: true; kind: 'hint'; scored: HintMove[]; expert: string }
+	| { id: number; ok: true; kind: 'botMove'; action: string }
 	| { id: number; ok: true; kind: 'puzzle'; puzzle: Puzzle }
 	| { id: number; ok: true; kind: 'reviewItem'; i: number; obs: Observation; scored?: HintMove[] }
 	| { id: number; ok: true; kind: 'reviewDone' }
@@ -122,6 +124,16 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 					}
 				}
 				self.postMessage({ id, ok: true, kind: 'reviewDone' } satisfies WorkerResponse);
+			} finally {
+				game.free();
+			}
+			return;
+		}
+		if (req.kind === 'botMove') {
+			const game = mod.WasmGame.fromReplay(req.replay);
+			try {
+				const action = game.botAction(req.spec, req.seed);
+				self.postMessage({ id, ok: true, kind: 'botMove', action } satisfies WorkerResponse);
 			} finally {
 				game.free();
 			}

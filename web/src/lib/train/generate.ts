@@ -28,7 +28,7 @@ export interface PuzzleEngine {
 }
 
 const OPPONENTS = [
-	'expert:stop=t10:meld=dump:outs=1', // 친구 (bots.ts의 friendE)
+	'expert:stop=t10:meld=dump:outs=1', // 친구모델 (bots.ts의 friendE)
 	'expert:stop=t10:meld=dump:outs=1',
 	'expert',
 	'expert:stop=never',
