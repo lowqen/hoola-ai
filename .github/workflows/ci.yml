@@ -10,12 +10,12 @@ on:
   workflow_dispatch:
     inputs:
       experiment:
-        description: "수동 실험 (all | friends | search | belief | study = 변형 S1~S6 | stop5 = study + friends | rating = 웹 봇 레이팅 | ceiling = R0 천장 측정)"
+        description: "수동 실험 (all | friends | search | belief | study = 변형 S1~S6 | stop5 = study + friends | rating = 웹 봇 레이팅 | ceiling = R0 천장 측정 | r1 = R1 탐색 고도화)"
         type: choice
-        options: [all, friends, search, belief, study, stop5, rating, ceiling]
+        options: [all, friends, search, belief, study, stop5, rating, ceiling, r1]
         default: all
       size:
-        description: "rating·ceiling 규모 (smoke = 시간 측정용 소규모, full = 본 측정)"
+        description: "rating·ceiling·r1 규모 (smoke = 시간 측정용 소규모, full = 본 측정)"
         type: choice
         options: [smoke, full]
         default: smoke
@@ -327,6 +327,41 @@ jobs:
         with:
           name: ceiling-${{ matrix.players }}p
           path: ceiling-${{ matrix.players }}p.md
+
+  # R1: 탐색 봇 후보 vs 전략서 봇, 믿음 진단 (hoola-lab --only R1)
+  lab-r1:
+    name: R1 search (${{ matrix.players }}p)
+    if: github.event_name == 'workflow_dispatch' && inputs.experiment == 'r1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        players: [2, 3]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Build release
+        run: cargo build --locked --release -p hoola-lab
+
+      - name: Run R1
+        env:
+          DEALS: ${{ inputs.size == 'full' && '6000' || '40' }}
+        run: |
+          ./target/release/hoola-lab --only R1 --players ${{ matrix.players }} --deals "$DEALS" --preset config/presets/offline_casual.toml --out "r1-${{ matrix.players }}p.md" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: r1-${{ matrix.players }}p
+          path: r1-${{ matrix.players }}p.md
 
   lab-study:
     name: Variant study (S1~S6)

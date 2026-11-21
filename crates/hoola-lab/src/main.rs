@@ -13,6 +13,7 @@
 mod belief_lab;
 mod ceiling;
 mod friends;
+mod r1;
 mod rating;
 mod stop_table;
 
@@ -360,6 +361,11 @@ fn main() {
                 &rules,
                 &preset.name,
             );
+            finish(&md, &args, started);
+            return;
+        }
+        Some("R1") => {
+            r1::run(&mut md, &args.players, args.deals, args.seed, &rules);
             finish(&md, &args, started);
             return;
         }
