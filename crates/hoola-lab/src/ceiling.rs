@@ -2,6 +2,7 @@
 //!
 //! 1. 오라클 대 고수: 숨은 정보를 보는 반칙 봇이 전문가 봇(`expert`)을 얼마나 이기는가.
 //!    공정한 봇은 이 승률을 넘을 수 없으므로 "고수를 압도하는 봇"이 가능한지의 상한이 된다.
+//!    - 공정: 같은 탐색을 정보 없이 (숨은 정보를 학습된 믿음으로 샘플링하는 PIMC, 비교 기준)
 //!    - O-스톱: 전문가 봇 + 스톱만 정답을 안다 (지금 스톱하면 단독 승리인지)
 //!    - O-손패: 상대 손패를 보고 수마다 롤아웃 (더미 순서는 모름)
 //!    - O-전부: 상대 손패와 더미 순서까지 보고 수마다 롤아웃
@@ -14,9 +15,10 @@
 use std::fmt::Write as _;
 use std::time::Instant;
 
+use hoola_core::belief::sample_hidden;
 use hoola_core::{
-    Action, Bot, Card, CardSet, EndReason, ExpertBot, ExpertConfig, Game, Phase, Rng, Rules,
-    SearchBot, SearchConfig,
+    Action, Belief, Bot, Card, CardSet, EndReason, ExpertBot, ExpertConfig, Game, Phase, Rng,
+    Rules, SearchBot, SearchConfig,
 };
 
 use crate::rating::{deal_setup, par_map};
@@ -24,6 +26,8 @@ use crate::rating::{deal_setup, par_map};
 /// 오라클이 보는 정보.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Sight {
+    /// 정보 없음 (공정한 PIMC).
+    Fair,
     /// 스톱 판정만 정답을 안다.
     Stop,
     /// 상대 손패.
@@ -35,6 +39,7 @@ enum Sight {
 impl Sight {
     fn label(self) -> &'static str {
         match self {
+            Sight::Fair => "공정 탐색 (정보 없음)",
             Sight::Stop => "O-스톱 (스톱 정답만)",
             Sight::Hands => "O-손패 (상대 손패)",
             Sight::Full => "O-전부 (손패 + 더미 순서)",
@@ -67,6 +72,11 @@ impl Oracle {
             return game.clone();
         }
         let obs = game.observation(seat);
+        if self.sight == Sight::Fair {
+            let (hands, stock) = sample_hidden(&obs, &mut self.rng, Belief::Learned.table());
+            let rng = Rng::seed_from_u64(self.rng.next_u64());
+            return Game::from_observation(&obs, &hands, stock, rng);
+        }
         let hands: Vec<CardSet> = (0..game.num_players()).map(|s| game.hand(s)).collect();
         let known = hands.iter().fold(CardSet::EMPTY, |a, &h| a.union(h));
         let mut stock: Vec<Card> = obs.unseen().difference(known).iter().collect();
@@ -426,7 +436,12 @@ pub fn run(
         "- 오라클은 상대가 전문가 봇이라는 것도 안다 (롤아웃 상대 정책 = 실제 상대). 수는 전문가 봇의 수를 기본으로 두고, 같은 세계로 짝지은 차이가 표준오차 2배를 넘는 수가 있을 때만 바꾼다\n\
          - 듀플리케이트: 딜마다 오라클이 모든 좌석에 한 번씩 앉는다. ±는 딜 단위 95% 반폭\n"
     );
-    let oracles: [(Sight, usize); 3] = [(Sight::Stop, 1), (Sight::Hands, 32), (Sight::Full, 8)];
+    let oracles: [(Sight, usize); 4] = [
+        (Sight::Fair, 64),
+        (Sight::Stop, 1),
+        (Sight::Hands, 64),
+        (Sight::Full, 16),
+    ];
     for &n in players {
         if rules.validate(n).is_err() {
             continue;
@@ -494,7 +509,7 @@ pub fn run(
     }
 
     // 고수의 약점
-    let (k_fair, k_oracle) = (48, 12);
+    let (k_fair, k_oracle) = (128, 32);
     let _ = writeln!(
         md,
         "## 고수(전문가 봇)의 약점: 결정 종류별 승률 손실\n\n\
@@ -502,7 +517,8 @@ pub fn run(
          **공정** = 관측과 맞는 숨은 정보를 샘플링한 탐색(PIMC, 샘플 {k_fair}개, 실제로 만들 수 있는 개선의 하한 추정), \
          **오라클** = 실제 판 그대로 롤아웃(샘플 {k_oracle}개, 정보까지 안다면 얻을 개선). \
          평가 A에서 전문가 수보다 유의하게 좋은 수가 있으면 이탈로 세고, 그 수의 이득은 독립 평가 B로 쟀다. \
-         \"판당 손실\"은 한 판에서 그 종류 결정으로 흘린 승률의 합(좌석 하나 기준)이다.\n"
+         \"이탈당 이득\"은 이탈 한 번에 더 좋은 수가 주는 승률, \"판당 손실\"은 한 판에서 그 종류 결정으로 흘린 승률의 합(좌석 하나 기준)이다. \
+         오라클 쪽은 같은 정보를 결정마다 다시 쓰므로 판당 합이 실제로 얻을 수 있는 승률보다 훨씬 크다. 종류별 비교에만 쓴다.\n"
     );
     for &n in players {
         if rules.validate(n).is_err() {
@@ -532,7 +548,7 @@ pub fn run(
         let seats = t.games * n as f64;
         let _ = writeln!(
             md,
-            "### {n}인 (판 {:.0}, 판당 {:.1}초)\n\n| 결정 | 좌석·판당 결정 수 | 공정: 이탈률 | 공정: 판당 손실 | 오라클: 이탈률 | 오라클: 판당 손실 |\n|---|---|---|---|---|---|",
+            "### {n}인 (판 {:.0}, 판당 {:.1}초)\n\n| 결정 | 좌석·판당 결정 수 | 공정: 이탈률 | 공정: 이탈당 이득 | 공정: 판당 손실 | 오라클: 이탈률 | 오라클: 이탈당 이득 | 오라클: 판당 손실 |\n|---|---|---|---|---|---|---|---|",
             t.games,
             t.secs / t.games.max(1.0)
         );
@@ -543,17 +559,19 @@ pub fn run(
             os += t.oracle_gain[i];
             let _ = writeln!(
                 md,
-                "| {name} | {:.2} | {:.1}% | {:.2}%p | {:.1}% | {:.2}%p |",
+                "| {name} | {:.2} | {:.1}% | {:.1}%p | {:.2}%p | {:.1}% | {:.1}%p | {:.2}%p |",
                 t.n[i] / seats,
                 100.0 * t.fair_dev[i] / c,
+                100.0 * t.fair_gain[i] / t.fair_dev[i].max(1.0),
                 100.0 * t.fair_gain[i] / seats,
                 100.0 * t.oracle_dev[i] / c,
+                100.0 * t.oracle_gain[i] / t.oracle_dev[i].max(1.0),
                 100.0 * t.oracle_gain[i] / seats,
             );
         }
         let _ = writeln!(
             md,
-            "| **합계** | {:.2} | | **{:.2}%p** | | **{:.2}%p** |\n",
+            "| **합계** | {:.2} | | | **{:.2}%p** | | | **{:.2}%p** |\n",
             t.n.iter().sum::<f64>() / seats,
             100.0 * fs / seats,
             100.0 * os / seats
