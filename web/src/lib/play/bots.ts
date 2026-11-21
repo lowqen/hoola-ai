@@ -17,8 +17,8 @@ export const BOTS: Record<string, BotInfo> = {
 	search: {
 		name: '탐색',
 		level: '최상급',
-		desc: '숨은 패를 여러 번 추정해 수마다 끝까지 시뮬레이션하고, 전략서보다 확실히 나은 수만 바꾼다',
-		spec: 'search:k=128'
+		desc: '버림과 땡큐 넘김으로 상대 손패를 추정하고, 등록·버림·땡큐를 수마다 끝까지 시뮬레이션해 고른다',
+		spec: 'search:k=256:meld=1:belief=bayes:z=0.5:bp=0.02:bm=0.1:bd=0.5'
 	},
 	expert: { name: '전략서', level: '상급', desc: '전략서대로 둔다', spec: 'expert' },
 	greedy: { name: '즉시스톱', level: '상급', desc: '스톱할 수 있으면 바로 스톱', spec: 'greedy' },

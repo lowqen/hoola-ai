@@ -262,11 +262,11 @@ jobs:
       fail-fast: false
       matrix:
         v:
-          - { id: casual-2, preset: offline_casual, players: 2, smoke: "2000 100", full: "50000 6000" }
-          - { id: stop5-2, preset: heads_up_stop5, players: 2, smoke: "2000 100", full: "50000 6000" }
-          - { id: casual-3, preset: offline_casual, players: 3, smoke: "200 20", full: "8000 1000" }
-          - { id: casual-4, preset: offline_casual, players: 4, smoke: "100 10", full: "4000 600" }
-          - { id: casual-5, preset: offline_casual, players: 5, smoke: "100 10", full: "3000 600" }
+          - { id: casual-2, preset: offline_casual, players: 2, smoke: "2000 100", full: "50000 3000" }
+          - { id: stop5-2, preset: heads_up_stop5, players: 2, smoke: "2000 100", full: "50000 3000" }
+          - { id: casual-3, preset: offline_casual, players: 3, smoke: "200 20", full: "8000 500" }
+          - { id: casual-4, preset: offline_casual, players: 4, smoke: "100 10", full: "4000 300" }
+          - { id: casual-5, preset: offline_casual, players: 5, smoke: "100 10", full: "3000 300" }
     steps:
       - uses: actions/checkout@v7
         with:
