@@ -122,7 +122,11 @@ impl Oracle {
             let a = if Self::stop_wins(game, seat) {
                 Action::Stop
             } else if default == Action::Stop {
-                let rest: Vec<Action> = legal.iter().copied().filter(|&a| a != Action::Stop).collect();
+                let rest: Vec<Action> = legal
+                    .iter()
+                    .copied()
+                    .filter(|&a| a != Action::Stop)
+                    .collect();
                 self.base.act(&obs, &rest)
             } else {
                 default
@@ -132,7 +136,10 @@ impl Oracle {
         if legal.len() < 2 {
             return (default, false);
         }
-        let d = legal.iter().position(|&a| a == default).expect("default is legal");
+        let d = legal
+            .iter()
+            .position(|&a| a == default)
+            .expect("default is legal");
         let values = self.values(game, seat, legal);
         let mut best: Option<(f64, usize)> = None;
         for (i, v) in values.iter().enumerate() {
@@ -223,7 +230,12 @@ fn duel(
             let mut game = Game::new(rules.clone(), n, game_seed, first).expect("valid rules");
             let mut oracle = Oracle::new(sight, k, game_seed ^ 0xC0FFEE ^ oracle_seat as u64);
             let mut experts: Vec<ExpertBot> = (0..n)
-                .map(|s| ExpertBot::new(ExpertConfig::default(), game_seed.wrapping_mul(1000) + s as u64))
+                .map(|s| {
+                    ExpertBot::new(
+                        ExpertConfig::default(),
+                        game_seed.wrapping_mul(1000) + s as u64,
+                    )
+                })
                 .collect();
             while !game.is_over() {
                 let s = game.current_player();
@@ -346,7 +358,12 @@ fn weakness(
         let (game_seed, first) = deal_setup(rules, n, seed, deal);
         let mut game = Game::new(rules.clone(), n, game_seed, first).expect("valid rules");
         let mut experts: Vec<ExpertBot> = (0..n)
-            .map(|s| ExpertBot::new(ExpertConfig::default(), game_seed.wrapping_mul(1000) + s as u64))
+            .map(|s| {
+                ExpertBot::new(
+                    ExpertConfig::default(),
+                    game_seed.wrapping_mul(1000) + s as u64,
+                )
+            })
             .collect();
         let mut step = 0u64;
         while !game.is_over() {
@@ -395,7 +412,14 @@ fn chunks(deals: u64, parts: u64) -> Vec<std::ops::Range<u64>> {
 }
 
 /// R0 전체를 돌려 마크다운으로 쓴다.
-pub fn run(md: &mut String, players: &[usize], deals: u64, seed: u64, rules: &Rules, preset_name: &str) {
+pub fn run(
+    md: &mut String,
+    players: &[usize],
+    deals: u64,
+    seed: u64,
+    rules: &Rules,
+    preset_name: &str,
+) {
     let _ = writeln!(md, "# R0 천장 측정 (`{preset_name}`)\n");
     let _ = writeln!(
         md,
@@ -485,9 +509,15 @@ pub fn run(md: &mut String, players: &[usize], deals: u64, seed: u64, rules: &Ru
             continue;
         }
         let started = Instant::now();
-        let d = if n == 2 { (deals / 4).max(1) } else { (deals / 8).max(1) };
+        let d = if n == 2 {
+            (deals / 4).max(1)
+        } else {
+            (deals / 8).max(1)
+        };
         let ranges = chunks(d, 64);
-        let parts = par_map(&ranges, |r| weakness(n, r.clone(), seed + 7_000_000, rules, k_fair, k_oracle));
+        let parts = par_map(&ranges, |r| {
+            weakness(n, r.clone(), seed + 7_000_000, rules, k_fair, k_oracle)
+        });
         let mut t = WeakPart::default();
         for p in &parts {
             t.games += p.games;
@@ -528,7 +558,10 @@ pub fn run(md: &mut String, players: &[usize], deals: u64, seed: u64, rules: &Ru
             100.0 * fs / seats,
             100.0 * os / seats
         );
-        eprintln!("R0 weakness {n}p done ({:.0}s)", started.elapsed().as_secs_f64());
+        eprintln!(
+            "R0 weakness {n}p done ({:.0}s)",
+            started.elapsed().as_secs_f64()
+        );
     }
 }
 

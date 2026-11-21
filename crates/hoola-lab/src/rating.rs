@@ -170,7 +170,10 @@ struct Job {
 fn run_job(job: &Job, m: usize, rules: &Rules, seed: u64, total_deals: u64) -> Tally {
     let n = job.table.len();
     let arrs = arrangements(n);
-    let has_search = job.table.iter().any(|&b| WEB_BOTS[b].2.starts_with("search"));
+    let has_search = job
+        .table
+        .iter()
+        .any(|&b| WEB_BOTS[b].2.starts_with("search"));
     let mut t = Tally::new(m);
     let started = Instant::now();
     for deal in job.deals.clone() {
@@ -256,7 +259,11 @@ pub fn fit(w: &[Vec<f64>], anchor: usize) -> Vec<f64> {
                     .filter(|&j| j != i)
                     .map(|j| (w[i][j] + w[j][i]) / (p[i] + p[j]))
                     .sum();
-                if den > 0.0 { wins.max(1e-6) / den } else { p[i] }
+                if den > 0.0 {
+                    wins.max(1e-6) / den
+                } else {
+                    p[i]
+                }
             })
             .collect();
         let g = (next.iter().map(|x| x.ln()).sum::<f64>() / m as f64).exp();
@@ -373,12 +380,7 @@ pub fn run(
             "\n### {n}인 맞대결 기대점수 (행 봇 기준, 95% CI 반폭)\n"
         );
         let head: Vec<&str> = order.iter().map(|&j| WEB_BOTS[j].1).collect();
-        let _ = writeln!(
-            md,
-            "| | {} |\n|---|{}",
-            head.join(" | "),
-            "---|".repeat(m)
-        );
+        let _ = writeln!(md, "| | {} |\n|---|{}", head.join(" | "), "---|".repeat(m));
         for &i in &order {
             let cells: Vec<String> = order
                 .iter()
@@ -397,10 +399,7 @@ pub fn run(
             let _ = writeln!(md, "| {} | {} |", WEB_BOTS[i].1, cells.join(" | "));
         }
         let _ = writeln!(md);
-        eprintln!(
-            "rating {n}p done ({:.0}s)",
-            started.elapsed().as_secs_f64()
-        );
+        eprintln!("rating {n}p done ({:.0}s)", started.elapsed().as_secs_f64());
     }
 }
 
