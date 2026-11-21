@@ -11,7 +11,9 @@
 //! ```
 
 mod belief_lab;
+mod ceiling;
 mod friends;
+mod rating;
 mod stop_table;
 
 use std::fmt::Write as _;
@@ -187,6 +189,8 @@ struct Args {
     preset: Option<String>,
     /// F1에 추가로 넣을 내 봇 사양 (`--me`, 여러 번 가능)
     me: Vec<String>,
+    /// R(레이팅)에서 탐색 봇이 낀 테이블의 딜 수 (기본: `--deals`의 1/10)
+    search_deals: Option<u64>,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -198,6 +202,7 @@ fn parse_args() -> Result<Args, String> {
         players: vec![2, 3],
         preset: None,
         me: Vec::new(),
+        search_deals: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
@@ -209,6 +214,9 @@ fn parse_args() -> Result<Args, String> {
             "--only" => a.only = Some(value()?),
             "--preset" => a.preset = Some(value()?),
             "--me" => a.me.push(value()?),
+            "--search-deals" => {
+                a.search_deals = Some(value()?.parse().map_err(|_| "bad --search-deals")?)
+            }
             "--players" => {
                 a.players = value()?
                     .split(',')
@@ -326,6 +334,32 @@ fn main() {
         }
         Some("BELIEF") => {
             belief_lab::run(&mut md, args.deals, args.seed, &rules);
+            finish(&md, &args, started);
+            return;
+        }
+        Some("R") => {
+            let search_deals = args.search_deals.unwrap_or((args.deals / 10).max(1));
+            rating::run(
+                &mut md,
+                &args.players,
+                args.deals,
+                search_deals,
+                args.seed,
+                &rules,
+                &preset.name,
+            );
+            finish(&md, &args, started);
+            return;
+        }
+        Some("R0") => {
+            ceiling::run(
+                &mut md,
+                &args.players,
+                args.deals,
+                args.seed,
+                &rules,
+                &preset.name,
+            );
             finish(&md, &args, started);
             return;
         }

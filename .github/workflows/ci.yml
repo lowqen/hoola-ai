@@ -10,10 +10,15 @@ on:
   workflow_dispatch:
     inputs:
       experiment:
-        description: "수동 실험 (all | friends | search | belief | study = 변형 S1~S6 | stop5 = study + friends)"
+        description: "수동 실험 (all | friends | search | belief | study = 변형 S1~S6 | stop5 = study + friends | rating = 웹 봇 레이팅 | ceiling = R0 천장 측정)"
         type: choice
-        options: [all, friends, search, belief, study, stop5]
+        options: [all, friends, search, belief, study, stop5, rating, ceiling]
         default: all
+      size:
+        description: "rating·ceiling 규모 (smoke = 시간 측정용 소규모, full = 본 측정)"
+        type: choice
+        options: [smoke, full]
+        default: smoke
       preset:
         description: "수동 실험 규칙 프리셋 (config/presets/*.toml)"
         type: choice
@@ -246,6 +251,82 @@ jobs:
         with:
           name: search-results
           path: search-results.md
+
+  # 웹 봇 레이팅: 규칙·인원별로 시드 고정 교차 대국 (hoola-lab --only R). 결과는 web/src/lib/play/bots.ts에 옮긴다.
+  lab-rating:
+    name: Web bot rating (${{ matrix.v.id }})
+    if: github.event_name == 'workflow_dispatch' && inputs.experiment == 'rating'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        v:
+          - { id: casual-2, preset: offline_casual, players: 2, smoke: "2000 100", full: "20000 1500" }
+          - { id: stop5-2, preset: heads_up_stop5, players: 2, smoke: "2000 100", full: "20000 1500" }
+          - { id: casual-3, preset: offline_casual, players: 3, smoke: "200 20", full: "3000 300" }
+          - { id: casual-4, preset: offline_casual, players: 4, smoke: "100 10", full: "1500 150" }
+          - { id: casual-5, preset: offline_casual, players: 5, smoke: "100 10", full: "1200 120" }
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Build release
+        run: cargo build --locked --release -p hoola-lab
+
+      - name: Run rating
+        env:
+          SIZES: ${{ inputs.size == 'full' && matrix.v.full || matrix.v.smoke }}
+        run: |
+          read -r deals sdeals <<< "$SIZES"
+          ./target/release/hoola-lab --only R --players ${{ matrix.v.players }} --deals "$deals" --search-deals "$sdeals"             --preset "config/presets/${{ matrix.v.preset }}.toml" --out "rating-${{ matrix.v.id }}.md" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rating-${{ matrix.v.id }}
+          path: rating-${{ matrix.v.id }}.md
+
+  # R0 천장 측정: 오라클 vs 전문가 봇, 전문가 봇의 결정 종류별 손실 (hoola-lab --only R0)
+  lab-ceiling:
+    name: R0 ceiling (${{ matrix.players }}p)
+    if: github.event_name == 'workflow_dispatch' && inputs.experiment == 'ceiling'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        players: [2, 3]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master 2026-10-16
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Build release
+        run: cargo build --locked --release -p hoola-lab
+
+      - name: Run R0
+        env:
+          DEALS: ${{ inputs.size == 'full' && '2000' || '40' }}
+        run: |
+          ./target/release/hoola-lab --only R0 --players ${{ matrix.players }} --deals "$DEALS"             --preset config/presets/offline_casual.toml --out "ceiling-${{ matrix.players }}p.md" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ceiling-${{ matrix.players }}p
+          path: ceiling-${{ matrix.players }}p.md
 
   lab-study:
     name: Variant study (S1~S6)
