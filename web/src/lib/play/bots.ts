@@ -17,7 +17,7 @@ export const BOTS: Record<string, BotInfo> = {
 	search: {
 		name: '탐색',
 		level: '최상급',
-		desc: '버림과 땡큐 넘김으로 상대 손패를 추정하고, 등록·버림·땡큐를 수마다 끝까지 시뮬레이션해 고른다',
+		desc: '버림·넘김으로 상대 패를 추정해 수마다 끝까지 시뮬레이션한다',
 		spec: 'search:k=256:meld=1:belief=bayes:z=0.5:bp=0.02:bm=0.1:bd=0.5'
 	},
 	expert: { name: '전략서', level: '상급', desc: '전략서대로 둔다', spec: 'expert' },
@@ -55,13 +55,13 @@ export const BOTS: Record<string, BotInfo> = {
  * (1위 최상급, 2~3위 상급, 4~5위 보통, 6~7위 입문).
  */
 export const RATINGS: Record<string, number[]> = {
-	search: [1144, 1105, 1154, 1163, 1173],
-	expert: [1135, 1091, 1148, 1155, 1172],
-	greedy: [1104, 1052, 1107, 1114, 1136],
-	friendA: [1027, 1009, 1063, 1085, 1106],
-	friendC: [1041, 1022, 1050, 1050, 1045],
+	search: [1164, 1129, 1174, 1185, 1188],
+	expert: [1134, 1091, 1148, 1155, 1167],
+	greedy: [1103, 1052, 1107, 1114, 1132],
+	friendA: [1026, 1008, 1062, 1084, 1099],
+	friendC: [1040, 1022, 1050, 1050, 1043],
 	friendE: [1000, 1000, 1000, 1000, 1000],
-	friendB: [971, 981, 979, 980, 987]
+	friendB: [971, 981, 980, 979, 985]
 };
 
 /** 지금 규칙의 실측 레이팅 한 줄. 없으면 빈 문자열. */
