@@ -17,11 +17,7 @@ use hoola_core::{Bot, EndReason, FirstPlayer, Game, Rules, play_out};
 
 /// 웹 봇 (키, 이름, 사양). `web/src/lib/play/bots.ts`와 맞춘다.
 pub const WEB_BOTS: &[(&str, &str, &str)] = &[
-    (
-        "search",
-        "탐색",
-        "search:k=256:meld=1:belief=bayes:z=0.5:bp=0.02:bm=0.1:bd=0.5",
-    ),
+    ("search", "탐색", "search:k=256:meld=1:belief=bayes:z=0.5"),
     ("expert", "전략서", "expert"),
     ("greedy", "즉시스톱", "greedy"),
     ("friendA", "노스톱", "expert:stop=never:outs=3"),

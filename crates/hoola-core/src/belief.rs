@@ -69,12 +69,13 @@ pub struct BayesParams {
     pub recent: usize,
 }
 
+/// 기본값은 R1 실측 최적 (docs/lab/2026-11-21-r1-search.md).
 impl Default for BayesParams {
     fn default() -> Self {
         BayesParams {
-            pass: 0.1,
-            meld: 0.3,
-            discard: 0.7,
+            pass: 0.02,
+            meld: 0.1,
+            discard: 0.5,
             candidates: 16,
             recent: 3,
         }
