@@ -193,3 +193,48 @@ test('옛 미리보기 주소: 남은 워커가 바뀌면 등록을 지우고 �
 	});
 	expect(cached.some((p) => p.includes('/next/'))).toBe(false);
 });
+
+// 새 버전 흉내: 같은 워커를 주소만 바꿔 다시 등록하면 브라우저는 업데이트로 보고 새 워커를 설치한다.
+// (워커 업데이트 요청은 context.route로 못 바꾸고, vite preview는 파일을 메모리에 올려 둬서 빌드 파일을 고칠 수 없다.)
+const publishNewVersion = (page: Page) =>
+	page.evaluate(() => navigator.serviceWorker.register('service-worker.js?v=2'));
+
+const waitingWorker = (page: Page) =>
+	page.evaluate(async () => (await navigator.serviceWorker.ready).waiting !== null);
+
+async function installApp(page: Page) {
+	await page.goto('./');
+	await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+		timeout: 60_000
+	});
+}
+
+test('업데이트: 쓰는 도중 새 버전이 나오면 알리고, 누르면 새로고침해 적용한다', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	await installApp(page);
+	await page.getByTestId('start-summary').click();
+	await page.evaluate(() => ((window as unknown as { stale: boolean }).stale = true));
+
+	await publishNewVersion(page);
+	const snack = page.getByTestId('snackbar');
+	await expect(snack).toContainText('새 버전이 나왔다', { timeout: 30_000 });
+	await snack.getByRole('button', { name: '새로고침' }).click();
+	await expect
+		.poll(() => page.evaluate(() => 'stale' in window).catch(() => true), { timeout: 30_000 })
+		.toBe(false);
+	await expect.poll(() => waitingWorker(page), { timeout: 30_000 }).toBe(false);
+});
+
+test('업데이트: 앱을 열 때 새 버전이 준비돼 있으면 묻지 않고 적용한다', async ({ page }) => {
+	test.setTimeout(120_000);
+	await installApp(page);
+	await page.getByTestId('start-summary').click();
+	await publishNewVersion(page);
+	await expect.poll(() => waitingWorker(page), { timeout: 30_000 }).toBe(true);
+
+	await page.reload();
+	await expect.poll(() => waitingWorker(page).catch(() => true), { timeout: 30_000 }).toBe(false);
+	await expect(page.getByTestId('snackbar')).toHaveCount(0);
+});

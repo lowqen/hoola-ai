@@ -46,6 +46,13 @@
 		link.click();
 		setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 	}
+
+	let settingsOpen = $state(false);
+	let SettingsSheet = $state.raw<typeof import('#lib/app/AppSettingsSheet.svelte').default>();
+	function openSettings() {
+		settingsOpen = true;
+		void import('#lib/app/AppSettingsSheet.svelte').then((m) => (SettingsSheet = m.default));
+	}
 </script>
 
 <svelte:head>
@@ -64,8 +71,11 @@
 				onclick={exportGames}
 			/>
 		{/if}
+		<IconButton icon="settings" label="설정" data-testid="open-settings" onclick={openSettings} />
 	{/snippet}
 </TopAppBar>
+
+{#if SettingsSheet}<SettingsSheet bind:open={settingsOpen} />{/if}
 
 <main>
 	<section aria-labelledby="rec-games">

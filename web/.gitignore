@@ -29,3 +29,6 @@ test-results
 /.lighthouseci
 /test-results
 /playwright-report
+/budget-result
+/budget.json
+/budget-baseline

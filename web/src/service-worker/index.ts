@@ -1,7 +1,7 @@
 // 오프라인 지원 (DESIGN_PLAN §7). 앱 셸·WASM 엔진은 설치 때 한꺼번에 받고, 글꼴(약 3MB)은 활성화 뒤 백그라운드로 받는다.
 //
-// 업데이트: skipWaiting을 쓰지 않는다. 열린 페이지가 옛 지연 로드 묶음을 찾지 못해 판 도중에 깨질 수 있어서,
-// 새 버전은 앱을 모두 닫았다 다시 열 때 적용한다.
+// 업데이트: 설치 즉시 skipWaiting하지 않는다. 열린 페이지가 옛 지연 로드 묶음을 찾지 못해 판 도중에 깨질 수 있어서다.
+// 페이지(src/lib/app/update.ts)가 'skip-waiting'을 보내면 적용하고, 페이지는 새로고침해 새 버전을 통째로 받는다.
 import { version } from '$app/env';
 import { assets, immutable, prerendered } from '$app/manifest';
 
@@ -33,6 +33,10 @@ sw.addEventListener('install', (event) => {
 	// HTML·WASM은 파일명에 해시가 없다. HTTP 캐시의 옛 파일이 새 버전에 섞이지 않게 서버에 재검증한다
 	const requests = [...SHELL_PATHS].map((p) => new Request(p, { cache: 'no-cache' }));
 	event.waitUntil(caches.open(SHELL).then((cache) => cache.addAll(requests)));
+});
+
+sw.addEventListener('message', (event) => {
+	if (event.data === 'skip-waiting') void sw.skipWaiting();
 });
 
 sw.addEventListener('activate', (event) => {

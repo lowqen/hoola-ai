@@ -504,6 +504,9 @@ jobs:
     needs: [wasm]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read # JS 예산 기준(마지막 성공한 main의 js-budget 아티팩트)을 받는다
     strategy:
       fail-fast: false
       matrix:
@@ -534,9 +537,46 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      # JS 예산은 변경마다 main 대비 증가폭으로 본다 (src/routes/budget.e2e.ts). 기준이 없으면 절대 천장만 본다
+      - name: JS budget baseline (latest main)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --status success --limit 1 --json databaseId -q '.[0].databaseId' || true)
+          if [ -n "$id" ] && gh run download "$id" -R "$GITHUB_REPOSITORY" -n js-budget -D budget-baseline 2>/dev/null; then
+            echo "BUDGET_BASELINE=$PWD/budget-baseline/budget.json" >> "$GITHUB_ENV"
+            echo "기준: run $id"
+          else
+            echo "기준 없음: 절대 천장만 검사한다"
+          fi
+
       # webServer가 빌드 후 vite preview를 띄운다 (playwright.config.ts)
       - name: E2E (Chromium)
         run: npx playwright test --shard=${{ matrix.shard }}/2
+
+      - name: JS budget summary
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs");
+            if (!fs.existsSync("budget-result")) process.exit(0);
+            const now = {};
+            for (const f of fs.readdirSync("budget-result")) Object.assign(now, JSON.parse(fs.readFileSync("budget-result/" + f)));
+            const base = process.env.BUDGET_BASELINE ? JSON.parse(fs.readFileSync(process.env.BUDGET_BASELINE)) : {};
+            fs.writeFileSync("budget.json", JSON.stringify(now, null, 1));
+            const rows = Object.keys(now).sort().map((r) => {
+              const d = base[r] === undefined ? "기준 없음" : (now[r] - base[r] >= 0 ? "+" : "") + (now[r] - base[r]).toFixed(2) + "KB";
+              return `| ${r} | ${now[r].toFixed(2)}KB | ${d} |`;
+            });
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, ["### JS 예산 (gzip)", "", "| 화면 | 크기 | main 대비 |", "|---|---|---|", ...rows, ""].join(String.fromCharCode(10)));
+          '
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: js-budget
+          path: web/budget.json
+          if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v7
         if: always()

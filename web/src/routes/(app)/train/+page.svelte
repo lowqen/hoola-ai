@@ -54,6 +54,13 @@
 			training.choose?.(Number(e.key) - 1);
 		}
 	}
+
+	let settingsOpen = $state(false);
+	let SettingsSheet = $state.raw<typeof import('#lib/app/AppSettingsSheet.svelte').default>();
+	function openSettings() {
+		settingsOpen = true;
+		void import('#lib/app/AppSettingsSheet.svelte').then((m) => (SettingsSheet = m.default));
+	}
 </script>
 
 <svelte:head>
@@ -72,9 +79,13 @@
 				data-testid="t-exit"
 				onclick={() => training.exit()}
 			/>
+		{:else}
+			<IconButton icon="settings" label="설정" data-testid="open-settings" onclick={openSettings} />
 		{/if}
 	{/snippet}
 </TopAppBar>
+
+{#if SettingsSheet}<SettingsSheet bind:open={settingsOpen} />{/if}
 
 {#if training.active}
 	<main>

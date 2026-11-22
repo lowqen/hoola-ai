@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 새 판 시트 (DESIGN_PLAN §6.2): 자주 바꾸는 것만 보여 주고, 세부 설정은 펼침 영역에 둔다.
+	import DisplaySettings from '#lib/app/DisplaySettings.svelte';
 	import BottomSheet from '#lib/ui/BottomSheet.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import Chip from '#lib/ui/Chip.svelte';
@@ -110,6 +111,7 @@
 	<details>
 		<summary>세부 설정</summary>
 		<div class="details">
+			<DisplaySettings />
 			<div>
 				<h3>봇 속도</h3>
 				<SegmentedButton
