@@ -5,8 +5,6 @@
 // - 기본은 한국어다. 브라우저 언어가 한국어가 아니면 처음 한 번 English로 볼지 묻는다 (첫 화면을 늦추지 않는다).
 // app.html의 인라인 스크립트가 같은 규칙으로 <html lang>을 정한다.
 
-import { snackbar } from '#lib/ui/snackbar.svelte.ts';
-
 export type Lang = 'ko' | 'en';
 
 const LANG_KEY = 'hoola-lang';
@@ -67,30 +65,28 @@ export async function setLang(next: Lang): Promise<void> {
 
 /**
  * 첫 화면 뒤에 부른다. 영어면 사전을 최신으로 바꿔 둔다(앱이 업데이트되면 다음에 열 때 반영).
- * 한국어 기본인데 브라우저가 다른 언어면 한 번만 English로 볼지 묻는다.
+ * 한국어 기본인데 브라우저가 다른 언어이고 아직 묻지 않았으면 true: 부른 쪽이 English로 볼지 한 번 묻는다.
+ * 이 모듈은 엔진 워커도 불러오므로 화면 모듈(스낵바 등)을 가져오지 않는다.
  */
-export async function syncDict(): Promise<void> {
+export async function syncDict(): Promise<boolean> {
 	if (lang === 'en') {
 		const fresh = await loadDict();
-		if (!dict) return setLang('en');
+		if (!dict) {
+			await setLang('en');
+			return false;
+		}
 		try {
 			if (readStored(DICT_KEY) !== fresh) localStorage.setItem(DICT_KEY, fresh);
 		} catch {
 			/* 다음에 다시 시도한다 */
 		}
-		return;
+		return false;
 	}
-	if (readStored(LANG_KEY) || /^ko/i.test(navigator.language)) return;
+	if (readStored(LANG_KEY) || /^ko/i.test(navigator.language)) return false;
 	try {
 		localStorage.setItem(LANG_KEY, 'ko');
 	} catch {
-		return;
+		return false;
 	}
-	snackbar.show({
-		message: 'View this app in English?',
-		actionLabel: 'English',
-		onAction: () => void setLang('en'),
-		duration: 10000,
-		closable: true
-	});
+	return true;
 }
