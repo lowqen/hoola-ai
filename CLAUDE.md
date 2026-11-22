@@ -1,6 +1,6 @@
 # hoola-ai
 
-한국 카드게임 훌라의 Rust 규칙 엔진, AI, WASM 연습장. 구조는 `README.md`의 "구조" 절을 본다.
+한국 카드게임 훌라의 Rust 규칙 엔진, AI, WASM 연습장. 구조는 `README.ko.md`의 "개발" 절을 본다.
 
 ## 문서는 필요할 때만 읽는다
 

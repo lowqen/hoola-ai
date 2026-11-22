@@ -112,7 +112,7 @@ export function generatePuzzle(engine: PuzzleEngine, kind: PuzzleKind): Puzzle {
 	for (let attempt = 0; attempt < 200; attempt++) {
 		const seed = rand32();
 		const players = chance(0.75) ? 2 : 3;
-		const opponent = OPPONENTS[rand32() % OPPONENTS.length];
+		const opponent = OPPONENTS[Math.floor(Math.random() * OPPONENTS.length)];
 		const game = new engine.WasmGame(players, seed, seed % players, '');
 		try {
 			let steps = 0;
