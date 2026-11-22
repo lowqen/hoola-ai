@@ -1,5 +1,13 @@
 // 복기 판정: 결정마다 L3 평가를 등급·이유·오답 노트 항목으로 바꾼다. 화면과 무관한 순수 함수다.
-import { cardsText, cardText, handPoints, sortCards, type CardId } from '#lib/game/cards.ts';
+import {
+	cardsText,
+	cardText,
+	handPoints,
+	rankNum,
+	sortCards,
+	suitOf,
+	type CardId
+} from '#lib/game/cards.ts';
 import type { HintMove } from '#lib/engine.ts';
 import {
 	actionText,
@@ -78,7 +86,6 @@ export interface ReviewItem {
 	lines: string[];
 }
 
-const points = (card: CardId) => handPoints([card]);
 const fewestOpponent = (obs: Observation, seat: number) =>
 	Math.min(7, ...obs.hand_counts.filter((_, s) => s !== seat));
 const tableText = (fewest: number, limit: number | null) =>
@@ -107,6 +114,51 @@ function stopTableCheck(
 	};
 }
 
+const pct = (v: number) => `${Math.round(v * 100)}%`;
+const pp = (v: number) => `${Math.round(v * 100)}%p`;
+const RANKS = 'A23456789TJQK';
+const wrap = (x: number) => ((((x - 1) % 13) + 13) % 13) + 1;
+const cardAt = (rank: number, suit: string) => RANKS[wrap(rank) - 1] + suit;
+
+/** 다음 사람이 이 카드를 땡큐하려면 손에 있어야 하는 2장 조합 (아직 안 보인 카드만). 7 단독 땡큐는 없다. */
+function thankYouPairs(card: CardId, unseen: Set<CardId>): CardId[][] {
+	const r = rankNum(card);
+	const s = suitOf(card);
+	const same = [...unseen].filter((c) => rankNum(c) === r);
+	const pairs: CardId[][] = [];
+	for (let i = 0; i < same.length; i++)
+		for (let j = i + 1; j < same.length; j++) pairs.push([same[i], same[j]]);
+	for (const [a, b] of [
+		[-2, -1],
+		[-1, 1],
+		[1, 2]
+	]) {
+		const pair = [cardAt(r + a, s), cardAt(r + b, s)];
+		if (pair.every((c) => unseen.has(c))) pairs.push(pair);
+	}
+	return pairs;
+}
+
+/** 가장 적게 든 상대가 그 장수로 낼 수 있는 가장 낮은 점수 (안 보인 카드 중 가벼운 것부터). */
+function lowestPossible(count: number, unseen: Set<CardId>): number {
+	return [...unseen]
+		.map(rankNum)
+		.sort((a, b) => a - b)
+		.slice(0, count)
+		.reduce((sum, x) => sum + x, 0);
+}
+
+/** 이 카드들이 손에 남은 다른 카드와 이루던 조각 (등록·땡큐로 함께 빠지면 사라진다). */
+function brokenFragment(used: CardId[], obs: Observation, unseen: Set<CardId>) {
+	const rest = obs.hand.filter((c) => !used.includes(c));
+	for (const c of used) {
+		if (!obs.hand.includes(c)) continue;
+		const f = fragmentOf(c, [c, ...rest], unseen);
+		if (f) return { card: c, ...f };
+	}
+	return null;
+}
+
 interface ExplainContext {
 	seat: number;
 	seatName: (seat: number) => string;
@@ -114,7 +166,10 @@ interface ExplainContext {
 	nextTookMyDiscard: boolean;
 }
 
-/** 내 수와 추천 수를 비교해 직관적인 이유를 만든다. */
+/**
+ * 내 수와 추천 수의 차이를 계산할 수 있는 사실로만 설명한다. 승률은 대화 상자가 따로 보여 준다.
+ * 보이는 사실(점수·조합·땡큐 위험·스톱 기준)로 설명되지 않으면 추측하지 않고 그렇게 밝힌다.
+ */
 function explain(
 	obs: Observation,
 	mine: HintMove,
@@ -125,101 +180,169 @@ function explain(
 	const b = parseAction(best.action);
 	const pts = obs.hand_points;
 	const fewest = fewestOpponent(obs, ctx.seat);
-	const table = tableText(fewest, stopTableFor(obs.stop_limit)[fewest]);
+	const limit = stopTableFor(obs.stop_limit)[fewest];
+	const table = tableText(fewest, limit);
 	const name = (action: string) => actionText(action, obs, ctx.seatName);
+	const unseen = unseenOf(obs);
+	const gap = best.value - mine.value;
+	const registered = obs.registered[ctx.seat];
+	/** 손패에서 cards를 내려놓은 뒤의 장수·점수와, 그 결과에 대한 설명. */
+	const afterMeld = (cards: CardId[]) => {
+		const left = obs.hand.filter((c) => !cards.includes(c));
+		const after = handPoints(left);
+		const notes: string[] = [];
+		// 내려놓은 뒤 한 장이 남으면 그 장을 버리는 순간 털린다
+		if (left.length <= 1)
+			notes.push(
+				left.length === 0
+					? '손패가 0장이 되어 그 자리에서 털고 이긴다.'
+					: `남은 ${cardText(left[0])} 한 장을 버리면 이번 차례에 털고 이긴다.`
+			);
+		else if (limit !== null && after <= limit && pts > limit)
+			notes.push(`손패가 ${after}점이 되어 다음 차례부터 스톱 기준(${table})에 든다.`);
+		return { after, notes };
+	};
+	const simOnly = () =>
+		`점수·조합·땡큐 위험 같은 보이는 사실로는 차이가 드러나지 않는다. 숨은 패를 ${REVIEW_K}가지로 바꿔 끝까지 둬 본 결과에서만 ${pp(gap)} 차이가 났다.`;
 
 	if (b.verb === 'stop' && m.verb !== 'stop') {
 		return {
 			category: 'stop',
 			lines: [
-				`스톱할 장면이었다. 손패 ${pts}점이고 가장 적게 든 상대가 ${fewest}장이다.`,
-				`스톱 기준표(${table})에 해당한다. 기다리면 상대가 털거나 점수를 더 낮출 시간을 준다.`
+				`지금 스톱하면 이길 확률이 ${pct(best.value)}였다 (숨은 패 ${REVIEW_K}가지 중 내가 혼자 가장 낮은 비율).`,
+				`손패 ${pts}점, 가장 적게 든 상대 ${fewest}장: 기준표(${table})도 스톱을 권한다.`,
+				`${name(mine.action)}를 고르면 상대들이 한 번씩 더 두며 털거나 점수를 낮출 기회를 얻어 승률이 ${pct(mine.value)}로 내려간다.`
 			]
 		};
 	}
 	if (m.verb === 'stop' && b.verb !== 'stop') {
+		const low = lowestPossible(fewest, unseen);
 		const lines = [
-			`스톱이 일렀다. 손패 ${pts}점인데 가장 적게 든 상대가 ${fewest}장이라, 그 상대가 나보다 낮거나 같을 가능성이 크다 (같아도 선언자 패배).`,
-			`스톱 기준표: ${table}.`
+			`이 스톱이 이길 확률은 ${pct(mine.value)}였다. 선언자는 다른 모두보다 점수가 엄격하게 낮아야 이기고, 같아도 진다.`,
+			`손패 ${pts}점인데 가장 적게 든 상대가 ${fewest}장이다. 안 보인 카드로 그 장수면 가장 낮게 ${low}점까지 가능하다${low <= pts ? ' — 나보다 낮거나 같을 수 있다' : ''}.`,
+			`기준표: ${table}. 계속 두었다면(${name(best.action)}) 승률 ${pct(best.value)}.`
 		];
 		if (ctx.stopFailed) lines.push('실제로 이 스톱은 실패했다.');
 		return { category: 'stop', lines };
 	}
 	if (b.verb === 'thankyou' && m.verb !== 'thankyou') {
-		const gain = handPoints(b.cards.filter((c) => obs.hand.includes(c)));
-		return {
-			category: 'thankyou',
-			lines: [
-				`땡큐 기회를 놓쳤다: ${cardsText(sortCards(b.cards))}.`,
-				`받는 대신 버림패를 가져와 바로 등록하면 손패가 ${gain}점 줄고 등록 상태가 되어 붙이기도 할 수 있었다.`
-			]
-		};
+		const used = b.cards.filter((c) => obs.hand.includes(c));
+		const taken = b.cards.find((c) => !obs.hand.includes(c));
+		const { after, notes } = afterMeld(used);
+		const lines = [
+			`땡큐 기회를 놓쳤다: ${taken ? `버림패 ${cardText(taken)}를 가져와 ` : ''}${cardsText(sortCards(b.cards))} 등록.`,
+			`손에서 ${cardsText(sortCards(used))}가 빠져 손패가 ${pts}점 → ${after}점이 된다. 받기는 모르는 카드 한 장을 더할 뿐이다.`,
+			...notes
+		];
+		if (!registered) lines.push('등록 상태가 되어 이후 바닥 조합에 붙이기도 할 수 있었다.');
+		return { category: 'thankyou', lines };
 	}
 	if (m.verb === 'thankyou' && b.verb !== 'thankyou') {
+		const used = m.cards.filter((c) => obs.hand.includes(c));
+		const broken = brokenFragment(used, obs, unseen);
+		const lines = [
+			`땡큐하면 손에서 ${cardsText(sortCards(used))}(−${handPoints(used)}점)가 빠진다. 추천은 ${name(best.action)}.`
+		];
+		if (broken)
+			lines.push(
+				`${cardText(broken.card)}는 ${cardText(broken.partner)}와 ${broken.kind} 이루던 카드라, 땡큐로 그 조합 가능성(살릴 카드 ${broken.outs.length}장)이 사라졌다.`
+			);
+		else lines.push(simOnly());
+		return { category: 'thankyou', lines };
+	}
+	if (m.verb === 'thankyou' && b.verb === 'thankyou') {
+		const gm = handPoints(m.cards.filter((c) => obs.hand.includes(c)));
+		const gb = handPoints(b.cards.filter((c) => obs.hand.includes(c)));
 		return {
 			category: 'thankyou',
 			lines: [
-				`이 땡큐는 손해였다. 추천: ${name(best.action)}.`,
-				'가져온 조합 때문에 더 좋은 조합의 재료를 썼거나, 받기로 얻을 기회가 더 컸다.'
+				`같은 땡큐라도 조합이 달랐다: 추천 ${cardsText(sortCards(b.cards))}(손패 −${gb}점), 내 수 ${cardsText(sortCards(m.cards))}(−${gm}점).`,
+				...(gb > gm ? [] : [simOnly()])
 			]
 		};
 	}
 	if (b.verb === 'register' && m.verb !== 'register') {
+		const { after, notes } = afterMeld(b.cards);
 		return {
 			category: 'meld',
 			lines: [
-				`등록할 수 있는 조합을 놓쳤다: ${cardsText(sortCards(b.cards))} (손패 −${handPoints(b.cards)}점).`,
-				'조합은 생기는 즉시 내려놓는 게 유리하다. 손패 점수가 낮아져야 내 스톱이 가능해지고 상대 스톱에도 지지 않는다.'
+				`등록할 수 있는 조합을 놓쳤다: ${cardsText(sortCards(b.cards))} — 손패 ${pts}점 → ${after}점.`,
+				...(notes.length
+					? notes
+					: ['조합을 들고 있으면 상대가 스톱할 때 그 점수까지 손패로 비교된다.'])
 			]
 		};
 	}
 	if (b.verb === 'attach' && m.verb !== 'attach') {
 		const card = b.cards[0];
+		const { after, notes } = afterMeld([card]);
 		return {
 			category: 'meld',
 			lines: [
-				`바닥 조합에 붙일 수 있는 ${cardText(card)}(${points(card)}점)를 놓쳤다: ${name(best.action)}.`
+				`붙일 수 있는 카드를 놓쳤다: ${name(best.action)} — 손패 ${pts}점 → ${after}점.`,
+				...notes
 			]
 		};
 	}
 	if (m.verb === 'register' && b.verb !== 'register') {
-		return {
-			category: 'meld',
-			lines: [`이 조합은 지금 등록하지 않는 편이 나았다. 추천: ${name(best.action)}.`]
-		};
+		const broken = brokenFragment(m.cards, obs, unseen);
+		const lines = [`이 조합은 지금 내려놓지 않는 편이 나았다. 추천: ${name(best.action)}.`];
+		if (broken)
+			lines.push(
+				`${cardText(broken.card)}는 ${cardText(broken.partner)}와 ${broken.kind} 이루던 카드다. 손에 두면 더 큰 조합으로 키울 수 있다 (살릴 카드 ${broken.outs.length}장).`
+			);
+		else lines.push(simOnly());
+		return { category: 'meld', lines };
 	}
 	if (m.verb === 'discard' && b.verb === 'discard') {
 		const mc = m.cards[0];
 		const bc = b.cards[0];
-		const unseen = unseenOf(obs);
+		const mp = rankNum(mc);
+		const bp = rankNum(bc);
 		const mf = fragmentOf(mc, obs.hand, unseen);
 		const bf = fragmentOf(bc, obs.hand, unseen);
-		const lines: string[] = [];
-		if (mf && !bf) {
-			lines.push(
-				`${cardText(mc)}는 ${cardText(mf.partner)}와 ${mf.kind} 이루는 조합 직전 카드였다. 살려 줄 카드 ${mf.outs.length}장(${cardsText(sortCards(mf.outs))})이 아직 안 나왔다.`,
-				`조합과 상관없는 ${cardText(bc)}(${points(bc)}점)를 버렸어야 했다.`
+		const md = thankYouPairs(mc, unseen).length;
+		const bd = thankYouPairs(bc, unseen).length;
+		const reasons: string[] = [];
+		const tradeoffs: string[] = [];
+		if (mf && !bf)
+			reasons.push(
+				`버린 ${cardText(mc)}는 ${cardText(mf.partner)}와 ${mf.kind} 이루던 카드다. 살려 줄 카드 ${mf.outs.length}장(${cardsText(sortCards(mf.outs))})이 아직 안 나왔다. ${cardText(bc)}는 조합과 상관없다.`
 			);
-		} else if (points(bc) > points(mc) && !bf) {
-			lines.push(
-				`${cardText(bc)}(${points(bc)}점)가 ${cardText(mc)}(${points(mc)}점)보다 무겁고 조합에도 쓰이지 않는다.`,
-				'무거운 카드부터 버려야 손패 점수가 빨리 내려가 스톱이 가능해지고, 상대 스톱에도 안전하다.'
+		else if (mf && bf && mf.outs.length > bf.outs.length)
+			reasons.push(
+				`둘 다 조합 직전 카드지만 살릴 카드가 ${cardText(mc)} 쪽 ${mf.outs.length}장, ${cardText(bc)} 쪽 ${bf.outs.length}장이다.`
 			);
-		} else if (bf && mf && bf.outs.length < mf.outs.length) {
-			lines.push(
-				`둘 다 조합 직전 카드지만 ${cardText(mc)} 쪽 조각이 살릴 카드가 더 많다 (${mf.outs.length}장 vs ${bf.outs.length}장).`
+		else if (bf && !mf)
+			tradeoffs.push(
+				`${cardText(bc)}는 ${cardText(bf.partner)}와 ${bf.kind} 이루는 카드인데도 버리는 편이 나았다.`
 			);
-		} else if (points(bc) < points(mc)) {
-			lines.push(
-				`더 가벼운 ${cardText(bc)}를 버리고 ${cardText(mc)}를 남기는 편이 나았다. 남은 패와 조합될 가능성이나 다음 사람의 땡큐 가능성이 차이를 만든 장면이다.`
+		if (bp > mp)
+			reasons.push(
+				`${cardText(bc)}(${bp}점)가 ${cardText(mc)}(${mp}점)보다 ${bp - mp}점 무겁다. 추천대로 버리면 손패 ${pts - bp}점, 내 수대로면 ${pts - mp}점이다.`
 			);
-		} else {
-			lines.push(`시뮬레이션상 ${cardText(bc)}를 버리는 편이 유리했다.`);
-		}
+		else if (mp > bp) tradeoffs.push(`${cardText(mc)}가 ${mp - bp}점 더 무겁긴 했다.`);
+		if (md > bd)
+			reasons.push(
+				`다음 사람이 땡큐할 수 있는 2장 조합이 ${cardText(mc)}는 ${md}가지, ${cardText(bc)}는 ${bd}가지다 (안 보인 카드 기준).`
+			);
+		else if (bd > md)
+			tradeoffs.push(
+				`땡큐 위험은 ${cardText(bc)} 쪽이 ${bd}가지로 더 크다 (${cardText(mc)} ${md}가지).`
+			);
+		if (limit !== null && pts - bp <= limit && pts - mp > limit)
+			reasons.push(
+				`${cardText(bc)}를 버리면 손패 ${pts - bp}점으로 다음 차례 스톱 기준(${table})에 든다.`
+			);
+		const lines = reasons.length ? reasons : [simOnly()];
+		if (reasons.length && tradeoffs.length)
+			lines.push(
+				`반대로 ${tradeoffs.join(' ')} 그래도 종합하면 ${cardText(bc)} 쪽이 ${pp(gap)} 높았다.`
+			);
 		if (ctx.nextTookMyDiscard) lines.push(`실제로 다음 사람이 버린 ${cardText(mc)}를 땡큐해 갔다.`);
 		return { category: 'discard', lines };
 	}
-	return { category: 'other', lines: [`추천: ${name(best.action)}.`] };
+	return { category: 'other', lines: [`추천: ${name(best.action)}.`, simOnly()] };
 }
 
 /** 워커 결과를 복기 항목으로 만든다. 고를 수가 하나뿐이었던 결정은 뺀다. */
