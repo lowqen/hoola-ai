@@ -60,7 +60,12 @@ test('오프라인: 모든 화면이 캐시에서 뜨고 실패한 요청이 없
 	await installThenGoOffline(page, context);
 
 	const failed: string[] = [];
-	page.on('requestfailed', (r) => failed.push(`${r.failure()?.errorText} ${r.url()}`));
+	// 화면을 옮기면서 취소된 요청(ERR_ABORTED, 예: 받는 중이던 엔진 워커)은 캐시 실패가 아니다.
+	// 캐시에 없으면 오프라인이라 ERR_FAILED·ERR_INTERNET_DISCONNECTED로 실패한다.
+	page.on('requestfailed', (r) => {
+		const error = r.failure()?.errorText ?? '';
+		if (error !== 'net::ERR_ABORTED') failed.push(`${error} ${r.url()}`);
+	});
 	for (const route of ROUTES) {
 		const response = await page.goto(route);
 		expect(response?.fromServiceWorker(), route).toBe(true);
