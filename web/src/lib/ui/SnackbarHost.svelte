@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.ts';
 	import IconButton from './IconButton.svelte';
 	import { snackbar } from './snackbar.svelte.ts';
 </script>
@@ -16,7 +17,12 @@
 					</button>
 				{/if}
 				{#if s.closable}
-					<IconButton icon="close" label="닫기" class="close" onclick={() => snackbar.dismiss()} />
+					<IconButton
+						icon="close"
+						label={t('닫기')}
+						class="close"
+						onclick={() => snackbar.dismiss()}
+					/>
 				{/if}
 			</div>
 		{/key}

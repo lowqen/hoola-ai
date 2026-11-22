@@ -1,9 +1,10 @@
 // 봇 목록과 상대 프리셋. 키는 저장된 전적의 opponents와 호환되므로 바꾸지 않고, spec은 엔진 봇 사양이다.
 // 이름은 봇이 하는 행동 그대로, 실력은 난이도 배지와 실측 레이팅으로 보여 준다.
 // spec을 바꾸면 crates/hoola-lab/src/rating.rs의 WEB_BOTS도 같이 바꾸고 레이팅을 다시 잰다.
+import { lang, t } from '#lib/i18n/index.ts';
 import type { Settings } from '#lib/store.ts';
 
-export type Level = '입문' | '보통' | '상급' | '최상급';
+export type Level = string;
 
 export interface BotInfo {
 	name: string;
@@ -15,35 +16,45 @@ export interface BotInfo {
 /** 강한 순. 선택 목록도 이 순서다. */
 export const BOTS: Record<string, BotInfo> = {
 	search: {
-		name: '탐색',
-		level: '최상급',
-		desc: '상대 패를 추정해 수마다 끝까지 시뮬레이션한다',
+		name: t('탐색'),
+		level: t('최상급'),
+		desc: t('상대 패를 추정해 수마다 끝까지 시뮬레이션한다'),
 		spec: 'search:k=256:meld=1:belief=bayes:z=0.5'
 	},
-	expert: { name: '전략서', level: '상급', desc: '전략서대로 둔다', spec: 'expert' },
-	greedy: { name: '즉시스톱', level: '상급', desc: '스톱할 수 있으면 바로 스톱', spec: 'greedy' },
+	expert: {
+		name: t('전략서'),
+		level: t('상급'),
+		desc: t('전략서대로 둔다'),
+		spec: 'expert'
+	},
+	greedy: {
+		name: t('즉시스톱'),
+		level: t('상급'),
+		desc: t('스톱할 수 있으면 바로 스톱'),
+		spec: 'greedy'
+	},
 	friendA: {
-		name: '노스톱',
-		level: '보통',
-		desc: '스톱 없이 털기만 노린다',
+		name: t('노스톱'),
+		level: t('보통#level'),
+		desc: t('스톱 없이 털기만 노린다'),
 		spec: 'expert:stop=never:outs=3'
 	},
 	friendC: {
-		name: '늦은스톱',
-		level: '보통',
-		desc: '등록을 미루고 2점 이하 스톱',
+		name: t('늦은스톱'),
+		level: t('보통#level'),
+		desc: t('등록을 미루고 2점 이하 스톱'),
 		spec: 'expert:stop=t2:meld=hold:outs=3'
 	},
 	friendE: {
-		name: '친구모델',
-		level: '입문',
-		desc: '실제 친구 모델. 모아서 한 번에 등록, 스톱할 수 있으면 바로 스톱',
+		name: t('친구모델'),
+		level: t('입문'),
+		desc: t('실제 친구 모델. 모아서 한 번에 등록, 스톱할 수 있으면 바로 스톱'),
 		spec: 'expert:stop=t10:meld=dump:outs=1'
 	},
 	friendB: {
-		name: '한방털기',
-		level: '입문',
-		desc: '스톱 없이 털 때만 등록',
+		name: t('한방털기'),
+		level: t('입문'),
+		desc: t('스톱 없이 털 때만 등록'),
 		spec: 'expert:stop=never:meld=allin:outs=3'
 	}
 };
@@ -68,7 +79,12 @@ export const RATINGS: Record<string, number[]> = {
 export function ratingText(key: string, players: number, stop5: boolean): string {
 	const s5 = players === 2 && stop5;
 	const r = RATINGS[key]?.[s5 ? 1 : players === 2 ? 0 : players - 1];
-	return r ? `레이팅 ${r} (${players}인${s5 ? ' 스톱 5점' : ''} 실측, 친구모델 = 1000)` : '';
+	return r
+		? t('레이팅 {r} ({rule} 실측, 친구모델 = 1000)', {
+				r,
+				rule: t('{n}인', { n: players }) + (s5 ? t(' 스톱 5점') : '')
+			})
+		: '';
 }
 
 /** 봇 상세 설명: 배지 · 행동 설명 · 지금 규칙의 실측 레이팅. */
@@ -96,14 +112,15 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** 없어진 봇: 설정은 가장 가까운 봇으로 바꾸고, 전적에는 옛 이름을 남긴다. */
 const RETIRED: Record<string, { to: string; name: string }> = {
-	friendD: { to: 'friendE', name: '옛 친구' },
-	random: { to: 'greedy', name: '무작위' }
+	friendD: { to: 'friendE', name: t('옛 친구') },
+	random: { to: 'greedy', name: t('무작위') }
 };
 
 export const botName = (key: string) => BOTS[key]?.name ?? RETIRED[key]?.name ?? key;
 
 /** 받침에 맞춰 주격 조사를 붙인다 ("1번 전략서가", "1번 노스톱이"). */
 export function withSubject(word: string): string {
+	if (lang === 'en') return word;
 	const code = word.charCodeAt(word.length - 1) - 0xac00;
 	const batchim = code >= 0 && code < 11172 && code % 28 !== 0;
 	return `${word}${batchim ? '이' : '가'}`;

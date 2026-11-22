@@ -1,4 +1,5 @@
 <script lang="ts" generics="T extends string">
+	import { t } from '#lib/i18n/index.ts';
 	import Badge from './Badge.svelte';
 	import Icon from './Icon.svelte';
 	import type { IconName } from './icons.ts';
@@ -23,7 +24,7 @@
 	let { destinations, active, onselect, contained = false, layout = 'auto' }: Props = $props();
 </script>
 
-<nav class={`nav ${layout} ${contained ? 'contained' : ''}`} aria-label="주 메뉴">
+<nav class={`nav ${layout} ${contained ? 'contained' : ''}`} aria-label={t('주 메뉴')}>
 	{#each destinations as d (d.id)}
 		{@const on = d.id === active}
 		{#if d.href}
@@ -40,7 +41,9 @@
 				</span>
 				<span class="label"
 					>{d.label}{#if d.badge}<span class="visually-hidden"
-							>, {typeof d.badge === 'number' ? `새 항목 ${d.badge}개` : '새 항목 있음'}</span
+							>, {typeof d.badge === 'number'
+								? t('새 항목 {n}개', { n: d.badge })
+								: t('새 항목 있음')}</span
 						>{/if}</span
 				>
 			</a>
@@ -58,7 +61,9 @@
 				</span>
 				<span class="label"
 					>{d.label}{#if d.badge}<span class="visually-hidden"
-							>, {typeof d.badge === 'number' ? `새 항목 ${d.badge}개` : '새 항목 있음'}</span
+							>, {typeof d.badge === 'number'
+								? t('새 항목 {n}개', { n: d.badge })
+								: t('새 항목 있음')}</span
 						>{/if}</span
 				>
 			</button>

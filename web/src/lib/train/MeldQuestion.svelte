@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 조합 찾기: 손패에서 겹치지 않는 조합을 묶어 가장 많은 점수를 덜어낸다.
+	import { t } from '#lib/i18n/index.ts';
 	import { onMount } from 'svelte';
 	import {
 		cardsText,
@@ -34,12 +35,12 @@
 
 	async function bind() {
 		if (!selected.length) {
-			message = '묶을 카드를 고르세요';
+			message = t('묶을 카드를 고르세요');
 			return;
 		}
 		const engine = await loadEngine();
 		if (!engine.meldKind(selected.join(' '))) {
-			message = '조합이 아니다: 같은 숫자 3장+ · 같은 무늬 연속 3장+ · 7 한 장';
+			message = t('조합이 아니다: 같은 숫자 3장+ · 같은 무늬 연속 3장+ · 7 한 장');
 			return;
 		}
 		groups = [...groups, selected];
@@ -52,14 +53,29 @@
 		const covered = handPoints(used);
 		const ok = covered === answer.covered;
 		const lines = ok
-			? [`덜어낸 점수 ${covered}점: 최선이다. 남는 손패 ${obs.hand_points - covered}점.`]
+			? [
+					t('덜어낸 점수 {n}점: 최선이다. 남는 손패 {left}점.', {
+						n: covered,
+						left: obs.hand_points - covered
+					})
+				]
 			: [
-					`덜어낸 점수 ${covered}점 / 최선 ${answer.covered}점. 남는 손패가 ${obs.hand_points - covered}점이 아니라 ${answer.left}점이 될 수 있었다.`
+					t(
+						'덜어낸 점수 {n}점 / 최선 {best}점. 남는 손패가 {left}점이 아니라 {bestLeft}점이 될 수 있었다.',
+						{
+							n: covered,
+							best: answer.covered,
+							left: obs.hand_points - covered,
+							bestLeft: answer.left
+						}
+					)
 				];
 		if (!ok) {
 			const missed = answer.melds.flat().filter((c) => !used.includes(c));
-			if (missed.length) lines.push(`놓친 카드: ${cardsText(sortCards(missed))}`);
-			if (answer.melds.some((m) => m.length === 1)) lines.push('7은 한 장만으로도 등록할 수 있다.');
+			if (missed.length)
+				lines.push(t('놓친 카드: {cards}', { cards: cardsText(sortCards(missed)) }));
+			if (answer.melds.some((m) => m.length === 1))
+				lines.push(t('7은 한 장만으로도 등록할 수 있다.'));
 			const wraps = answer.melds.some(
 				(m) =>
 					m.length >= 3 &&
@@ -67,9 +83,14 @@
 					m.some((c) => rankOf(c) === 'A') &&
 					m.some((c) => rankOf(c) === 'K')
 			);
-			if (wraps) lines.push('A는 K와도 이어진다 (Q-K-A, K-A-2 순환 가능).');
+			if (wraps) lines.push(t('A는 K와도 이어진다 (Q-K-A, K-A-2 순환 가능).'));
 		}
-		training.answer({ ok, title: `${groups.length}개 묶음`, lines, bestMelds: answer.melds });
+		training.answer({
+			ok,
+			title: t('{n}개 묶음', { n: groups.length }),
+			lines,
+			bestMelds: answer.melds
+		});
 	}
 
 	onMount(() => {
@@ -78,7 +99,7 @@
 </script>
 
 <p class="prompt" data-testid="t-prompt">
-	등록할 조합을 <b>전부</b> 묶으세요. 겹치지 않게, 손패 점수를 가장 많이 덜어내면 정답입니다.
+	{t('등록할 조합을 전부 묶으세요. 겹치지 않게, 손패 점수를 가장 많이 덜어내면 정답입니다.')}
 </p>
 
 {#if groups.length}
@@ -87,12 +108,12 @@
 			<span data-testid="t-group">
 				<Chip
 					kind="input"
-					removeLabel="묶음 풀기"
+					removeLabel={t('묶음 풀기')}
 					onremove={training.feedback
 						? undefined
 						: () => (groups = groups.filter((_, at) => at !== i))}
 				>
-					{cardsText(sortCards(group))} · {handPoints(group)}점
+					{cardsText(sortCards(group))} · {t('{n}점', { n: handPoints(group) })}
 				</Chip>
 			</span>
 		{/each}
@@ -102,8 +123,10 @@
 <TrainScene {obs} hand={left} {selected} ontoggle={toggle} />
 
 <QuestionBar {message}>
-	<Button variant="tonal" size="md" icon="layers" data-testid="t-bind" onclick={bind}>묶기</Button>
-	<Button size="md" icon="check" data-testid="t-submit" onclick={submit}>제출</Button>
+	<Button variant="tonal" size="md" icon="layers" data-testid="t-bind" onclick={bind}
+		>{t('묶기')}</Button
+	>
+	<Button size="md" icon="check" data-testid="t-submit" onclick={submit}>{t('제출')}</Button>
 </QuestionBar>
 
 <style>

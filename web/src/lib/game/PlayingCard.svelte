@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 카드 한 장. 색은 테마를 따르지 않는 고정 색(크림 앞면, 빨강, 뒷면)이다 (DESIGN_PLAN §3.1).
+	import { t } from '#lib/i18n/index.ts';
 	import {
 		CARD_PX,
 		cardAria,
@@ -50,7 +51,9 @@
 		size === 'inherit' ? undefined : `--w:${CARD_PX[size].w}px;--h:${CARD_PX[size].h}px`
 	);
 	const label = $derived(
-		card ? `${cardAria(card)}${mark ? (mark === 'mine' ? ', 내 수' : ', 추천') : ''}` : undefined
+		card
+			? `${cardAria(card)}${mark ? ', ' + (mark === 'mine' ? t('내 수') : t('추천')) : ''}`
+			: undefined
 	);
 </script>
 
@@ -62,7 +65,7 @@
 		</span>
 		<span class="pip" aria-hidden="true">{suitSymbol(card)}</span>
 		{#if mark}
-			<span class="tag" aria-hidden="true">{mark === 'mine' ? '내 수' : '추천'}</span>
+			<span class="tag" aria-hidden="true">{mark === 'mine' ? t('내 수') : t('추천')}</span>
 		{/if}
 	{/if}
 {/snippet}

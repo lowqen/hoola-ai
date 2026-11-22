@@ -1,5 +1,6 @@
 // 대전 한 판의 상태와 진행. 화면은 사람 좌석의 관측만으로 그린다.
 // 라우트를 옮겨도 판이 이어지도록 모듈 하나로 둔다. 저장 형식은 기존 앱과 같다.
+import { t } from '#lib/i18n/index.ts';
 import { cardAria, cardText, sortCards, type CardId } from '#lib/game/cards.ts';
 import { expectFrom, flyBack, scaled, setMotionSpeed } from '#lib/game/motion.svelte.ts';
 import type { MeldInfo } from '#lib/game/MeldGroup.svelte';
@@ -157,9 +158,9 @@ class PlaySession {
 
 	// ---------- 이름 ----------
 	seatName = (seat: number) => {
-		if (seat === HUMAN) return '나';
+		if (seat === HUMAN) return t('나');
 		const key = this.config?.opponents[seat - 1];
-		return `${seat}번 ${key ? botName(key) : '봇'}`;
+		return t('{n}번 {name}', { n: seat, name: key ? botName(key) : t('봇') });
 	};
 
 	private actText(action: string, obs: Observation) {
@@ -277,7 +278,8 @@ class PlaySession {
 		this.recorded = false;
 		this.lastRecord = null;
 		this.resetLog(
-			`판 시작 · 시드 ${seed} · 선: ${this.seatName(first)}${stop5 ? ' · 스톱 5점' : ''}`
+			t('판 시작 · 시드 {seed} · 선: {first}', { seed, first: this.seatName(first) }) +
+				(stop5 ? t(' · 스톱 5점') : '')
 		);
 		this.resetTurnState();
 		this.newGameOpen = false;
@@ -319,7 +321,7 @@ class PlaySession {
 		this.usedUndo = saved.usedUndo;
 		this.recorded = saved.recorded;
 		this.lastRecord = null;
-		this.resetLog(`이어서 두기 · 시드 ${saved.config.seed}`);
+		this.resetLog(t('이어서 두기 · 시드 {seed}', { seed: saved.config.seed }));
 		this.resetTurnState();
 		this.step();
 	}
@@ -369,7 +371,11 @@ class PlaySession {
 		for (; this.logged < obs.events.length; this.logged++) {
 			const e = obs.events[this.logged];
 			if (e.reshuffle !== undefined) {
-				added.push({ id: ++this.logId, text: `버림패를 섞어 더미 ${e.reshuffle}장`, kind: 'sys' });
+				added.push({
+					id: ++this.logId,
+					text: t('버림패를 섞어 더미 {n}장', { n: e.reshuffle }),
+					kind: 'sys'
+				});
 			} else {
 				added.push({
 					id: ++this.logId,
@@ -427,7 +433,9 @@ class PlaySession {
 			if (verb === 'draw') {
 				const drawn = this.readObs().hand.find((c) => !before.hand.includes(c));
 				if (drawn) expectFrom(drawn, STOCK);
-				this.announcement = drawn ? `${cardAria(drawn)}를 받았다` : '카드를 받았다';
+				this.announcement = drawn
+					? t('{card}를 받았다', { card: cardAria(drawn) })
+					: t('카드를 받았다');
 			}
 			return;
 		}
@@ -443,7 +451,7 @@ class PlaySession {
 	}
 
 	/** 내 행동을 시도한다. 불법이면 상태는 그대로이고 이유를 보여 준다. */
-	play(action: string, failMessage = '지금은 할 수 없는 수다'): boolean {
+	play(action: string, failMessage = t('지금은 할 수 없는 수다')): boolean {
 		const game = this.game;
 		if (!game || game.isOver || game.currentPlayer !== HUMAN) return false;
 		const before = this.obs!;
@@ -475,14 +483,14 @@ class PlaySession {
 		if (verb === 'draw' || this.game?.isOver) return;
 		const message =
 			verb === 'discard'
-				? `${cardText(cards[0])}를 버렸다`
+				? t('{card}를 버렸다', { card: cardText(cards[0]) })
 				: verb === 'attach'
-					? `${cardText(cards[0])}를 붙였다`
+					? t('{card}를 붙였다', { card: cardText(cards[0]) })
 					: this.actText(action, before);
 		this.announcement = message;
 		this.undoSnackbar = snackbar.show({
 			message,
-			actionLabel: '되돌리기',
+			actionLabel: t('되돌리기'),
 			onAction: () => this.undo()
 		});
 	}
@@ -490,7 +498,7 @@ class PlaySession {
 	notifyRule(message: string) {
 		snackbar.show({
 			message,
-			actionLabel: '규칙 보기',
+			actionLabel: t('규칙 보기'),
 			onAction: () => (this.rulesOpen = true)
 		});
 	}
@@ -504,13 +512,14 @@ class PlaySession {
 		this.usedUndo = true;
 		this.resetLog(note);
 		this.resetTurnState();
-		this.announcement = '되돌렸다';
+		this.announcement = t('되돌렸다');
 		this.step();
 	}
 
 	undo() {
 		const last = this.decisions.at(-1);
-		if (this.game && last) this.rewindTo(last.index, `되돌리기 · 시드 ${this.config!.seed}`);
+		if (this.game && last)
+			this.rewindTo(last.index, t('되돌리기 · 시드 {seed}', { seed: this.config!.seed }));
 	}
 
 	// ---------- 선택과 행동 ----------
@@ -532,7 +541,13 @@ class PlaySession {
 
 	stop() {
 		const obs = this.obs!;
-		this.play('stop', `손패 ${obs.hand_points}점: ${obs.stop_limit}점 이하일 때만 스톱할 수 있다`);
+		this.play(
+			'stop',
+			t('손패 {pts}점: {limit}점 이하일 때만 스톱할 수 있다', {
+				pts: obs.hand_points,
+				limit: obs.stop_limit
+			})
+		);
 	}
 
 	discard(card: CardId) {
@@ -541,41 +556,41 @@ class PlaySession {
 
 	register() {
 		const sel = sortCards(this.selected);
-		if (this.settings.beginner) return this.pick('등록', 'register ', sel);
-		if (!sel.length) return this.notifyRule('등록할 카드를 고르세요');
+		if (this.settings.beginner) return this.pick(t('등록'), 'register ', sel);
+		if (!sel.length) return this.notifyRule(t('등록할 카드를 고르세요'));
 		this.play(
 			`register ${sel.join(' ')}`,
-			'세트(같은 숫자 3장 이상), 런(같은 무늬 연속 3장 이상), 7 한 장만 등록할 수 있다'
+			t('세트(같은 숫자 3장 이상), 런(같은 무늬 연속 3장 이상), 7 한 장만 등록할 수 있다')
 		);
 	}
 
 	thankYou() {
 		const obs = this.obs!;
 		const sel = sortCards(this.selected);
-		if (this.settings.beginner) return this.pick('땡큐', 'thankyou', sel);
-		if (!obs.discard_top) return this.notifyRule('버림패가 없다');
+		if (this.settings.beginner) return this.pick(t('땡큐'), 'thankyou', sel);
+		if (!obs.discard_top) return this.notifyRule(t('버림패가 없다'));
 		if (sel.length < 2)
-			return this.notifyRule('버림패 맨 위 카드와 조합할 내 카드를 2장 이상 고르세요');
+			return this.notifyRule(t('버림패 맨 위 카드와 조합할 내 카드를 2장 이상 고르세요'));
 		this.play(
 			`thankyou ${[...sel, obs.discard_top].join(' ')}`,
-			'땡큐할 수 없다: 바로 앞 사람이 버린 맨 위 카드와 고른 카드가 세트나 런이 되어야 한다'
+			t('땡큐할 수 없다: 바로 앞 사람이 버린 맨 위 카드와 고른 카드가 세트나 런이 되어야 한다')
 		);
 	}
 
 	attach() {
 		const sel = this.selected;
-		if (this.settings.beginner) return this.pick('붙이기', 'attach ', sel);
+		if (this.settings.beginner) return this.pick(t('붙이기'), 'attach ', sel);
 		if (sel.length !== 1)
-			return this.notifyRule('붙일 카드 1장을 먼저 고른 뒤 바닥 조합을 누르세요');
+			return this.notifyRule(t('붙일 카드 1장을 먼저 고른 뒤 바닥 조합을 누르세요'));
 		const melds = this.obs!.melds;
 		if (melds.length === 1) return this.attachTo(sel[0], melds[0].index);
-		this.notifyRule('바닥에서 붙일 조합을 누르세요');
+		this.notifyRule(t('바닥에서 붙일 조합을 누르세요'));
 	}
 
 	attachTo(card: CardId, meld: number) {
 		const message = this.obs!.registered[HUMAN]
-			? '그 조합에는 붙일 수 없다'
-			: '등록이나 땡큐를 한 번 한 뒤에만 붙일 수 있다';
+			? t('그 조합에는 붙일 수 없다')
+			: t('등록이나 땡큐를 한 번 한 뒤에만 붙일 수 있다');
 		return this.play(`attach ${card} ${meld}`, message);
 	}
 
@@ -650,24 +665,24 @@ class PlaySession {
 		const won = out.winners.includes(HUMAN);
 		const name = this.seatName;
 		const reasons: Record<Outcome['reason'], string> = {
-			out: `${name(out.player ?? 0)} 털기`,
-			'stop-success': `${name(out.caller ?? 0)} 스톱 성공`,
-			'stop-fail': `${name(out.caller ?? 0)} 스톱 실패`,
-			'no-cards': '받을 카드 없음',
-			'turn-limit': '턴 제한'
+			out: t('{name} 털기', { name: name(out.player ?? 0) }),
+			'stop-success': t('{name} 스톱 성공', { name: name(out.caller ?? 0) }),
+			'stop-fail': t('{name} 스톱 실패', { name: name(out.caller ?? 0) }),
+			'no-cards': t('받을 카드 없음'),
+			'turn-limit': t('턴 제한')
 		};
 		const myPoints = out.points[HUMAN];
 		this.result = {
 			title:
 				out.winners.length === 0
-					? '무승부'
+					? t('무승부')
 					: won
 						? out.winners.length > 1
-							? '공동 승리'
-							: '승리'
-						: '패배',
+							? t('공동 승리')
+							: t('승리')
+						: t('패배'),
 			tone: won ? 'win' : out.winners.length === 0 ? 'draw' : 'lose',
-			reason: `${reasons[out.reason] ?? out.reason} · 내 손패 ${myPoints}점`,
+			reason: `${reasons[out.reason] ?? out.reason} · ${t('내 손패 {n}점', { n: myPoints })}`,
 			...(won ? { cause: null, drill: null } : this.lossCause(out, myPoints, obs.stop_limit)),
 			hands: (obs.revealed_hands ?? []).map((cards, seat) => ({
 				seat,
@@ -678,7 +693,7 @@ class PlaySession {
 			}))
 		};
 		this.record(out);
-		this.announcement = `판 종료: ${this.result.title}`;
+		this.announcement = t('판 종료: {title}', { title: this.result.title });
 		const gen = this.generation;
 		// 마지막 카드 이동을 본 뒤에 결과를 연다
 		setTimeout(() => {
@@ -695,24 +710,29 @@ class PlaySession {
 		const name = this.seatName;
 		if (out.reason === 'stop-fail' && out.caller === HUMAN) {
 			return {
-				cause: '스톱했지만 나보다 낮거나 같은 손패가 있었다 → 훈련: 스톱 판단',
+				cause: t('스톱했지만 나보다 낮거나 같은 손패가 있었다 → 훈련: 스톱 판단'),
 				drill: 'stop'
 			};
 		}
 		if (out.reason === 'out') {
 			return points > limit
 				? {
-						cause: `${limit}점 이하가 되기 전에 ${withSubject(name(out.player ?? 0))} 털었다 → 훈련: 조합 찾기`,
+						cause: t('{limit}점 이하가 되기 전에 {who} 털었다 → 훈련: 조합 찾기', {
+							limit,
+							who: withSubject(name(out.player ?? 0))
+						}),
 						drill: 'meld'
 					}
 				: {
-						cause: `스톱할 수 있는 점수였는데 ${withSubject(name(out.player ?? 0))} 먼저 털었다 → 훈련: 스톱 판단`,
+						cause: t('스톱할 수 있는 점수였는데 {who} 먼저 털었다 → 훈련: 스톱 판단', {
+							who: withSubject(name(out.player ?? 0))
+						}),
 						drill: 'stop'
 					};
 		}
 		if (out.reason === 'stop-success') {
 			return {
-				cause: `${name(out.caller ?? 0)}의 스톱에 점수로 졌다 → 훈련: 버릴 카드`,
+				cause: t('{name}의 스톱에 점수로 졌다 → 훈련: 버릴 카드', { name: name(out.caller ?? 0) }),
 				drill: 'discard'
 			};
 		}
@@ -792,7 +812,7 @@ class PlaySession {
 		this.reviewOpen = false;
 		this.recorded = true;
 		this.lastRecord = null;
-		this.rewindTo(index, `복기한 장면부터 다시 두기 · 시드 ${this.config!.seed}`);
+		this.rewindTo(index, t('복기한 장면부터 다시 두기 · 시드 {seed}', { seed: this.config!.seed }));
 	}
 
 	finishCoach() {

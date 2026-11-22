@@ -2,6 +2,7 @@
 	// 게임 행동 바 (DESIGN_PLAN §6.1-3 고정 슬롯):
 	// [스톱] [땡큐] [등록] [붙이기] … [주 행동] 순서와 자리는 단계가 바뀌어도 절대 움직이지 않는다.
 	// 지금 못 하는 행동은 숨기지 않고 비활성으로 둔다. 미리보기 줄은 높이가 고정이라 바가 흔들리지 않는다.
+	import { t } from '#lib/i18n/index.ts';
 	import Icon from './Icon.svelte';
 	import type { IconName } from './icons.ts';
 	import { ripple } from './ripple.ts';
@@ -38,7 +39,7 @@
 	let { slots, primary, preview, hint, onblocked }: Props = $props();
 </script>
 
-<div class="action-bar" role="toolbar" aria-label="행동" data-coach="actions">
+<div class="action-bar" role="toolbar" aria-label={t('행동')} data-coach="actions">
 	<div class="preview" aria-live="polite" data-testid="action-preview">
 		{#if preview}<span class="chip">{preview}</span>{:else if hint}<span class="hint">{hint}</span
 			>{/if}

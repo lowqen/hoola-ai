@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.ts';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -78,7 +79,7 @@
 		<button
 			type="button"
 			class="handle"
-			aria-label="시트 닫기"
+			aria-label={t('시트 닫기')}
 			onclick={close}
 			onpointerdown={down}
 			onpointermove={move}

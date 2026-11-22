@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 바닥 조합 하나. 붙일 수 있으면 강조하고, 누르거나 카드를 놓으면 그 조합으로 간다.
+	import { t } from '#lib/i18n/index.ts';
 	import { flip } from 'svelte/animate';
 	import Icon from '#lib/ui/Icon.svelte';
 	import { cardsText, type CardId, type CardSize } from './cards.ts';
@@ -20,8 +21,14 @@
 	}
 	let { meld, size = 'sm', target = false, onattach }: Props = $props();
 
-	const KIND = { set: '세트', run: '런', seven: '7' };
-	const label = $derived(`${meld.owner}의 ${KIND[meld.kind]} ${cardsText(meld.cards)}`);
+	const KIND = { set: t('세트'), run: t('런'), seven: '7' };
+	const label = $derived(
+		t('{owner}의 {kind} {cards}', {
+			owner: meld.owner,
+			kind: KIND[meld.kind],
+			cards: cardsText(meld.cards)
+		})
+	);
 </script>
 
 <div
@@ -39,7 +46,7 @@
 		<button
 			type="button"
 			class="hit md-state"
-			aria-label={`${label}에 붙이기`}
+			aria-label={t('{meld}에 붙이기', { meld: label })}
 			data-testid={`attach-${meld.id}`}
 			onclick={onattach}
 		>

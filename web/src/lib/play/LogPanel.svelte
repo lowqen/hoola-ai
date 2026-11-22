@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 기록 패널 (DESIGN_PLAN §6.3): 휴대폰은 최근 3줄 미리보기, 넓은 화면은 오른쪽 패널에 전체.
+	import { t } from '#lib/i18n/index.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import type { LogLine } from './session.svelte.ts';
 
@@ -13,15 +14,15 @@
 	});
 </script>
 
-<section class={['log', expanded && 'expanded']} aria-label="이번 판 기록">
+<section class={['log', expanded && 'expanded']} aria-label={t('이번 판 기록')}>
 	<div class="head">
-		<h2>기록</h2>
+		<h2>{t('기록')}</h2>
 		<span class="more">
 			<Button
 				variant="text"
 				size="sm"
 				data-testid="log-toggle"
-				onclick={() => (expanded = !expanded)}>{expanded ? '접기' : '전체 보기'}</Button
+				onclick={() => (expanded = !expanded)}>{expanded ? t('접기') : t('전체 보기')}</Button
 			>
 		</span>
 	</div>

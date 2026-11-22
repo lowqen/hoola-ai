@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.ts';
 	import type { Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
 	import IconButton from './IconButton.svelte';
@@ -73,7 +74,7 @@
 	<div class="surface">
 		<header>
 			{#if fullscreen}
-				<IconButton icon="close" label="닫기" onclick={requestClose} />
+				<IconButton icon="close" label={t('닫기')} onclick={requestClose} />
 			{:else if icon}
 				<span class="hero"><Icon name={icon} /></span>
 			{/if}

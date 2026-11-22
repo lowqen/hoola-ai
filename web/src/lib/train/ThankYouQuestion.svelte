@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 땡큐 찾기: 버림패 맨 위로 땡큐할 카드를 고르거나, 안 되면 받는다.
+	import { t } from '#lib/i18n/index.ts';
 	import { onMount } from 'svelte';
 	import { cardsText, cardText, handPoints, sortCards, type CardId } from '#lib/game/cards.ts';
 	import { actionText, parseAction } from '#lib/play/actions.ts';
@@ -29,13 +30,22 @@
 	function explain() {
 		const options = puzzle.options.map((a) => parseAction(a).cards);
 		if (!options.length) {
-			return [`${cardText(target)}와 내 카드 2장으로 만들 수 있는 세트나 런이 없다. 받는다.`];
+			return [
+				t('{card}와 내 카드 2장으로 만들 수 있는 세트나 런이 없다. 받는다.', {
+					card: cardText(target)
+				})
+			];
 		}
 		const best = options.reduce((b, o) => (relief(o) > relief(b) ? o : b));
 		const name = seatLabel(puzzle.players);
 		return [
-			`가능한 땡큐: ${puzzle.options.map((a) => actionText(a, obs, name)).join(' · ')}`,
-			`가장 많이 덜어내는 땡큐: ${cardsText(sortCards(best))} (손패 −${relief(best)}점)`
+			t('가능한 땡큐: {list}', {
+				list: puzzle.options.map((a) => actionText(a, obs, name)).join(' · ')
+			}),
+			t('가장 많이 덜어내는 땡큐: {cards} (손패 −{n}점)', {
+				cards: cardsText(sortCards(best)),
+				n: relief(best)
+			})
 		];
 	}
 
@@ -43,14 +53,14 @@
 		const ok = puzzle.options.length === 0;
 		training.answer({
 			ok,
-			title: ok ? '땡큐 불가를 알아봤다' : '땡큐 기회를 놓쳤다',
+			title: ok ? t('땡큐 불가를 알아봤다') : t('땡큐 기회를 놓쳤다'),
 			lines: explain()
 		});
 	}
 
 	function thankYou() {
 		if (selected.length < 2) {
-			message = '버림패 카드와 함께 등록할 내 카드를 2장 이상 고르세요';
+			message = t('버림패 카드와 함께 등록할 내 카드를 2장 이상 고르세요');
 			return;
 		}
 		const picked = [...selected, target];
@@ -58,10 +68,10 @@
 		training.answer({
 			ok,
 			title: ok
-				? '땡큐 성공'
+				? t('땡큐 성공')
 				: puzzle.options.length
-					? '그 카드들로는 조합이 안 된다'
-					: '이 장면은 땡큐가 안 된다',
+					? t('그 카드들로는 조합이 안 된다')
+					: t('이 장면은 땡큐가 안 된다'),
 			lines: explain()
 		});
 	}
@@ -72,17 +82,21 @@
 </script>
 
 <p class="prompt" data-testid="t-prompt">
-	<b>차례 시작, 받기 전입니다.</b> 버림패 맨 위 <b>{cardText(target)}</b>로 땡큐할 수 있으면 함께
-	등록할 <b>내 카드</b>를 고르고 땡큐, 안 되면 받기.
+	<b>{t('차례 시작, 받기 전입니다.')}</b>
+	{t('버림패 맨 위 {card}로 땡큐할 수 있으면 함께 등록할 내 카드를 고르고 땡큐, 안 되면 받기.', {
+		card: cardText(target)
+	})}
 </p>
 
 <TrainScene {obs} {selected} ontoggle={toggle} />
 
 <QuestionBar {message}>
 	<Button variant="tonal" size="md" icon="playing_cards" data-testid="t-draw" onclick={draw}
-		>받기</Button
+		>{t('받기')}</Button
 	>
-	<Button size="md" icon="front_hand" data-testid="t-thankyou" onclick={thankYou}>땡큐</Button>
+	<Button size="md" icon="front_hand" data-testid="t-thankyou" onclick={thankYou}
+		>{t('땡큐')}</Button
+	>
 </QuestionBar>
 
 <style>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 판 복기 (DESIGN_PLAN §5.3): 전체 화면 대화상자. 요약 → 승률 흐름 → 가장 큰 실수 상세 → 결정 목록.
+	import { t } from '#lib/i18n/index.ts';
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -64,27 +65,32 @@
 	const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 </script>
 
-<Dialog bind:open={session.reviewOpen} fullscreen headline="판 복기" onclose={close}>
+<Dialog bind:open={session.reviewOpen} fullscreen headline={t('판 복기')} onclose={close}>
 	<div class="review" data-testid="review-view">
 		{#if review.status === 'running'}
 			<div class="progress" data-testid="review-progress">
-				<Progress value={review.total ? review.done / review.total : 0} label="복기 분석 진행률" />
-				<p>분석 중… {review.done} / {review.total}</p>
+				<Progress
+					value={review.total ? review.done / review.total : 0}
+					label={t('복기 분석 진행률')}
+				/>
+				<p>{t('분석 중…')} {review.done} / {review.total}</p>
 			</div>
 		{:else if review.status === 'error'}
-			<p class="note" role="alert">분석 실패: {review.error}</p>
+			<p class="note" role="alert">{t('분석 실패: {error}', { error: review.error ?? '' })}</p>
 		{:else if review.status === 'empty'}
-			<p class="note" data-testid="review-empty">복기할 내 결정이 없다.</p>
+			<p class="note" data-testid="review-empty">{t('복기할 내 결정이 없다.')}</p>
 		{:else if summary && item}
 			<div class="stats" data-testid="review-summary">
-				<div><b>{summary.decisions}</b><span>결정</span></div>
+				<div><b>{summary.decisions}</b><span>{t('결정')}</span></div>
 				<div>
-					<b>{Math.round((summary.accurate / summary.decisions) * 100)}%</b><span>정확도</span>
+					<b>{Math.round((summary.accurate / summary.decisions) * 100)}%</b><span
+						>{t('정확도')}</span
+					>
 				</div>
-				<div><b>{(summary.loss * 100).toFixed(1)}%p</b><span>확실한 손실 합</span></div>
+				<div><b>{(summary.loss * 100).toFixed(1)}%p</b><span>{t('확실한 손실 합')}</span></div>
 				<div>
 					<b>{summary.counts.blunder} · {summary.counts.mistake} · {summary.counts.inaccuracy}</b>
-					<span>블런더 · 실수 · 부정확</span>
+					<span>{t('블런더 · 실수 · 부정확')}</span>
 				</div>
 			</div>
 
@@ -97,21 +103,25 @@
 							<Icon name={item.grade.icon} size={16} />{item.grade.label}
 						</span>
 						<span class="muted"
-							>{item.n}번째 결정{item.obs.turn === undefined ? '' : ` · ${item.obs.turn}턴`}</span
+							>{t('{n}번째 결정', { n: item.n })}{item.obs.turn === undefined
+								? ''
+								: ` · ${t('{n}턴', { n: item.obs.turn })}`}</span
 						>
 						{#if item.loss > 0}
-							<b class="loss" data-testid="review-loss">승률 −{(item.loss * 100).toFixed(1)}%p</b>
+							<b class="loss" data-testid="review-loss"
+								>{t('승률 −{n}%p', { n: (item.loss * 100).toFixed(1) })}</b
+							>
 						{/if}
 					</div>
 
 					<div class="compare">
 						<div class="mine">
-							<span>내 수</span>
+							<span>{t('내 수')}</span>
 							<b>{actionText(item.mine.action, item.obs, name)}</b>
 							<span>{pct(item.mine.value)}</span>
 						</div>
 						<div class="best">
-							<span>추천</span>
+							<span>{t('추천')}</span>
 							<b>{actionText(item.best.action, item.obs, name)}</b>
 							<span>{pct(item.best.value)}</span>
 						</div>
@@ -119,7 +129,7 @@
 
 					{#if item.loss > 0}
 						<div class="why" data-testid="review-why">
-							<h3>왜? · {CATEGORY[item.category]}</h3>
+							<h3>{t('왜?')} · {CATEGORY[item.category]}</h3>
 							<ul>
 								{#each item.lines as line, i (i)}<li>{line}</li>{/each}
 							</ul>
@@ -131,22 +141,23 @@
 					{:else}
 						<p class="why">
 							{item.grade.id === 'best'
-								? '최선의 수였다.'
-								: '추천 수와 확실한 차이가 없다. 사실상 같은 수다.'}
+								? t('최선의 수였다.')
+								: t('추천 수와 확실한 차이가 없다. 사실상 같은 수다.')}
 						</p>
 					{/if}
 
 					<div class="actions">
 						{#if drill}
 							<Button icon="school" data-testid="review-train" onclick={practice}
-								>이 실수 훈련하기</Button
+								>{t('이 실수 훈련하기')}</Button
 							>
 						{/if}
 						<Button
 							variant="tonal"
 							icon="replay"
 							data-testid="review-replay"
-							onclick={() => session.replayFrom(item.decision.index)}>이 장면부터 다시 두기</Button
+							onclick={() => session.replayFrom(item.decision.index)}
+							>{t('이 장면부터 다시 두기')}</Button
 						>
 					</div>
 
@@ -157,10 +168,10 @@
 						{/key}
 					{/if}
 
-					<h3>다른 수와 비교 (추정 승률)</h3>
+					<h3>{t('다른 수와 비교 (추정 승률)')}</h3>
 					<MoveBars
-						mineLabel="내 수"
-						bestLabel="추천"
+						mineLabel={t('내 수')}
+						bestLabel={t('추천')}
 						bars={item.scored.slice(0, 5).map((v, i) => ({
 							text: actionText(v.action, item.obs, name),
 							percent: v.value * 100,
@@ -175,23 +186,25 @@
 							icon="arrow_back"
 							disabled={previous === undefined}
 							data-testid="review-prev"
-							onclick={() => previous !== undefined && select(previous)}>이전 실수</Button
+							onclick={() => previous !== undefined && select(previous)}>{t('이전 실수')}</Button
 						>
 						<Button
 							variant="outlined"
 							trailingIcon="arrow_forward"
 							disabled={next === undefined}
 							data-testid="review-next"
-							onclick={() => next !== undefined && select(next)}>다음 실수</Button
+							onclick={() => next !== undefined && select(next)}>{t('다음 실수')}</Button
 						>
 					</div>
 					<p class="muted small">
-						추정치: 숨은 패 {REVIEW_K}가지 × 수마다 끝까지 시뮬레이션. 손실은 같은 시뮬레이션끼리
-						비교해 95% 확실한 차이만 센다.
+						{t(
+							'추정치: 숨은 패 {k}가지 × 수마다 끝까지 시뮬레이션. 손실은 같은 시뮬레이션끼리 비교해 95% 확실한 차이만 센다.',
+							{ k: REVIEW_K }
+						)}
 					</p>
 				</article>
 
-				<ol class="list" aria-label="결정 목록" data-testid="review-list">
+				<ol class="list" aria-label={t('결정 목록')} data-testid="review-list">
 					{#each items as row, i (row.decision.index)}
 						<li>
 							<button

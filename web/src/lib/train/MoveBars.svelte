@@ -1,11 +1,12 @@
 <script lang="ts">
 	// 수마다 추정 승률 막대. 훈련 피드백과 복기가 함께 쓴다.
+	import { t } from '#lib/i18n/index.ts';
 	import type { Bar } from './training.svelte.ts';
 
 	let {
 		bars,
-		mineLabel = '내 답',
-		bestLabel = '최선'
+		mineLabel = t('내 답'),
+		bestLabel = t('최선')
 	}: { bars: Bar[]; mineLabel?: string; bestLabel?: string } = $props();
 </script>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 초보자 모드: 할 수 있는 수가 여럿이면 목록에서 고른다.
+	import { t } from '#lib/i18n/index.ts';
 	import BottomSheet from '#lib/ui/BottomSheet.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import { session } from './session.svelte.ts';
@@ -12,7 +13,11 @@
 	});
 </script>
 
-<BottomSheet bind:open label={choice?.title ?? '수 고르기'} onclose={() => (session.choice = null)}>
+<BottomSheet
+	bind:open
+	label={choice?.title ?? t('수 고르기')}
+	onclose={() => (session.choice = null)}
+>
 	{#if choice}
 		<h2>{choice.title}</h2>
 		<div class="options" data-testid="choices">

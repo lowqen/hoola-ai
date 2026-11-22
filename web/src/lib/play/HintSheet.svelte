@@ -1,5 +1,6 @@
 <script lang="ts">
 	// L3 힌트 (초보자 모드). 계산은 워커에서 한다. 스톱은 시뮬레이션보다 기준표가 우선이다.
+	import { t } from '#lib/i18n/index.ts';
 	import BottomSheet from '#lib/ui/BottomSheet.svelte';
 	import Progress from '#lib/ui/Progress.svelte';
 	import { stopAdvice } from './actions.ts';
@@ -12,19 +13,19 @@
 	);
 </script>
 
-<BottomSheet bind:open={session.hintOpen} label="힌트">
-	<h2>힌트</h2>
+<BottomSheet bind:open={session.hintOpen} label={t('힌트')}>
+	<h2>{t('힌트')}</h2>
 	{#if !session.myTurn}
-		<p class="muted">내 차례에 볼 수 있다.</p>
+		<p class="muted">{t('내 차례에 볼 수 있다.')}</p>
 	{:else if state.status === 'loading' || state.status === 'idle'}
-		<p class="muted" role="status">숨은 패 96가지를 끝까지 두어 보는 중…</p>
-		<Progress label="힌트 계산 중" />
+		<p class="muted" role="status">{t('숨은 패 96가지를 끝까지 두어 보는 중…')}</p>
+		<Progress label={t('힌트 계산 중')} />
 	{:else if state.status === 'error'}
-		<p role="alert">힌트를 계산하지 못했다: {state.message}</p>
+		<p role="alert">{t('힌트를 계산하지 못했다: {message}', { message: state.message })}</p>
 	{:else}
 		{#if advice}
 			<p class={['table', advice.ok ? 'go' : 'wait']}>
-				스톱 판단은 기준표 우선: {advice.text}. 아래 스톱 수치는 참고만 한다.
+				{t('스톱 판단은 기준표 우선: {text}. 아래 스톱 수치는 참고만 한다.', { text: advice.text })}
 			</p>
 		{/if}
 		<ol data-testid="hint-list">
@@ -35,17 +36,18 @@
 						{#if move.gap > 2 * move.gap_se}
 							<span class="loss">−{(move.gap * 100).toFixed(1)}%p</span>
 						{:else}
-							<span class="muted">(차이 불확실)</span>
+							<span class="muted">{t('(차이 불확실)')}</span>
 						{/if}
 					{/if}
 					<span>{move.text}</span>
-					{#if move.isExpert}<span class="tag">전략서</span>{/if}
+					{#if move.isExpert}<span class="tag">{t('전략서')}</span>{/if}
 				</li>
 			{/each}
 		</ol>
 		<p class="muted small">
-			숨은 패 96가지 × 수마다 끝까지 시뮬레이션한 추정 승률. −%p는 1위보다 확실히 나쁜 만큼, "차이
-			불확실"은 사실상 같은 수.
+			{t(
+				'숨은 패 96가지 × 수마다 끝까지 시뮬레이션한 추정 승률. −%p는 1위보다 확실히 나쁜 만큼, "차이 불확실"은 사실상 같은 수.'
+			)}
 		</p>
 	{/if}
 </BottomSheet>

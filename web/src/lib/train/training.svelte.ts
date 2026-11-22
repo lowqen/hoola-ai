@@ -1,5 +1,6 @@
 // 훈련 세션의 상태와 진행. 틀린 문제는 3문제 뒤에 다시 나오고 오답 노트에도 쌓인다.
 // 라우트를 옮겨도 이어지도록 모듈 하나로 둔다. 저장 형식은 기존 앱과 같다.
+import { t } from '#lib/i18n/index.ts';
 import type { CardId } from '#lib/game/cards.ts';
 import { loadEngine, puzzle as requestPuzzle } from '#lib/engine.ts';
 import { loadStore, saveStore, type Store } from '#lib/store.ts';
@@ -359,7 +360,7 @@ class Training {
 				...base,
 				scored: puzzle.scored.slice(0, 5),
 				best: puzzle.scored[0].action,
-				lines: ['훈련 · 버릴 카드에서 틀린 장면'],
+				lines: [t('훈련 · 버릴 카드에서 틀린 장면')],
 				category: 'discard'
 			});
 		} else if (puzzle.type === 'stop') {
@@ -381,7 +382,7 @@ class Training {
 				scored: table.stop ? [stop, draw] : [draw, stop],
 				best: table.stop ? 'stop' : 'draw',
 				lines: [
-					`스톱 기준표: 상대 최소 ${table.fewest}장 → ${table.limit === null ? '스톱 금지' : `${table.limit}점 이하 스톱`}.`
+					`${t('스톱 기준표')}: ${t('상대 최소 {n}장', { n: table.fewest })} → ${table.limit === null ? t('스톱 금지') : t('{n}점 이하면 스톱', { n: table.limit })}.`
 				],
 				category: 'stop'
 			});

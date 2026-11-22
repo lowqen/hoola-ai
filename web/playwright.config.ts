@@ -11,7 +11,7 @@ export default defineConfig({
 		timeout: 180_000
 	},
 	// 서비스 워커는 테스트마다 앱 전체를 받고 네트워크 응답을 가로채므로, pwa.e2e.ts에서만 켠다
-	use: { baseURL: `http://localhost:4173${base}/`, serviceWorkers: 'block' },
+	use: { baseURL: `http://localhost:4173${base}/`, serviceWorkers: 'block', locale: 'ko-KR' },
 	// 테스트마다 새 컨텍스트에 저장소를 심으므로 파일 안의 테스트도 나눠 돌린다 (CI는 --shard로 job을 나눈다)
 	fullyParallel: true,
 	testMatch: '**/*.e2e.{ts,js}',

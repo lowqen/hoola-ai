@@ -1,4 +1,5 @@
 // 카드 표기와 도우미. 카드 id는 엔진과 같은 형식이다 ("TS" = 스페이드 10, "AH" = 하트 A).
+import { t } from '#lib/i18n/index.ts';
 
 export type CardId = string;
 export type CardSize = 'xs' | 'sm' | 'md' | 'lg';
@@ -7,7 +8,12 @@ export type SortMode = 'suit' | 'rank';
 const SUIT_ORDER = 'SHDC';
 const RANK_ORDER = 'A23456789TJQK';
 const SUIT_SYMBOL: Record<string, string> = { S: '♠', H: '♥', D: '♦', C: '♣' };
-const SUIT_NAME: Record<string, string> = { S: '스페이드', H: '하트', D: '다이아', C: '클로버' };
+const SUIT_NAME: Record<string, string> = {
+	S: t('스페이드'),
+	H: t('하트'),
+	D: t('다이아'),
+	C: t('클로버')
+};
 
 /** 카드 크기(px). 컴포넌트와 손패 배치가 같은 값을 쓴다. */
 export const CARD_PX: Record<CardSize, { w: number; h: number }> = {

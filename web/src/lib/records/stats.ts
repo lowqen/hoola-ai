@@ -1,4 +1,5 @@
 // 기록 화면의 집계. 저장 형식은 기존 앱과 같다.
+import { t } from '#lib/i18n/index.ts';
 import { botName } from '#lib/play/bots.ts';
 import { CATEGORY, DRILL_OF, type Category } from '#lib/review/categories.ts';
 import type { GameRecord } from '#lib/store.ts';
@@ -20,8 +21,8 @@ export function groupStats(games: GameRecord[]): { groups: GroupStat[]; practice
 	for (const g of counted) {
 		const opponents = g.opponents.map(botName).join('·');
 		// 스톱 5점 변형은 승률이 달라서 따로 묶는다
-		const variant = g.stop5 ? ' 스톱 5점' : '';
-		const label = `${g.beginner ? '초보 · ' : ''}${g.players}인${variant} · ${opponents}`;
+		const variant = g.stop5 ? t(' 스톱 5점') : '';
+		const label = `${g.beginner ? t('초보 · ') : ''}${t('{n}인', { n: g.players })}${variant} · ${opponents}`;
 		const total = totals.get(label) ?? { games: 0, share: 0, players: g.players };
 		total.games++;
 		total.share += g.share;

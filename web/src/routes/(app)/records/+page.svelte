@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 기록 (DESIGN_PLAN §5.4): 상대 구성별 승률, 복기로 본 약점, 훈련 일별 기록.
+	import { t } from '#lib/i18n/index.ts';
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
@@ -33,7 +34,9 @@
 
 	const percent = (x: number) => `${Math.round(x * 100)}%`;
 	const dayText = (d: DayStat) =>
-		d.n ? `${d.label} · ${d.n}문제 · 정답률 ${percent(d.correct / d.n)}` : `${d.label} · 안 풀었다`;
+		d.n
+			? `${d.label} · ${t('{n}문제 · 정답률 {rate}', { n: d.n, rate: percent(d.correct / d.n) })}`
+			: `${d.label} · ${t('안 풀었다')}`;
 
 	function exportGames() {
 		const blob = new Blob(
@@ -56,22 +59,27 @@
 </script>
 
 <svelte:head>
-	<title>기록 · 훌라 연습장</title>
-	<meta name="description" content="훌라 전적과 복기로 본 약점, 훈련 기록" />
+	<title>{t('기록 · 훌라 연습장')}</title>
+	<meta name="description" content={t('훌라 전적과 복기로 본 약점, 훈련 기록')} />
 	{@html guard}
 </svelte:head>
 
-<TopAppBar title="기록">
+<TopAppBar title={t('기록')}>
 	{#snippet actions()}
 		{#if store?.games.length}
 			<IconButton
 				icon="download"
-				label="전적 내보내기"
+				label={t('전적 내보내기')}
 				data-testid="rec-export"
 				onclick={exportGames}
 			/>
 		{/if}
-		<IconButton icon="settings" label="설정" data-testid="open-settings" onclick={openSettings} />
+		<IconButton
+			icon="settings"
+			label={t('설정')}
+			data-testid="open-settings"
+			onclick={openSettings}
+		/>
 	{/snippet}
 </TopAppBar>
 
@@ -79,24 +87,31 @@
 
 <main>
 	<section aria-labelledby="rec-games">
-		<h2 id="rec-games">상대 구성별 승률</h2>
+		<h2 id="rec-games">{t('상대 구성별 승률')}</h2>
 		{#if stats.groups.length}
 			<ul class="groups" data-testid="rec-groups">
 				{#each stats.groups as group (group.label)}
 					<li>
 						<div class="row">
 							<span class="name">{group.label}</span>
-							<span class="value"><b>{percent(group.rate)}</b> {group.games}판</span>
+							<span class="value"
+								><b>{percent(group.rate)}</b> {t('{n}판', { n: group.games })}</span
+							>
 						</div>
 						<div
 							class="track"
 							role="img"
-							aria-label={`승률 ${percent(group.rate)}, 공평한 몫 ${percent(group.fair)}`}
+							aria-label={t('승률 {rate}, 공평한 몫 {fair}', {
+								rate: percent(group.rate),
+								fair: percent(group.fair)
+							})}
 						>
 							<span class="fill" style={`width:${Math.min(100, group.rate * 100)}%`}></span>
 							<span class="fair" style={`left:${group.fair * 100}%`}></span>
 						</div>
-						<span class="meta">세로 눈금 = 공평한 몫 {percent(group.fair)}</span>
+						<span class="meta"
+							>{t('세로 눈금 = 공평한 몫 {fair}', { fair: percent(group.fair) })}</span
+						>
 					</li>
 				{/each}
 			</ul>
@@ -104,31 +119,36 @@
 			<div class={['empty', loading && 'loading']} data-testid="rec-empty">
 				<p>
 					{stats.practice
-						? `되돌리기를 쓴 연습판 ${stats.practice}판만 있다 (전적 제외). 끝까지 둔 판이 쌓이면 승률이 보인다.`
-						: '아직 끝낸 판이 없다. 한 판을 끝내면 상대 구성별 승률이 쌓인다.'}
+						? t(
+								'되돌리기를 쓴 연습판 {n}판만 있다 (전적 제외). 끝까지 둔 판이 쌓이면 승률이 보인다.',
+								{ n: stats.practice }
+							)
+						: t('아직 끝낸 판이 없다. 한 판을 끝내면 상대 구성별 승률이 쌓인다.')}
 				</p>
 				<Button
 					icon="playing_cards"
 					disabled={loading}
 					data-testid="rec-first-game"
-					onclick={() => goto(resolve('/(app)'))}>첫 판 시작</Button
+					onclick={() => goto(resolve('/(app)'))}>{t('첫 판 시작')}</Button
 				>
 			</div>
 		{/if}
 		{#if stats.groups.length && stats.practice}
 			<p class="meta" data-testid="rec-practice">
-				되돌리기·다시 두기를 쓴 연습판 {stats.practice}판은 승률에서 뺐다.
+				{t('되돌리기·다시 두기를 쓴 연습판 {n}판은 승률에서 뺐다.', { n: stats.practice })}
 			</p>
 		{/if}
 	</section>
 
 	<section aria-labelledby="rec-weak">
-		<h2 id="rec-weak">복기로 본 약점</h2>
+		<h2 id="rec-weak">{t('복기로 본 약점')}</h2>
 		{#if weak}
 			<p class="summary" data-testid="rec-weak-summary">
-				복기 {weak.reviewed}판 · 정확도 {percent(weak.accuracy)} · 판당 손실 {(
-					weak.lossPerGame * 100
-				).toFixed(1)}%p
+				{t('복기 {n}판 · 정확도 {acc} · 판당 손실 {loss}%p', {
+					n: weak.reviewed,
+					acc: percent(weak.accuracy),
+					loss: (weak.lossPerGame * 100).toFixed(1)
+				})}
 			</p>
 			{#if weak.rows.length}
 				<ul class="weak">
@@ -146,7 +166,10 @@
 								<a
 									href={`${resolve('/(app)/train')}/?drill=${row.drill}`}
 									class="weak-row"
-									aria-label={`${row.label} 실수 ${row.count}번. 이 유형 훈련하기`}
+									aria-label={t('{label} 실수 {n}번. 이 유형 훈련하기', {
+										label: row.label,
+										n: row.count
+									})}
 									data-testid={`rec-weak-${row.category}`}
 								>
 									{@render content()}
@@ -160,20 +183,23 @@
 					{/each}
 				</ul>
 			{:else}
-				<p class="summary">확실한 실수가 아직 없다.</p>
+				<p class="summary">{t('확실한 실수가 아직 없다.')}</p>
 			{/if}
 		{:else}
 			<p class={['summary', loading && 'loading']} data-testid="rec-weak-empty">
-				아직 복기한 판이 없다. 판이 끝나고 복기하면 실수 유형이 여기에 쌓인다.
+				{t('아직 복기한 판이 없다. 판이 끝나고 복기하면 실수 유형이 여기에 쌓인다.')}
 			</p>
 		{/if}
 	</section>
 
 	<section aria-labelledby="rec-days">
-		<h2 id="rec-days">최근 14일 훈련</h2>
+		<h2 id="rec-days">{t('최근 14일 훈련')}</h2>
 		{#if totalSolved}
 			<p class="summary" data-testid="rec-days-summary">
-				{totalSolved}문제 · 정답률 {percent(totalCorrect / totalSolved)}
+				{t('{n}문제 · 정답률 {rate}', {
+					n: totalSolved,
+					rate: percent(totalCorrect / totalSolved)
+				})}
 			</p>
 			<ol class="days" data-testid="rec-days-chart" onpointerleave={() => (hovered = null)}>
 				{#each days as day (day.date)}
@@ -196,20 +222,20 @@
 				{/each}
 			</ol>
 			<div class="axis" aria-hidden="true">
-				<span>{days[0].label}</span><span>오늘</span>
+				<span>{days[0].label}</span><span>{t('오늘')}</span>
 			</div>
 			<p class="readout" aria-live="polite" data-testid="rec-day-readout">
 				{shown ? dayText(shown) : ''}
 			</p>
 		{:else}
 			<div class={['empty', loading && 'loading']} data-testid="rec-days-empty">
-				<p>아직 푼 문제가 없다. 짧은 문제로 판단을 연습하면 날짜별로 쌓인다.</p>
+				<p>{t('아직 푼 문제가 없다. 짧은 문제로 판단을 연습하면 날짜별로 쌓인다.')}</p>
 				<Button
 					variant="tonal"
 					icon="school"
 					disabled={loading}
 					data-testid="rec-first-train"
-					onclick={() => goto(resolve('/(app)/train'))}>오늘의 훈련 시작</Button
+					onclick={() => goto(resolve('/(app)/train'))}>{t('오늘의 훈련 시작')}</Button
 				>
 			</div>
 		{/if}

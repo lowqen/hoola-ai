@@ -1,10 +1,11 @@
 // 문제 화면의 채점과 설명에 쓰는 함수. 세션을 시작할 때 함께 불러온다.
+import { t } from '#lib/i18n/index.ts';
 import { handPoints, rankNum, suitOf, type CardId } from '#lib/game/cards.ts';
 import type { Observation } from '#lib/play/actions.ts';
 import type { ScoredMove } from './drills.ts';
 
 export const seatLabel = (players: number) => (seat: number) =>
-	seat === 0 ? '나' : players > 2 ? `${seat}번 상대` : '상대';
+	seat === 0 ? t('나') : players > 2 ? t('{n}번 상대', { n: seat }) : t('상대#one');
 
 /** 1위와 확실한 차이가 없으면 맞은 수로 친다. */
 export const isGoodMove = (v: ScoredMove) => !(v.gap > 2 * v.gap_se && v.gap >= 0.02);
@@ -45,7 +46,7 @@ export function fragmentOf(card: CardId, hand: CardId[], unseen: Set<CardId>): F
 	const same = others.filter((c) => rankNum(c) === rank);
 	if (same.length) {
 		candidates.push({
-			kind: '페어를',
+			kind: t('페어를'),
 			partner: same[0],
 			outs: [...unseen].filter((c) => rankNum(c) === rank)
 		});
@@ -57,7 +58,11 @@ export function fragmentOf(card: CardId, hand: CardId[], unseen: Set<CardId>): F
 		const hi = Math.max(rank, rank + d);
 		const need = Math.abs(d) === 1 ? [lo - 1, hi + 1] : [lo + 1];
 		const outs = need.map((x) => cardOf(x, suit)).filter((c) => c !== card && unseen.has(c));
-		candidates.push({ kind: Math.abs(d) === 1 ? '연속을' : '한 칸 건너뛴 연속을', partner, outs });
+		candidates.push({
+			kind: Math.abs(d) === 1 ? t('연속을') : t('한 칸 건너뛴 연속을'),
+			partner,
+			outs
+		});
 	}
 	candidates.sort((a, b) => b.outs.length - a.outs.length);
 	return candidates.length && candidates[0].outs.length > 0 ? candidates[0] : null;

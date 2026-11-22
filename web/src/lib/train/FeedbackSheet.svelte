@@ -1,6 +1,7 @@
 <script lang="ts">
 	// 피드백 시트 (DESIGN_PLAN §5.2): 아래에서 올라온다. 정답은 짧은 스프링 바운스로 보상한다.
 	// 장면을 계속 볼 수 있도록 모달이 아니다.
+	import { t } from '#lib/i18n/index.ts';
 	import { onMount } from 'svelte';
 	import { cardText, handPoints, sortCards } from '#lib/game/cards.ts';
 	import PlayingCard from '#lib/game/PlayingCard.svelte';
@@ -19,57 +20,57 @@
 <Dock>
 	<section
 		class={['sheet', feedback.ok ? 'ok' : 'bad']}
-		aria-label="채점 결과"
+		aria-label={t('채점 결과')}
 		data-testid="feedback"
 		data-ok={feedback.ok}
 	>
 		<div class="scroll">
 			<h2 role="status">
 				<Icon name={feedback.ok ? 'check' : 'close'} />
-				{feedback.ok ? '정답' : '오답'} · {feedback.title}
+				{feedback.ok ? t('정답') : t('오답')} · {feedback.title}
 			</h2>
 			<ul class="lines">
 				{#each feedback.lines as line, i (i)}<li>{line}</li>{/each}
 			</ul>
 
 			{#if feedback.bestMelds}
-				<h3>최선의 묶음</h3>
+				<h3>{t('최선의 묶음')}</h3>
 				<div class="melds">
 					{#each feedback.bestMelds as meld (meld.join())}
 						<div class="meld" data-testid="best-meld" data-cards={meld.join(' ')}>
 							{#each sortCards(meld) as card (card)}<PlayingCard {card} size="xs" />{/each}
-							<span>{handPoints(meld)}점</span>
+							<span>{t('{n}점', { n: handPoints(meld) })}</span>
 						</div>
 					{/each}
 				</div>
 			{/if}
 
 			{#if feedback.rule}
-				<h3>규칙 점수 (점수 − 살릴 카드 수 × 3)</h3>
+				<h3>{t('규칙 점수 (점수 − 살릴 카드 수 × 3)')}</h3>
 				<ul class="rule" data-testid="rule-table">
 					{#each feedback.rule as row (row.card)}
 						<li class={[row.mine && 'mine', row.best && 'best']}>
 							<span class="card">{cardText(row.card)}</span>
-							<span>{row.points}점 − {row.outs}×3 = {row.score}</span>
-							{#if row.mine}<b>내 답</b>{/if}
-							{#if row.best}<b>최선</b>{/if}
+							<span>{t('{n}점', { n: row.points })} − {row.outs}×3 = {row.score}</span>
+							{#if row.mine}<b>{t('내 답')}</b>{/if}
+							{#if row.best}<b>{t('최선')}</b>{/if}
 						</li>
 					{/each}
 				</ul>
 			{/if}
 
 			{#if feedback.bars}
-				<h3>시뮬레이션 추정 승률</h3>
+				<h3>{t('시뮬레이션 추정 승률')}</h3>
 				<MoveBars bars={feedback.bars} />
 			{/if}
 		</div>
 		<div class="foot" bind:this={next}>
-			<span class="time">{feedback.seconds.toFixed(1)}초</span>
+			<span class="time">{t('{n}초', { n: feedback.seconds.toFixed(1) })}</span>
 			<Button
 				size="md"
 				trailingIcon="arrow_forward"
 				data-testid="t-next"
-				onclick={() => training.next()}>다음 문제</Button
+				onclick={() => training.next()}>{t('다음 문제')}</Button
 			>
 		</div>
 	</section>

@@ -1,23 +1,24 @@
 <script lang="ts">
 	// 첫 실행 코치마크 3단계 (DESIGN_PLAN §6.4). 판을 막지 않는다: 안내를 보면서 그대로 둘 수 있다.
+	import { t } from '#lib/i18n/index.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import { session } from './session.svelte.ts';
 
 	const STEPS = [
 		{
 			selector: '[data-coach="mine"]',
-			title: '내 손패와 점수',
-			text: '점수가 낮을수록 좋다. 카드를 누르면 고르고, 두 번 누르거나 끌어서 버린다.'
+			title: t('내 손패와 점수'),
+			text: t('점수가 낮을수록 좋다. 카드를 누르면 고르고, 두 번 누르거나 끌어서 버린다.')
 		},
 		{
 			selector: '[data-coach="seats"]',
-			title: '상대 장수',
-			text: '스톱 판단의 핵심이다. 3장 이하면 경고 색으로 바뀐다.'
+			title: t('상대 장수'),
+			text: t('스톱 판단의 핵심이다. 3장 이하면 경고 색으로 바뀐다.')
 		},
 		{
 			selector: '[data-coach="actions"]',
-			title: '행동 바',
-			text: '버튼 자리는 항상 같다. 지금 못 하는 행동을 누르면 이유를 알려 준다.'
+			title: t('행동 바'),
+			text: t('버튼 자리는 항상 같다. 지금 못 하는 행동을 누르면 이유를 알려 준다.')
 		}
 	];
 
@@ -56,7 +57,12 @@
 			style={`top:${rect.top - 4}px;left:${rect.left - 4}px;width:${rect.width + 8}px;height:${rect.height + 8}px`}
 		></div>
 	{/if}
-	<div class={['card', onTop && 'top']} role="region" aria-label="화면 안내" data-testid="coach">
+	<div
+		class={['card', onTop && 'top']}
+		role="region"
+		aria-label={t('화면 안내')}
+		data-testid="coach"
+	>
 		<p class="count">{session.coachStep} / {STEPS.length}</p>
 		<h2>{step.title}</h2>
 		<p>{step.text}</p>
@@ -65,10 +71,10 @@
 				variant="text"
 				size="sm"
 				data-testid="coach-skip"
-				onclick={() => session.finishCoach()}>건너뛰기</Button
+				onclick={() => session.finishCoach()}>{t('건너뛰기')}</Button
 			>
 			<Button size="sm" data-testid="coach-next" onclick={next}
-				>{session.coachStep < STEPS.length ? '다음' : '시작하기'}</Button
+				>{session.coachStep < STEPS.length ? t('다음') : t('시작하기')}</Button
 			>
 		</div>
 	</div>

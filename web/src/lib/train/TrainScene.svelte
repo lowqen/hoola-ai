@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 문제 장면: 대전과 같은 장면 컴포넌트로 그린다. 끌기와 받기는 없고 카드 고르기만 있다.
+	import { t } from '#lib/i18n/index.ts';
 	import { sortCards, type CardId } from '#lib/game/cards.ts';
 	import Scene from '#lib/game/Scene.svelte';
 	import { meldOrder, type Observation } from '#lib/play/actions.ts';
@@ -46,6 +47,6 @@
 	hand={sortCards(hand ?? obs.hand)}
 	{selected}
 	{marks}
-	turnLabel={obs.phase === 'turn_start' ? '받기 전' : '받은 뒤'}
+	turnLabel={obs.phase === 'turn_start' ? t('받기 전') : t('받은 뒤')}
 	ontoggle={(card) => ontoggle?.(card)}
 />

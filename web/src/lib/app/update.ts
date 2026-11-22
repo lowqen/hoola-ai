@@ -2,6 +2,7 @@
 // - 앱을 연 직후(아직 아무것도 누르지 않았을 때) 새 버전이 준비돼 있거나 곧 준비되면 바로 새로고침한다.
 // - 쓰는 도중에 준비되면 스낵바로 알리고, 누르면 새로고침한다. 진행 중인 판은 행동마다 저장되어 이어진다.
 // - 화면으로 돌아올 때와 한 시간마다 새 버전을 확인한다 (설치형 앱은 탭이 닫히지 않아 이게 없으면 계속 옛 버전이다).
+import { t } from '#lib/i18n/index.ts';
 import { snackbar } from '#lib/ui/snackbar.svelte.ts';
 
 const STARTUP_MS = 8000;
@@ -36,8 +37,8 @@ export async function watchUpdates(): Promise<void> {
 			return;
 		}
 		snackbar.show({
-			message: '새 버전이 나왔다',
-			actionLabel: '새로고침',
+			message: t('새 버전이 나왔다'),
+			actionLabel: t('새로고침'),
 			onAction: () => apply(worker),
 			duration: 0,
 			closable: true

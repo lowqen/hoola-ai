@@ -2,6 +2,7 @@
 	// 게임 장면: 대전·훈련·복기가 함께 쓴다. 규칙은 모른다: 무엇을 어디에 낼 수 있는지는 dropTargets가 정한다.
 	// 위쪽은 보는 정보, 아래 1/3은 조작이다 (DESIGN_PLAN §6.1-2).
 	// 비행 카드가 다른 영역 위로 지나가도록 이 안의 영역들은 쌓임 맥락을 만들지 않는다.
+	import { t } from '#lib/i18n/index.ts';
 	import type { Snippet } from 'svelte';
 	import { handPoints, type CardId, type CardSize } from './cards.ts';
 	import GhostLayer from './GhostLayer.svelte';
@@ -73,7 +74,7 @@
 	}
 </script>
 
-<section class="scene" aria-label="게임 장면">
+<section class="scene" aria-label={t('게임 장면')}>
 	<div class="seats" data-coach="seats">
 		{#each seats as seat (seat.id)}
 			<Seat {seat} active={turn === seat.id} compact={seats.length >= 4} />
@@ -99,11 +100,16 @@
 					onattach={() => play(`meld-${meld.id}`)}
 				/>
 			{:else}
-				<p class="no-melds">아직 등록한 조합이 없다</p>
+				<p class="no-melds">{t('아직 등록한 조합이 없다')}</p>
 			{/each}
 		</div>
 		{#if discardHistory?.length}
-			<div class="history" role="group" aria-label="지나간 버림패" data-testid="discard-history">
+			<div
+				class="history"
+				role="group"
+				aria-label={t('지나간 버림패')}
+				data-testid="discard-history"
+			>
 				{#each discardHistory as card (card)}
 					<PlayingCard {card} size="xs" />
 				{/each}
@@ -114,11 +120,12 @@
 	<div class="mine" data-coach="mine">
 		<div class="status">
 			<span class={['turn', myTurn && 'on']} data-testid="turn">
-				{turnLabel ?? (myTurn ? '내 차례' : '상대 차례')}
+				{turnLabel ?? (myTurn ? t('내 차례') : t('상대 차례'))}
 			</span>
 			{#if tools}<span class="tools">{@render tools()}</span>{/if}
 			<span class="score"
-				><span class="value" data-testid="score">{score}</span><span class="unit">점</span></span
+				><span class="value" data-testid="score">{score}</span><span class="unit">{t('점')}</span
+				></span
 			>
 		</div>
 		<Hand

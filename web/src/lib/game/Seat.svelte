@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 상대 좌석. 장수가 스톱 판단의 핵심이라 가장 크게 그린다 (DESIGN_PLAN §6.1-5).
+	import { t } from '#lib/i18n/index.ts';
 	import Icon from '#lib/ui/Icon.svelte';
 	import PlayingCard from './PlayingCard.svelte';
 
@@ -31,18 +32,20 @@
 <article
 	class={['seat', active && 'active', warn && 'warn', compact && 'compact', seat.about && 'bot']}
 	data-zone={`seat-${seat.id}`}
-	aria-label={`${seat.name}, 손패 ${seat.count}장${seat.registered ? ', 등록함' : ''}${active ? ', 차례' : ''}`}
+	aria-label={t('{name}, 손패 {n}장', { name: seat.name, n: seat.count }) +
+		(seat.registered ? t(', 등록함') : '') +
+		(active ? t(', 차례') : '')}
 >
 	<div class="top">
 		<span class="name">{seat.name}</span>
 		{#if seat.registered}
-			<span class="reg"><Icon name="check" size={14} />등록</span>
+			<span class="reg"><Icon name="check" size={14} />{t('등록#seat')}</span>
 		{/if}
 	</div>
 	<div class="count">
 		<PlayingCard size="xs" />
 		<span class="num" data-testid={`seat-count-${seat.id}`}>{seat.count}</span>
-		<span class="unit">장</span>
+		<span class="unit">{t('장')}</span>
 		{#if warn}<span class="alert"><Icon name="warning" size={18} /></span>{/if}
 	</div>
 	<p class="last">{seat.last ?? ''}</p>
@@ -51,7 +54,7 @@
 		<button
 			type="button"
 			class="about"
-			aria-label={`${seat.name} 특징: ${seat.about}`}
+			aria-label={t('{name} 특징: {about}', { name: seat.name, about: seat.about })}
 			aria-expanded={aboutOpen}
 			data-testid={`seat-about-${seat.id}`}
 			onclick={(e) => {

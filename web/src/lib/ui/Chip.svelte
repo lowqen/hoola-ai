@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.ts';
 	import type { Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
 	import type { IconName } from './icons.ts';
@@ -24,7 +25,7 @@
 		elevated = false,
 		onclick,
 		onremove,
-		removeLabel = '지우기',
+		removeLabel = t('지우기'),
 		children
 	}: Props = $props();
 

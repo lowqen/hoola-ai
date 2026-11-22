@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 훈련 (DESIGN_PLAN §5.2): 홈은 오늘의 훈련과 유형 카드, 세션 화면은 처음 시작할 때 불러온다.
+	import { t } from '#lib/i18n/index.ts';
 	import { onMount, type Component } from 'svelte';
 	import { DRILLS, PUZZLE_KINDS, type DrillId } from '#lib/train/drills.ts';
 	import { training } from '#lib/train/training.svelte.ts';
@@ -35,8 +36,12 @@
 	function meta(type: DrillId) {
 		const stat = training.stats[type];
 		const accuracy = training.recentAccuracy(type);
-		if (!stat.n || accuracy === null) return '아직 안 풀어 봤다';
-		return `최근 정답률 ${Math.round(accuracy * 100)}% · ${stat.n}문제 · 최고 연속 ${stat.best}`;
+		if (!stat.n || accuracy === null) return t('아직 안 풀어 봤다');
+		return t('최근 정답률 {rate}% · {n}문제 · 최고 연속 {best}', {
+			rate: Math.round(accuracy * 100),
+			n: stat.n,
+			best: stat.best
+		});
 	}
 
 	function keydown(e: KeyboardEvent) {
@@ -64,23 +69,28 @@
 </script>
 
 <svelte:head>
-	<title>훈련 · 훌라 연습장</title>
-	<meta name="description" content="훌라 조합 찾기·땡큐·스톱·버릴 카드 훈련" />
+	<title>{t('훈련 · 훌라 연습장')}</title>
+	<meta name="description" content={t('훌라 조합 찾기·땡큐·스톱·버릴 카드 훈련')} />
 </svelte:head>
 
 <svelte:window onkeydown={keydown} />
 
-<TopAppBar title={current?.title ?? '훈련'} subtitle={current?.rule}>
+<TopAppBar title={current?.title ?? t('훈련')} subtitle={current?.rule}>
 	{#snippet actions()}
 		{#if training.active}
 			<IconButton
 				icon="close"
-				label="그만두기"
+				label={t('그만두기')}
 				data-testid="t-exit"
 				onclick={() => training.exit()}
 			/>
 		{:else}
-			<IconButton icon="settings" label="설정" data-testid="open-settings" onclick={openSettings} />
+			<IconButton
+				icon="settings"
+				label={t('설정')}
+				data-testid="open-settings"
+				onclick={openSettings}
+			/>
 		{/if}
 	{/snippet}
 </TopAppBar>
@@ -94,17 +104,23 @@
 {:else}
 	<main class="home">
 		<section class="hero" aria-labelledby="train-title">
-			<h2 id="train-title">오늘의 훈련</h2>
-			<p>자주 놓치는 판단을 짧은 문제로 반복한다. 문제는 엔진이 실제 판에서 만든다.</p>
+			<h2 id="train-title">{t('오늘의 훈련')}</h2>
+			<p>{t('자주 놓치는 판단을 짧은 문제로 반복한다. 문제는 엔진이 실제 판에서 만든다.')}</p>
 			<p class="today" data-testid="t-today">
 				{today.n
-					? `오늘 ${today.n}문제 · 정답률 ${Math.round((today.correct / today.n) * 100)}%`
-					: '오늘은 아직 안 풀었다'} · {weakest
-					? `추천: ${DRILLS[weakest.type].title} (최근 정답률 ${Math.round(weakest.accuracy * 100)}%)`
-					: '섞어 풀기로 고르게 연습하세요'}
+					? t('오늘 {n}문제 · 정답률 {rate}%', {
+							n: today.n,
+							rate: Math.round((today.correct / today.n) * 100)
+						})
+					: t('오늘은 아직 안 풀었다')} · {weakest
+					? t('추천: {title} (최근 정답률 {rate}%)', {
+							title: DRILLS[weakest.type].title,
+							rate: Math.round(weakest.accuracy * 100)
+						})
+					: t('섞어 풀기로 고르게 연습하세요')}
 			</p>
 			<Fab icon="school" data-testid="t-start" onclick={() => training.start('mix')}
-				>오늘의 훈련 10문제</Fab
+				>{t('오늘의 훈련 10문제')}</Fab
 			>
 		</section>
 
@@ -114,7 +130,7 @@
 				<li>
 					<Card
 						variant="outlined"
-						label={`${DRILLS[type].title} 훈련 시작`}
+						label={t('{title} 훈련 시작', { title: DRILLS[type].title })}
 						onclick={() => training.start(type)}
 					>
 						<span class="drill" data-testid={`t-drill-${type}`}>
@@ -124,7 +140,10 @@
 							<span class="rule">{DRILLS[type].rule}</span>
 							<span class="meta">{meta(type)}</span>
 							{#if accuracy !== null}
-								<Progress value={accuracy} label={`${DRILLS[type].title} 최근 정답률`} />
+								<Progress
+									value={accuracy}
+									label={t('{title} 최근 정답률', { title: DRILLS[type].title })}
+								/>
 							{/if}
 						</span>
 					</Card>
@@ -134,7 +153,7 @@
 				{#if training.notebookCount}
 					<Card
 						variant="filled"
-						label={`오답 노트 ${training.notebookCount}개 다시 풀기`}
+						label={t('오답 노트 {n}개 다시 풀기', { n: training.notebookCount })}
 						onclick={() => training.start('notebook')}
 					>
 						<span class="drill" data-testid="t-drill-notebook">
@@ -143,10 +162,12 @@
 								<Badge value={training.notebookCount} />
 							</span>
 							<span class="rule">{DRILLS.notebook.rule}</span>
-							<span class="meta">{training.notebookCount}개 대기 · 두 번 맞히면 빠진다</span>
+							<span class="meta"
+								>{t('{n}개 대기 · 두 번 맞히면 빠진다', { n: training.notebookCount })}</span
+							>
 							{#if training.fromReviewCount}
 								<span class="meta" data-testid="t-from-review"
-									>복기에서 온 문제 {training.fromReviewCount}개</span
+									>{t('복기에서 온 문제 {n}개', { n: training.fromReviewCount })}</span
 								>
 							{/if}
 						</span>
@@ -157,16 +178,19 @@
 							<span class="title"
 								><Icon name={DRILLS.notebook.icon} size={20} />{DRILLS.notebook.title}</span
 							>
-							<span class="rule">틀린 장면이 여기에 쌓인다. 아직 비어 있다.</span>
-							<Button variant="tonal" onclick={() => training.start('mix')}>문제 풀러 가기</Button>
+							<span class="rule">{t('틀린 장면이 여기에 쌓인다. 아직 비어 있다.')}</span>
+							<Button variant="tonal" onclick={() => training.start('mix')}
+								>{t('문제 풀러 가기')}</Button
+							>
 						</span>
 					</Card>
 				{/if}
 			</li>
 		</ul>
 		<p class="note">
-			약한 유형이 더 자주 나온다. 틀린 문제는 같은 훈련 안에서 3문제 뒤에 다시 나오고, 오답 노트에도
-			쌓인다. Enter = 제출·다음, 숫자 = 보기 선택, Esc = 그만두기.
+			{t(
+				'약한 유형이 더 자주 나온다. 틀린 문제는 같은 훈련 안에서 3문제 뒤에 다시 나오고, 오답 노트에도 쌓인다. Enter = 제출·다음, 숫자 = 보기 선택, Esc = 그만두기.'
+			)}
 		</p>
 	</main>
 {/if}

@@ -1,4 +1,5 @@
 // 엔진 관측 형식과 행동 문자열 도우미.
+import { t } from '#lib/i18n/index.ts';
 import { cardsText, cardText, rankNum, sortCards, type CardId } from '#lib/game/cards.ts';
 
 export interface TableMeld {
@@ -58,7 +59,7 @@ export function parseAction(action: string): { verb: string; cards: CardId[]; me
 	return { verb, cards: rest };
 }
 
-const KIND = { set: '세트', run: '런', seven: '7' };
+const KIND = { set: t('세트'), run: t('런'), seven: '7' };
 
 /** 표시 순서: 런은 순환 규칙(Q K A)을 따라 끊긴 자리에서 시작하고, 나머지는 정렬한다. */
 export function meldOrder(meld: Pick<TableMeld, 'kind' | 'cards'>): CardId[] {
@@ -74,26 +75,30 @@ export function meldOrder(meld: Pick<TableMeld, 'kind' | 'cards'>): CardId[] {
 function meldLabel(obs: Observation, index: number, seatName: (s: number) => string) {
 	const meld = obs.melds[index];
 	if (!meld) return `#${index}`;
-	return `${seatName(meld.owner)}의 ${KIND[meld.kind]} [${cardsText(meldOrder(meld))}]`;
+	return t('{owner}의 {kind} {cards}', {
+		owner: seatName(meld.owner),
+		kind: KIND[meld.kind],
+		cards: `[${cardsText(meldOrder(meld))}]`
+	});
 }
 
 export function actionText(action: string, obs: Observation, seatName: (s: number) => string) {
 	const { verb, cards, meld } = parseAction(action);
 	switch (verb) {
 		case 'stop':
-			return '스톱';
+			return t('스톱');
 		case 'draw':
-			return '받기';
+			return t('받기');
 		case 'thankyou':
-			return `땡큐 ${cardsText(sortCards(cards))}`;
+			return `${t('땡큐')} ${cardsText(sortCards(cards))}`;
 		case 'thankyou-attach':
-			return `땡큐 붙이기 → ${meldLabel(obs, meld!, seatName)}`;
+			return `${t('땡큐 붙이기')} → ${meldLabel(obs, meld!, seatName)}`;
 		case 'register':
-			return `등록 ${cardsText(sortCards(cards))}`;
+			return `${t('등록')} ${cardsText(sortCards(cards))}`;
 		case 'attach':
-			return `붙이기 ${cardText(cards[0])} → ${meldLabel(obs, meld!, seatName)}`;
+			return `${t('붙이기')} ${cardText(cards[0])} → ${meldLabel(obs, meld!, seatName)}`;
 		case 'discard':
-			return `버림 ${cardText(cards[0])}`;
+			return `${t('버림')} ${cardText(cards[0])}`;
 		default:
 			return action;
 	}
@@ -107,6 +112,6 @@ export function stopAdvice(obs: Observation, humanSeat: number) {
 	const ok = limit !== null && obs.hand_points <= limit;
 	return {
 		ok,
-		text: `상대 최소 ${fewest}장 → ${limit === null ? '스톱 금지' : `${limit}점 이하`} · ${ok ? '스톱 권장' : '기다림'}`
+		text: `${t('상대 최소 {n}장', { n: fewest })} → ${limit === null ? t('스톱 금지') : t('{n}점 이하', { n: limit })} · ${ok ? t('스톱 권장') : t('기다림')}`
 	};
 }

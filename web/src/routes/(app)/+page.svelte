@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 대전 화면 (DESIGN_PLAN §5.1). 진행은 session, 판 화면은 Board가 맡고, 여기서는 시작 패널과 앱 바를 둔다.
+	import { t } from '#lib/i18n/index.ts';
 	import { onMount, type Component } from 'svelte';
 	import { botName } from '#lib/play/bots.ts';
 	import LazySheets from '#lib/play/LazySheets.svelte';
@@ -28,26 +29,26 @@
 	const summary = $derived.by(() => {
 		const { players, opponents, beginner: easy, stop5 } = session.settings;
 		const bots = opponents.slice(0, players - 1).map(botName);
-		const variant = players === 2 && stop5 ? ' · 스톱 5점' : '';
-		return `${players}인${variant} · ${bots.join('·')} · ${easy ? '초보자' : '셀프'} 모드`;
+		const variant = players === 2 && stop5 ? t(' · 스톱 5점') : '';
+		return `${t('{n}인', { n: players })}${variant} · ${bots.join('·')} · ${easy ? t('초보자 모드') : t('셀프 모드')}`;
 	});
 </script>
 
 <svelte:head>
 	{@html guard}
-	<title>훌라 연습장</title>
+	<title>{t('훌라 연습장')}</title>
 	<meta
 		name="description"
-		content="브라우저에서 바로 두는 훌라 연습장. 봇과 대전하고 스톱·땡큐 판단을 연습한다."
+		content={t('브라우저에서 바로 두는 훌라 연습장. 봇과 대전하고 스톱·땡큐 판단을 연습한다.')}
 	/>
 </svelte:head>
 
-<TopAppBar title="훌라" subtitle={obs && session.stop5 ? '1:1 스톱 5점' : undefined}>
+<TopAppBar title={t('훌라')} subtitle={obs && session.stop5 ? t('1:1 스톱 5점') : undefined}>
 	{#snippet actions()}
 		{#if obs}
 			<IconButton
 				icon="undo"
-				label="되돌리기"
+				label={t('되돌리기')}
 				data-testid="undo"
 				disabled={!session.canUndo}
 				onclick={() => session.undo()}
@@ -56,20 +57,20 @@
 		{#if obs && beginner}
 			<IconButton
 				icon="lightbulb"
-				label="힌트"
+				label={t('힌트')}
 				data-testid="hint"
 				onclick={() => session.openHint()}
 			/>
 		{/if}
 		<IconButton
 			icon="settings"
-			label="새 판과 설정"
+			label={t('새 판과 설정')}
 			data-testid="open-new-game"
 			onclick={() => (session.newGameOpen = true)}
 		/>
 		<IconButton
 			icon="help"
-			label="규칙과 안내"
+			label={t('규칙과 안내')}
 			data-testid="open-rules"
 			onclick={() => (session.rulesOpen = true)}
 		/>
@@ -82,7 +83,7 @@
 	{:else}
 		<section class="start" aria-labelledby="start-title">
 			<span class="logo" aria-hidden="true">♠</span>
-			<h1 id="start-title">훌라 연습장</h1>
+			<h1 id="start-title">{t('훌라 연습장')}</h1>
 			<p class="summary" data-testid="start-summary">{summary}</p>
 			<Button
 				size="lg"
@@ -90,14 +91,14 @@
 				data-testid="start"
 				disabled={session.starting}
 				onclick={() => session.newGame()}
-				>{session.starting ? '엔진을 불러오는 중…' : '새 판 시작'}</Button
+				>{session.starting ? t('엔진을 불러오는 중…') : t('새 판 시작')}</Button
 			>
 			<div class="secondary">
 				<Button variant="text" icon="settings" onclick={() => (session.newGameOpen = true)}
-					>상대와 모드 바꾸기</Button
+					>{t('상대와 모드 바꾸기')}</Button
 				>
 				<Button variant="text" icon="help" onclick={() => (session.rulesOpen = true)}
-					>규칙 요약</Button
+					>{t('규칙 요약')}</Button
 				>
 			</div>
 			{#if session.gamesPlayed < 3 && !beginner}
@@ -107,11 +108,13 @@
 					onclick={() => {
 						session.settings.beginner = true;
 						session.saveSettings();
-					}}>처음이라면 초보자 모드를 권한다</Chip
+					}}>{t('처음이라면 초보자 모드를 권한다')}</Chip
 				>
 			{/if}
 			{#if session.engineError}
-				<p class="error" role="alert">게임을 불러오지 못했다. 연결을 확인하고 다시 눌러 보세요.</p>
+				<p class="error" role="alert">
+					{t('게임을 불러오지 못했다. 연결을 확인하고 다시 눌러 보세요.')}
+				</p>
 			{/if}
 		</section>
 	{/if}

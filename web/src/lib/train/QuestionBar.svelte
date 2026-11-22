@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 문제의 고정 행동 바. 안내는 바 위에 떠서 메시지가 나와도 버튼이 움직이지 않는다.
+	import { t } from '#lib/i18n/index.ts';
 	import type { Snippet } from 'svelte';
 	import Dock from './Dock.svelte';
 	import { training } from './training.svelte.ts';
@@ -9,7 +10,7 @@
 
 {#if !training.feedback}
 	<Dock>
-		<div class="bar" role="toolbar" aria-label="답하기">
+		<div class="bar" role="toolbar" aria-label={t('답하기')}>
 			<p class="message" aria-live="polite" data-testid="t-message">{message}</p>
 			<div class="row">{@render children()}</div>
 		</div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 더미(뒷면 + 남은 장수) 또는 버림패(맨 위 + 바로 아래 한 장).
+	import { t } from '#lib/i18n/index.ts';
 	import { cardText, type CardId, type CardSize } from './cards.ts';
 	import { CARD_PX } from './cards.ts';
 	import { receive, send } from './motion.svelte.ts';
@@ -31,11 +32,13 @@
 	const px = $derived(CARD_PX[size]);
 	const visible = $derived(cards.slice(-2));
 	const top = $derived(cards.at(-1));
-	const label = $derived(kind === 'stock' ? `더미 ${count}장` : '버림패');
+	const label = $derived(kind === 'stock' ? t('더미 {n}장', { n: count }) : t('버림패'));
 	const actionLabel = $derived(
 		kind === 'stock'
-			? `더미에서 받기, ${count}장 남음`
-			: `여기에 버리기${top ? `, 맨 위 ${cardText(top)}` : ''}`
+			? t('더미에서 받기, {n}장 남음', { n: count })
+			: top
+				? t('여기에 버리기, 맨 위 {card}', { card: cardText(top) })
+				: t('여기에 버리기')
 	);
 </script>
 

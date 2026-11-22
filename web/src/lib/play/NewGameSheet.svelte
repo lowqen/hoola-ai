@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 새 판 시트 (DESIGN_PLAN §6.2): 자주 바꾸는 것만 보여 주고, 세부 설정은 펼침 영역에 둔다.
+	import { t } from '#lib/i18n/index.ts';
 	import DisplaySettings from '#lib/app/DisplaySettings.svelte';
 	import BottomSheet from '#lib/ui/BottomSheet.svelte';
 	import Button from '#lib/ui/Button.svelte';
@@ -32,26 +33,26 @@
 	}
 </script>
 
-<BottomSheet bind:open={session.newGameOpen} label="새 판과 설정">
-	<h2>새 판</h2>
+<BottomSheet bind:open={session.newGameOpen} label={t('새 판과 설정')}>
+	<h2>{t('새 판')}</h2>
 
-	<h3 id="players-title">인원</h3>
+	<h3 id="players-title">{t('인원')}</h3>
 	<SegmentedButton
-		label="인원"
+		label={t('인원')}
 		testid="players"
 		value={String(settings.players)}
 		onchange={setPlayers}
 		options={[
-			{ value: '2', label: '2인' },
-			{ value: '3', label: '3인' },
-			{ value: '4', label: '4인' },
-			{ value: '5', label: '5인' }
+			{ value: '2', label: t('2인') },
+			{ value: '3', label: t('3인') },
+			{ value: '4', label: t('4인') },
+			{ value: '5', label: t('5인') }
 		]}
 	/>
 	{#if settings.players === 2}
 		<div class="variant">
 			<Switch
-				label="1:1 스톱 5점"
+				label={t('1:1 스톱 5점')}
 				checked={!!settings.stop5}
 				testid="stop5"
 				onchange={(checked) => {
@@ -59,18 +60,19 @@
 					session.saveSettings();
 				}}
 			/>
-			<p class="desc">켜면 손패 5점 이하일 때만 스톱할 수 있다 (친구 변형 규칙).</p>
+			<p class="desc">{t('켜면 손패 5점 이하일 때만 스톱할 수 있다 (친구 변형 규칙).')}</p>
 		</div>
 	{/if}
 
-	<h3>상대</h3>
+	<h3>{t('상대')}</h3>
 	<div class="chips" data-testid="presets">
 		{#each PRESETS as id (id)}
 			<Chip kind="filter" selected={preset === id} onclick={() => choosePreset(id)}
 				>{BOTS[id].name} <span class="level">{BOTS[id].level}</span></Chip
 			>
 		{/each}
-		<Chip kind="filter" selected={preset === null} onclick={() => (custom = true)}>직접</Chip>
+		<Chip kind="filter" selected={preset === null} onclick={() => (custom = true)}>{t('직접')}</Chip
+		>
 	</div>
 	{#if preset}
 		<p class="desc" data-testid="preset-desc">{about(preset)}</p>
@@ -78,7 +80,7 @@
 		<div class="custom">
 			{#each settings.opponents.slice(0, settings.players - 1) as opponent, i (i)}
 				<label>
-					<span>{i + 1}번 상대</span>
+					<span>{t('{n}번 상대', { n: i + 1 })}</span>
 					<select
 						value={opponent}
 						onchange={(e) => {
@@ -96,38 +98,38 @@
 		</div>
 	{/if}
 
-	<h3>모드</h3>
+	<h3>{t('모드')}</h3>
 	<SegmentedButton
-		label="모드"
+		label={t('모드')}
 		testid="mode"
 		value={settings.beginner ? 'beginner' : 'self'}
 		onchange={setMode}
 		options={[
-			{ value: 'self', label: '셀프 (실전처럼)' },
-			{ value: 'beginner', label: '초보자 (힌트)' }
+			{ value: 'self', label: t('셀프 (실전처럼)') },
+			{ value: 'beginner', label: t('초보자 (힌트)') }
 		]}
 	/>
 
 	<details>
-		<summary>세부 설정</summary>
+		<summary>{t('세부 설정')}</summary>
 		<div class="details">
 			<DisplaySettings />
 			<div>
-				<h3>봇 속도</h3>
+				<h3>{t('봇 속도')}</h3>
 				<SegmentedButton
-					label="봇 속도"
+					label={t('봇 속도')}
 					testid="speed"
 					value={String(settings.speed)}
 					onchange={setSpeed}
 					options={[
-						{ value: '900', label: '느리게' },
-						{ value: '500', label: '보통' },
-						{ value: '150', label: '빠르게' }
+						{ value: '900', label: t('느리게') },
+						{ value: '500', label: t('보통') },
+						{ value: '150', label: t('빠르게') }
 					]}
 				/>
 			</div>
 			<Switch
-				label="지나간 버림패 모두 보기"
+				label={t('지나간 버림패 모두 보기')}
 				checked={settings.fullDiscards}
 				testid="full-discards"
 				onchange={(checked) => {
@@ -137,7 +139,7 @@
 			/>
 			{#if settings.beginner}
 				<Switch
-					label="내 차례마다 자동 힌트"
+					label={t('내 차례마다 자동 힌트')}
 					checked={settings.autoHint}
 					testid="auto-hint"
 					onchange={(checked) => {
@@ -147,7 +149,7 @@
 				/>
 			{/if}
 			<label class="seed">
-				<span>시드 (비우면 무작위)</span>
+				<span>{t('시드 (비우면 무작위)')}</span>
 				<input
 					inputmode="numeric"
 					value={settings.seed}
@@ -168,10 +170,10 @@
 			icon="playing_cards"
 			data-testid="start-game"
 			disabled={session.starting}
-			onclick={() => session.newGame()}>시작</Button
+			onclick={() => session.newGame()}>{t('시작')}</Button
 		>
 	</div>
-	<p class="note">바뀐 인원과 상대는 다음 판부터 적용된다.</p>
+	<p class="note">{t('바뀐 인원과 상대는 다음 판부터 적용된다.')}</p>
 </BottomSheet>
 
 <style>

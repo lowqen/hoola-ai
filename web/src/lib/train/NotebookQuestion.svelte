@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 오답 노트: 예전에 틀린 장면에서 최선의 수를 보기 중에 고른다. 두 번 맞히면 노트에서 빠진다.
+	import { t } from '#lib/i18n/index.ts';
 	import { onMount } from 'svelte';
 	import { actionText } from '#lib/play/actions.ts';
 	import Button from '#lib/ui/Button.svelte';
@@ -21,11 +22,11 @@
 		const ranked = [...puzzle.scored].sort((a, b) => b.value - a.value);
 		training.answer({
 			ok,
-			title: ok ? '이번엔 맞혔다' : '다시 틀렸다',
+			title: ok ? t('이번엔 맞혔다') : t('다시 틀렸다'),
 			lines: [
 				ok
-					? '최선이거나 최선과 확실한 차이가 없는 수다.'
-					: `최선은 ${actionText(puzzle.best, obs, name)}.`,
+					? t('최선이거나 최선과 확실한 차이가 없는 수다.')
+					: t('최선은 {move}.', { move: actionText(puzzle.best, obs, name) }),
 				...(puzzle.lines ?? [])
 			],
 			bars: ranked.slice(0, 6).map((v, i) => ({
@@ -45,12 +46,13 @@
 </script>
 
 <p class="prompt" data-testid="t-prompt">
-	<b>오답 노트.</b> 예전에 틀린 장면이다. 최선의 수를 고르세요.
+	<b>{t('오답 노트.')}</b>
+	{t('예전에 틀린 장면이다. 최선의 수를 고르세요.')}
 </p>
 
 <TrainScene {obs} />
 
-<div class="options" role="group" aria-label="보기" data-testid="t-options">
+<div class="options" role="group" aria-label={t('보기')} data-testid="t-options">
 	{#each options as move, i (move.action)}
 		<Button
 			wide

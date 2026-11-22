@@ -1,6 +1,7 @@
 <script lang="ts">
 	// 결정마다 내 수의 추정 승률. 계열이 하나라 범례 대신 등급 표시만 둔다.
 	// 키보드와 스크린리더는 같은 내용을 담은 결정 목록을 쓴다.
+	import { t } from '#lib/i18n/index.ts';
 	import { actionText } from '#lib/play/actions.ts';
 	import Icon from '#lib/ui/Icon.svelte';
 	import { LEGEND, type GradeId, type ReviewItem } from './analysis.ts';
@@ -48,7 +49,9 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 		<svg
 			role="img"
-			aria-label={`결정 ${items.length}개의 추정 승률 흐름. 같은 내용을 결정 목록에서 볼 수 있다`}
+			aria-label={t('결정 {n}개의 추정 승률 흐름. 같은 내용을 결정 목록에서 볼 수 있다', {
+				n: items.length
+			})}
 			{width}
 			height={HEIGHT}
 			data-testid="win-chart"
@@ -79,9 +82,11 @@
 				role="status"
 				style={`left:${Math.min(Math.max(x(hover), 90), width - 90)}px;top:${y(tip.mine.value)}px`}
 			>
-				<b><Icon name={tip.grade.icon} size={14} />{tip.grade.label}</b> · {tip.n}번째 결정<br />
+				<b><Icon name={tip.grade.icon} size={14} />{tip.grade.label}</b> · {t('{n}번째 결정', {
+					n: tip.n
+				})}<br />
 				{actionText(tip.mine.action, tip.obs, review.seatName)}<br />
-				추정 승률 {(tip.mine.value * 100).toFixed(1)}%{#if tip.loss > 0}
+				{t('추정 승률 {n}%', { n: (tip.mine.value * 100).toFixed(1) })}{#if tip.loss > 0}
 					· −{(tip.loss * 100).toFixed(1)}%p{/if}
 			</div>
 		{/if}
@@ -90,12 +95,12 @@
 		{#each LEGEND as grade (grade.id)}
 			<span
 				><i style={`background:${COLOR[grade.id]}`}></i>{grade.id === 'best'
-					? '최선·좋음'
+					? t('최선·좋음')
 					: grade.label}</span
 			>
 		{/each}
-		<span><i class="dash"></i>공평한 몫 {Math.round(fair * 100)}%</span>
-		<span class="hint">선 = 내 수의 추정 승률 · 점을 누르면 그 장면으로</span>
+		<span><i class="dash"></i>{t('공평한 몫 {n}%', { n: Math.round(fair * 100) })}</span>
+		<span class="hint">{t('선 = 내 수의 추정 승률 · 점을 누르면 그 장면으로')}</span>
 	</figcaption>
 </figure>
 

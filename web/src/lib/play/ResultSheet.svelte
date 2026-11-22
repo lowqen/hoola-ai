@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 판 종료 시트 (DESIGN_PLAN §6.3): 승패 → 끝난 이유 → 전원 손패 → 다음 행동.
+	import { t } from '#lib/i18n/index.ts';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import PlayingCard from '#lib/game/PlayingCard.svelte';
@@ -16,7 +17,7 @@
 	}
 </script>
 
-<BottomSheet bind:open={session.resultOpen} label="판 결과">
+<BottomSheet bind:open={session.resultOpen} label={t('판 결과')}>
 	{#if result}
 		<h2 class={result.tone} data-testid="result-title">{result.title}</h2>
 		<p class="reason" data-testid="result-reason">{result.reason}</p>
@@ -29,7 +30,7 @@
 					size="sm"
 					icon="school"
 					data-testid="result-train"
-					onclick={() => practice(drill)}>이 유형 훈련하기</Button
+					onclick={() => practice(drill)}>{t('이 유형 훈련하기')}</Button
 				>
 			{/if}
 		{/if}
@@ -44,16 +45,16 @@
 						{#each hand.cards as card (card)}
 							<PlayingCard {card} size="xs" />
 						{:else}
-							<span class="none">털었음</span>
+							<span class="none">{t('털었음')}</span>
 						{/each}
 					</span>
-					<span class="points">{hand.points}점</span>
+					<span class="points">{t('{n}점', { n: hand.points })}</span>
 				</li>
 			{/each}
 		</ul>
 		<div class="actions">
 			<Button wide icon="history" data-testid="review" onclick={() => session.openReview()}
-				>복기하기</Button
+				>{t('복기하기')}</Button
 			>
 			<div class="row">
 				<Button
@@ -61,14 +62,14 @@
 					variant="tonal"
 					icon="replay"
 					data-testid="same-game"
-					onclick={() => session.sameGame()}>같은 패 다시</Button
+					onclick={() => session.sameGame()}>{t('같은 패 다시')}</Button
 				>
 				<Button
 					wide
 					variant="outlined"
 					icon="playing_cards"
 					data-testid="next-game"
-					onclick={() => session.newGame()}>새 판</Button
+					onclick={() => session.newGame()}>{t('새 판')}</Button
 				>
 			</div>
 		</div>

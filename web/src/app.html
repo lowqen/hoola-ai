@@ -29,8 +29,29 @@
 							: 'standard';
 				document.documentElement.dataset.theme = t;
 				document.documentElement.dataset.contrast = c;
+				// 언어 (src/lib/i18n/index.ts와 같은 규칙). 영어인데 사전이 아직 없으면 받을 때까지 가린다
+				var l = null;
+				var d = null;
+				try {
+					l = localStorage.getItem('hoola-lang');
+					d = localStorage.getItem('hoola-lang-en');
+				} catch (e) {}
+				if (l === 'en') {
+					document.documentElement.lang = 'en';
+					if (!d) {
+						document.documentElement.dataset.i18nPending = '';
+						setTimeout(function () {
+							delete document.documentElement.dataset.i18nPending;
+						}, 3000);
+					}
+				}
 			})();
 		</script>
+		<style>
+			html[data-i18n-pending] body {
+				visibility: hidden;
+			}
+		</style>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 앱 셸: 대전·훈련·기록 3개 목적지 (DESIGN_PLAN §6.2). 휴대폰은 하단 바, 태블릿·PC는 레일.
+	import { t } from '#lib/i18n/index.ts';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import AppNav from '#lib/ui/AppNav.svelte';
@@ -28,9 +29,9 @@
 <AppNav
 	{active}
 	destinations={[
-		{ id: 'play', label: '대전', icon: 'playing_cards', href: resolve('/(app)') },
-		{ id: 'train', label: '훈련', icon: 'school', href: `${resolve('/(app)/train')}/` },
-		{ id: 'records', label: '기록', icon: 'bar_chart', href: `${resolve('/(app)/records')}/` }
+		{ id: 'play', label: t('대전'), icon: 'playing_cards', href: resolve('/(app)') },
+		{ id: 'train', label: t('훈련'), icon: 'school', href: `${resolve('/(app)/train')}/` },
+		{ id: 'records', label: t('기록'), icon: 'bar_chart', href: `${resolve('/(app)/records')}/` }
 	]}
 />
 

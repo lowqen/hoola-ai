@@ -1,6 +1,7 @@
 <script lang="ts">
 	// 내 손패. 탭 = 선택, 두 번 탭 = 버리기, 끌기 = 놓은 곳에 내기, ←/→ = 카드 이동, Space = 선택.
 	// 칸(slot)은 폭이 줄어 카드가 겹치고, 카드 자체는 크기를 유지한다.
+	import { t } from '#lib/i18n/index.ts';
 	import { flip } from 'svelte/animate';
 	import { draggable } from './drag.ts';
 	import type { CardId } from './cards.ts';
@@ -87,7 +88,7 @@
 		bind:this={root}
 		class="hand"
 		role="group"
-		aria-label={`내 손패 ${cards.length}장`}
+		aria-label={t('내 손패 {n}장', { n: cards.length })}
 		style={`--columns:${columns}`}
 		data-testid="hand"
 		onkeydown={keydown}

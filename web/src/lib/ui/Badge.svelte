@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.ts';
 	interface Props {
 		/** 숫자면 숫자 배지 (99 넘으면 99+), true면 점. */
 		value: number | boolean;
@@ -10,7 +11,7 @@
 
 <span
 	class={`badge ${typeof value === 'number' ? 'num' : 'dot'}`}
-	aria-label={label ?? (typeof value === 'number' ? `${value}개` : '새 항목')}
+	aria-label={label ?? (typeof value === 'number' ? t('{n}개', { n: value }) : t('새 항목'))}
 	role="status">{text}</span
 >
 

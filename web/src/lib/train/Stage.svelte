@@ -1,5 +1,6 @@
 <script lang="ts">
 	// 훈련 세션 화면: 진행 점 → 문제 → 피드백 → 요약. 세션을 시작할 때 불러온다.
+	import { t } from '#lib/i18n/index.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import Icon from '#lib/ui/Icon.svelte';
 	import Progress from '#lib/ui/Progress.svelte';
@@ -22,9 +23,10 @@
 	<section class="summary" data-testid="t-summary">
 		<h2 data-testid="t-score">{summary.correct} / {summary.total}</h2>
 		<p>
-			정답률 {summary.total ? Math.round((summary.correct / summary.total) * 100) : 0}% · 평균 {summary.seconds.toFixed(
-				1
-			)}초
+			{t('정답률 {rate}% · 평균 {sec}초', {
+				rate: summary.total ? Math.round((summary.correct / summary.total) * 100) : 0,
+				sec: summary.seconds.toFixed(1)
+			})}
 		</p>
 		<ul>
 			{#each summary.byDrill as row (row.type)}
@@ -36,34 +38,46 @@
 		</ul>
 		<div class="row">
 			<Button variant="tonal" size="md" onclick={() => training.exit()} data-testid="t-home"
-				>훈련 홈</Button
+				>{t('훈련 홈')}</Button
 			>
 			<Button
 				size="md"
 				icon="replay"
 				data-testid="t-again"
-				onclick={() => training.start(summary.kind)}>한 번 더</Button
+				onclick={() => training.start(summary.kind)}>{t('한 번 더')}</Button
 			>
 		</div>
 	</section>
 {:else}
 	<div class={['stage', training.feedback && 'answered']}>
 		<div class="progress" data-testid="t-progress">
-			<ol aria-label={`${training.plan.length}문제 중 ${done}문제 풀었다, ${correct}문제 정답`}>
+			<ol
+				aria-label={t('{total}문제 중 {done}문제 풀었다, {correct}문제 정답', {
+					total: training.plan.length,
+					done,
+					correct
+				})}
+			>
 				{#each training.plan as _, i (i)}
 					{@const r = training.results[i]}
 					<li class={[r && (r.ok ? 'ok' : 'bad'), !r && i === done && 'now']}></li>
 				{/each}
 			</ol>
-			{#if question?.retry}<span class="retry" data-testid="t-retry">다시 풀기</span>{/if}
+			{#if question?.retry}<span class="retry" data-testid="t-retry">{t('다시 풀기')}</span>{/if}
 			<span class="score" data-testid="t-tally">
-				{correct} / {done}{training.retriesLeft ? ` · 다시 ${training.retriesLeft}` : ''}
+				{correct} / {done}{training.retriesLeft
+					? ` · ${t('다시 {n}', { n: training.retriesLeft })}`
+					: ''}
 			</span>
 		</div>
 
 		{#if training.error}
-			<p class="error" role="alert">문제를 만들지 못했다: {training.error}</p>
-			<Button size="md" data-testid="t-next" onclick={() => training.next()}>다음 문제</Button>
+			<p class="error" role="alert">
+				{t('문제를 만들지 못했다: {error}', { error: training.error ?? '' })}
+			</p>
+			<Button size="md" data-testid="t-next" onclick={() => training.next()}
+				>{t('다음 문제')}</Button
+			>
 		{:else if question}
 			<div class="question" data-testid="t-question" data-drill={question.type}>
 				{#key question.id}
@@ -82,8 +96,8 @@
 			</div>
 		{:else}
 			<div class="loading" data-testid="t-loading">
-				<Progress label="문제 만드는 중" />
-				<p>문제 만드는 중…</p>
+				<Progress label={t('문제 만드는 중')} />
+				<p>{t('문제 만드는 중…')}</p>
 			</div>
 		{/if}
 	</div>
