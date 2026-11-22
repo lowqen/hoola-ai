@@ -37,7 +37,7 @@ powershell -ExecutionPolicy Bypass -File scripts/practice.ps1   # 오프라인: 
 | `crates/hoola-core` | Rust 규칙 엔진 코어 (상태기계, 관측 API, 프리셋, 리플레이, 봇 L0–L3, 대전 진행기) |
 | `crates/hoola-core/tests/rules_spec.rs` | RULES.md 명세 테스트 (스톱 판정표, 엣지 케이스 E1–E11, 무작위 대전 불변식) |
 | `crates/hoola-py` | Python 바인딩 (`import hoola`, maturin · abi3 wheel은 CI 아티팩트) |
-| `crates/hoola-lab` | 전략 가설 실험 (P2), 친구 페르소나(`--only F`), L3 헤드룸(`--only L3`), 웹 봇 레이팅(`--only R`), R0 천장 측정(`--only R0`). 결과는 CI 아티팩트, 기록은 `docs/lab/`. 무거운 실험은 `gh workflow run ci.yml`로 수동 실행 |
+| `crates/hoola-lab` | 전략 가설 실험 (P2), 친구 페르소나(`--only F`), L3 헤드룸(`--only L3`), 웹 봇 레이팅(`--only R`), R0 천장 측정(`--only R0`), R1 탐색 후보(`--only R1`). 결과는 CI 아티팩트, 기록은 `docs/lab/`. 무거운 실험은 `gh workflow run ci.yml`로 수동 실행 |
 | `crates/hoola-wasm`, `web/` | 연습장: WASM 바인딩과 SvelteKit 웹앱 (Pages 배포, CI `hoola-web` 아티팩트, Node 스모크·Playwright E2E·Lighthouse) |
 | `crates/hoola-sim` | 봇 대전 시뮬레이션 CLI (듀플리케이트, 승률 95% CI, 초당 판 수) |
 | `.github/workflows/ci.yml` | 푸시마다 빌드·테스트·포맷·Clippy 검사, 시뮬레이션 벤치마크 (결과는 Actions 실행 요약) |
